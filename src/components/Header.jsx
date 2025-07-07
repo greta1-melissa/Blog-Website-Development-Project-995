@@ -36,11 +36,7 @@ const Header = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  React.useEffect(() => {
-    if (!isAuthenticated && location.pathname !== '/login' && location.pathname !== '/admin-login') {
-      navigate('/login');
-    }
-  }, [isAuthenticated, location.pathname, navigate]);
+  // REMOVED the useEffect that was redirecting to login page
 
   const getRoleDisplay = () => {
     if (!user) return '';

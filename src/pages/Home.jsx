@@ -66,9 +66,8 @@ const Home = () => {
           Welcome to <span className="text-purple-600">Bangtan Mom</span>
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-          Hi, I'm Melissa! Join me as I share my journey through motherhood, wellness tips, 
-          family adventures, and my love for BTS and K-culture. This is our cozy corner of 
-          the internet where real life meets real conversations.
+          Hi, I'm Melissa! Join me as I share my journey through motherhood, wellness tips, family adventures, 
+          and my love for BTS and K-culture. This is our cozy corner of the internet where real life meets real conversations.
         </p>
         <div className="flex justify-center space-x-8 mb-8">
           {featuredStats.map((stat, index) => (
@@ -129,7 +128,8 @@ const Home = () => {
                         {mostRecentPost.content.substring(0, 150)}...
                       </p>
                       <div className="flex items-center text-purple-600 group-hover:text-purple-700 font-medium">
-                        Read more <SafeIcon icon={FiArrowRight} className="ml-1" />
+                        Read more
+                        <SafeIcon icon={FiArrowRight} className="ml-1" />
                       </div>
                     </div>
                   </div>
@@ -139,19 +139,19 @@ const Home = () => {
           </div>
         </motion.div>
 
-        {/* Currently Watching K-Drama */}
+        {/* Currently Watching K-Drama - Purple Themed */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden h-full">
-            <div className="p-6 border-b border-gray-100">
+          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg overflow-hidden h-full">
+            <div className="p-6 border-b border-white/20">
               <div className="flex items-center mb-2">
-                <SafeIcon icon={FiTv} className="text-purple-600 mr-2" />
-                <h2 className="text-xl font-bold text-gray-900">Currently Watching</h2>
+                <SafeIcon icon={FiTv} className="text-white mr-2" />
+                <h2 className="text-xl font-bold text-white">Currently Watching</h2>
               </div>
-              <p className="text-gray-600 text-sm">My latest K-drama obsession</p>
+              <p className="text-purple-100 text-sm">My latest K-drama obsession</p>
             </div>
             <div className="p-6">
               <div className="relative mb-4">
@@ -160,16 +160,16 @@ const Home = () => {
                   alt={currentKDrama.title}
                   className="w-full h-40 object-cover rounded-lg"
                 />
-                <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                <div className="absolute top-2 right-2 bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium border border-white/30">
                   {currentKDrama.status}
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">{currentKDrama.title}</h3>
-              <p className="text-purple-600 text-sm mb-2">{currentKDrama.episode}</p>
-              <p className="text-gray-600 text-sm mb-3">{currentKDrama.description}</p>
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>{currentKDrama.genre}</span>
-                <span>{currentKDrama.year}</span>
+              <h3 className="text-lg font-semibold text-white mb-1">{currentKDrama.title}</h3>
+              <p className="text-purple-200 text-sm mb-2 font-medium">{currentKDrama.episode}</p>
+              <p className="text-purple-100 text-sm mb-3 leading-relaxed">{currentKDrama.description}</p>
+              <div className="flex items-center justify-between text-xs text-purple-200">
+                <span className="bg-white/10 px-2 py-1 rounded-full">{currentKDrama.genre}</span>
+                <span className="bg-white/10 px-2 py-1 rounded-full">{currentKDrama.year}</span>
               </div>
             </div>
           </div>
@@ -254,10 +254,10 @@ const Home = () => {
 
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
         
-        <CategoryFilter 
-          categories={categories} 
-          selectedCategory={selectedCategory} 
-          onCategoryChange={setSelectedCategory} 
+        <CategoryFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
         />
 
         {filteredPosts.length === 0 ? (
