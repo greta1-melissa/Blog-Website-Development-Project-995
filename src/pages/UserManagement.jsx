@@ -9,7 +9,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
-  
+
   // Mock users data - in production this would come from your backend
   const [users, setUsers] = useState([
     {
@@ -49,11 +49,9 @@ const UserManagement = () => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesRole = filterRole === '' || user.role === filterRole;
-    
     return matchesSearch && matchesRole;
   });
 
@@ -85,27 +83,19 @@ const UserManagement = () => {
 
   const getRoleColor = (role) => {
     switch (role) {
-      case 'admin':
-        return 'bg-red-100 text-red-800';
-      case 'author':
-        return 'bg-blue-100 text-blue-800';
-      case 'subscriber':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'author': return 'bg-blue-100 text-blue-800';
+      case 'subscriber': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case 'admin':
-        return FiShield;
-      case 'author':
-        return FiEdit3;
-      case 'subscriber':
-        return FiEye;
-      default:
-        return FiUsers;
+      case 'admin': return FiShield;
+      case 'author': return FiEdit3;
+      case 'subscriber': return FiEye;
+      default: return FiUsers;
     }
   };
 

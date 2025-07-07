@@ -28,11 +28,11 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('userRole');
     const userEmail = localStorage.getItem('userEmail');
-    
+
     if (userId && token && userRole) {
       setIsAuthenticated(true);
-      setUser({ 
-        id: userId, 
+      setUser({
+        id: userId,
         role: userRole,
         email: userEmail,
         name: userEmail?.split('@')[0] || 'User'
@@ -48,15 +48,15 @@ export const AuthProvider = ({ children }) => {
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
     }
-    
+
     localStorage.setItem('userId', userId);
     localStorage.setItem('token', token);
     localStorage.setItem('userRole', role);
     localStorage.setItem('userEmail', email);
-    
+
     setIsAuthenticated(true);
-    setUser({ 
-      id: userId, 
+    setUser({
+      id: userId,
       role: role,
       email: email,
       name: email?.split('@')[0] || 'User'
@@ -71,24 +71,24 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = (credentials) => {
     const { email, password } = credentials;
-    
+
     if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
-      
+
       localStorage.setItem('userId', userId);
       localStorage.setItem('token', token);
       localStorage.setItem('userRole', 'admin');
       localStorage.setItem('userEmail', email);
-      
+
       setIsAuthenticated(true);
-      setUser({ 
-        id: userId, 
+      setUser({
+        id: userId,
         role: 'admin',
         email: email,
         name: 'Melissa (Admin)'
       });
-      
+
       navigate('/admin');
       return true;
     }
@@ -100,6 +100,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
+    
     setIsAuthenticated(false);
     setUser(null);
     navigate('/login');
@@ -107,16 +108,16 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    
+
     const roleHierarchy = {
       'subscriber': 1,
       'author': 2,
       'admin': 3
     };
-    
+
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-    
+
     return userLevel >= requiredLevel;
   };
 
