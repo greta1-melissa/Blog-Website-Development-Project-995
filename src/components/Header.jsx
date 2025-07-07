@@ -5,126 +5,164 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 
-const { FiMenu, FiX, FiHeart, FiHome, FiEdit, FiUser, FiMail, FiLogOut, FiSettings, FiMessageCircle, FiShield } = FiIcons;
+const { FiMenu, FiX, FiHeart, FiLogOut, FiUser, FiSettings, FiChevronDown } = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
   const { isAuthenticated, user, logout, isAdmin, isAuthor } = useAuth();
   const navigate = useNavigate();
 
   const getNavItems = () => {
     const baseItems = [
-      { path: '/', label: 'Home', icon: FiHome },
-      { path: '/about', label: 'About Me', icon: FiUser },
-      { path: '/forums', label: 'Forums', icon: FiMessageCircle },
-      { path: '/contact', label: 'Contact', icon: FiMail }
+      { path: '/', label: 'Home' },
+      { path: '/about', label: 'About Me' },
+      { path: '/forums', label: 'Forums' },
+      { path: '/contact', label: 'Contact' }
     ];
 
     if (isAuthor()) {
-      baseItems.splice(3, 0, { path: '/create', label: 'Write', icon: FiEdit });
-    }
-
-    if (isAdmin()) {
-      baseItems.push({ path: '/admin', label: 'Admin', icon: FiSettings });
+      baseItems.splice(3, 0, { path: '/create', label: 'Write' });
     }
 
     return baseItems;
   };
 
   const navItems = getNavItems();
-
   const isActive = (path) => location.pathname === path;
 
-  // REMOVED the useEffect that was redirecting to login page
+  const getUserInitials = () => {
+    if (!user?.name) return 'U';
+    return user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
-  const getRoleDisplay = () => {
-    if (!user) return '';
-    switch (user.role) {
-      case 'admin':
-        return 'Admin';
-      case 'author':
-        return 'Author';
-      case 'subscriber':
-        return 'Subscriber';
-      default:
-        return '';
+  const getRoleColor = () => {
+    switch (user?.role) {
+      case 'admin': return 'bg-gradient-to-r from-red-500 to-pink-500';
+      case 'author': return 'bg-gradient-to-r from-blue-500 to-purple-500';
+      case 'subscriber': return 'bg-gradient-to-r from-green-500 to-teal-500';
+      default: return 'bg-gradient-to-r from-gray-500 to-gray-600';
     }
   };
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
+    <header className="bg-purple-500 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-              <SafeIcon icon={FiHeart} className="text-white text-lg" />
+            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+              <SafeIcon icon={FiHeart} className="text-purple-500 text-lg" />
             </div>
-            <span className="text-xl font-bold text-gray-900">Bangtan Mom</span>
+            <span className="text-xl font-bold text-white">Bangtan Mom</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            {isAuthenticated ? (
-              <>
-                {navItems.map(({ path, label, icon }) => (
-                  <Link
-                    key={path}
-                    to={path}
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(path)
-                        ? 'text-purple-600 bg-purple-50'
-                        : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50'
-                    }`}
-                  >
-                    <SafeIcon icon={icon} className="text-sm" />
-                    <span>{label}</span>
-                  </Link>
-                ))}
-                
-                {/* User Info & Logout */}
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-md">
-                    <SafeIcon icon={user?.role === 'admin' ? FiShield : FiUser} className="text-sm text-gray-600" />
-                    <span className="text-sm text-gray-700">{user?.name}</span>
-                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
-                      {getRoleDisplay()}
-                    </span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-                  >
-                    <SafeIcon icon={FiLogOut} className="text-sm" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-6">
+            {/* Navigation Links */}
+            <nav className="flex space-x-6">
+              {isAuthenticated ? (
+                <>
+                  {navItems.map(({ path, label }) => (
+                    <Link
+                      key={path}
+                      to={path}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive(path)
+                          ? 'text-white bg-purple-600'
+                          : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </>
+              ) : (
                 <Link
                   to="/login"
-                  className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
                 >
-                  <SafeIcon icon={FiUser} className="text-sm" />
-                  <span>Login</span>
+                  Login
                 </Link>
-                <Link
-                  to="/admin-login"
-                  className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-                >
-                  <SafeIcon icon={FiShield} className="text-sm" />
-                  <span>Admin</span>
-                </Link>
-              </div>
-            )}
-          </nav>
+              )}
+            </nav>
+
+            {/* User Menu or Auth Actions */}
+            <div className="flex items-center space-x-4">
+              {isAuthenticated ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}>
+                      {getUserInitials()}
+                    </div>
+                    <span className="text-white text-sm font-medium">{user?.name?.split(' ')[0]}</span>
+                    <SafeIcon icon={FiChevronDown} className="text-purple-200 text-sm" />
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200"
+                    >
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                        <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                      </div>
+                      
+                      {isAdmin() && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <SafeIcon icon={FiSettings} className="mr-2" />
+                          Dashboard
+                        </Link>
+                      )}
+                      
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <SafeIcon icon={FiLogOut} className="mr-2" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/admin-login"
+                    className="px-4 py-2 rounded-md text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                  >
+                    Admin
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-md text-gray-700 hover:text-purple-600 hover:bg-purple-50"
+            className="md:hidden p-2 rounded-md text-purple-100 hover:text-white hover:bg-purple-600"
           >
             <SafeIcon icon={isMenuOpen ? FiX : FiMenu} className="text-xl" />
           </button>
@@ -137,44 +175,57 @@ const Header = () => {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="md:hidden bg-white border-t border-gray-200"
+          className="md:hidden bg-purple-500 border-t border-purple-400"
         >
           <nav className="px-4 py-2 space-y-1">
             {isAuthenticated ? (
               <>
-                {/* User Info */}
-                <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-md mb-2">
-                  <SafeIcon icon={user?.role === 'admin' ? FiShield : FiUser} className="text-sm text-gray-600" />
-                  <span className="text-sm text-gray-700">{user?.name}</span>
-                  <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
-                    {getRoleDisplay()}
-                  </span>
+                {/* User Info at Top */}
+                <div className="flex items-center space-x-3 px-3 py-3 bg-purple-600 rounded-lg mb-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}>
+                    {getUserInitials()}
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-medium">{user?.name}</p>
+                    <p className="text-purple-200 text-xs capitalize">{user?.role}</p>
+                  </div>
                 </div>
-                
-                {navItems.map(({ path, label, icon }) => (
+
+                {navItems.map(({ path, label }) => (
                   <Link
                     key={path}
                     to={path}
                     onClick={() => setIsMenuOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive(path)
-                        ? 'text-purple-600 bg-purple-50'
-                        : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50'
+                        ? 'text-white bg-purple-600'
+                        : 'text-purple-100 hover:text-white hover:bg-purple-600'
                     }`}
                   >
-                    <SafeIcon icon={icon} className="text-sm" />
-                    <span>{label}</span>
+                    {label}
                   </Link>
                 ))}
+
+                {isAdmin() && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
+                  >
+                    <SafeIcon icon={FiSettings} className="mr-2" />
+                    Dashboard
+                  </Link>
+                )}
+
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
                 >
-                  <SafeIcon icon={FiLogOut} className="text-sm" />
-                  <span>Logout</span>
+                  <SafeIcon icon={FiLogOut} className="mr-2" />
+                  Sign Out
                 </button>
               </>
             ) : (
@@ -182,23 +233,31 @@ const Header = () => {
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                  className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
                 >
-                  <SafeIcon icon={FiUser} className="text-sm" />
-                  <span>Login</span>
+                  <SafeIcon icon={FiUser} className="mr-2" />
+                  Sign In
                 </Link>
                 <Link
                   to="/admin-login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                  className="flex items-center px-3 py-2 rounded-md text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors"
                 >
-                  <SafeIcon icon={FiShield} className="text-sm" />
-                  <span>Admin Login</span>
+                  <SafeIcon icon={FiSettings} className="mr-2" />
+                  Admin Access
                 </Link>
               </>
             )}
           </nav>
         </motion.div>
+      )}
+
+      {/* Click outside to close user menu */}
+      {isUserMenuOpen && (
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setIsUserMenuOpen(false)}
+        />
       )}
     </header>
   );
