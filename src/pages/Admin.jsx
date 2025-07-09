@@ -2,30 +2,59 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBlog } from '../contexts/BlogContext';
+import { useAuth } from '../contexts/AuthContext';
 import UserManagement from './UserManagement';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
 const { FiBarChart3, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield } = FiIcons;
 
+// Component to display when access is denied
+const AccessDenied = () => (
+  <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+    <div className="bg-red-50 rounded-xl p-8">
+      <SafeIcon icon={FiShield} className="text-red-500 text-6xl mb-4 mx-auto" />
+      <h1 className="text-2xl font-bold text-red-900 mb-4">Access Denied</h1>
+      <p className="text-red-700 mb-6">
+        This area is restricted to administrators only.
+      </p>
+      <div className="space-x-4">
+        <Link 
+          to="/" 
+          className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Go Home
+        </Link>
+        <Link 
+          to="/admin-login" 
+          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          Admin Login
+        </Link>
+      </div>
+    </div>
+  </div>
+);
+
 const Admin = () => {
   const { posts, categories } = useBlog();
+  const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
 
-  // Calculate stats
+  // Calculate stats - moved outside of conditional rendering
   const stats = useMemo(() => {
     const totalPosts = posts.length;
     const totalCategories = categories.length;
-    const avgWordsPerPost = Math.round(
+    const avgWordsPerPost = totalPosts > 0 ? Math.round(
       posts.reduce((sum, post) => sum + post.content.split(' ').length, 0) / totalPosts
-    );
-    
+    ) : 0;
+
     const categoryStats = categories.map(cat => ({
       name: cat,
       count: posts.filter(post => post.category === cat).length,
-      percentage: Math.round((posts.filter(post => post.category === cat).length / totalPosts) * 100)
+      percentage: totalPosts > 0 ? Math.round((posts.filter(post => post.category === cat).length / totalPosts) * 100) : 0
     }));
 
     const recentPosts = posts.slice(0, 5);
@@ -39,15 +68,13 @@ const Admin = () => {
     };
   }, [posts, categories]);
 
-  // Filter posts for management
+  // Filter posts for management - moved outside of conditional rendering
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
       const matchesSearch = searchTerm === '' || 
         post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         post.content.toLowerCase().includes(searchTerm.toLowerCase());
-      
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
-      
       return matchesSearch && matchesCategory;
     });
   }, [posts, searchTerm, filterCategory]);
@@ -67,6 +94,11 @@ const Admin = () => {
     { id: 'analytics', label: 'Analytics', icon: FiTrendingUp },
   ];
 
+  // Check admin access and return early if not admin
+  if (!isAdmin()) {
+    return <AccessDenied />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -74,7 +106,9 @@ const Admin = () => {
           <SafeIcon icon={FiShield} className="text-purple-600 text-2xl" />
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         </div>
-        <p className="text-gray-600">Complete control over your Bangtan Mom blog</p>
+        <p className="text-gray-600">
+          Welcome back, <strong>{user?.name}</strong>! Complete control over your Bangtan Mom blog
+        </p>
       </div>
 
       {/* Tab Navigation */}
@@ -117,6 +151,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -128,6 +163,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -139,6 +175,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -162,8 +199,8 @@ const Admin = () => {
                     <span className="text-gray-700">{cat.name}</span>
                     <div className="flex items-center space-x-2">
                       <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-purple-500 h-2 rounded-full"
+                        <div 
+                          className="bg-purple-500 h-2 rounded-full" 
                           style={{ width: `${cat.percentage}%` }}
                         ></div>
                       </div>
@@ -178,8 +215,8 @@ const Admin = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Posts</h3>
-                <Link
-                  to="/create"
+                <Link 
+                  to="/create" 
                   className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
                 >
                   <SafeIcon icon={FiPlus} className="mr-1" />
@@ -189,10 +226,10 @@ const Admin = () => {
               <div className="space-y-4">
                 {stats.recentPosts.map((post) => (
                   <div key={post.id} className="flex items-center space-x-3">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-12 h-12 rounded-lg object-cover"
+                    <img 
+                      src={post.image} 
+                      alt={post.title} 
+                      className="w-12 h-12 rounded-lg object-cover" 
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
@@ -245,8 +282,8 @@ const Admin = () => {
                   ))}
                 </select>
               </div>
-              <Link
-                to="/create"
+              <Link 
+                to="/create" 
                 className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 <SafeIcon icon={FiPlus} className="mr-2" />
@@ -283,10 +320,10 @@ const Admin = () => {
                     <tr key={post.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <img
-                            src={post.image}
-                            alt={post.title}
-                            className="w-10 h-10 rounded-lg object-cover mr-3"
+                          <img 
+                            src={post.image} 
+                            alt={post.title} 
+                            className="w-10 h-10 rounded-lg object-cover mr-3" 
                           />
                           <div>
                             <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
@@ -309,19 +346,19 @@ const Admin = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <Link
-                            to={`/post/${post.id}`}
+                          <Link 
+                            to={`/post/${post.id}`} 
                             className="text-blue-600 hover:text-blue-900"
                           >
                             <SafeIcon icon={FiEye} className="w-4 h-4" />
                           </Link>
-                          <button
+                          <button 
                             onClick={() => alert('Edit functionality would be implemented here')}
                             className="text-green-600 hover:text-green-900"
                           >
                             <SafeIcon icon={FiEdit} className="w-4 h-4" />
                           </button>
-                          <button
+                          <button 
                             onClick={() => handleDeletePost(post.id)}
                             className="text-red-600 hover:text-red-900"
                           >
@@ -366,8 +403,8 @@ const Admin = () => {
                     <span className="text-gray-700">{cat.name}</span>
                     <div className="flex items-center space-x-2">
                       <div className="w-32 bg-gray-200 rounded-full h-3">
-                        <div
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full"
+                        <div 
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" 
                           style={{ width: `${cat.percentage}%` }}
                         ></div>
                       </div>
@@ -397,13 +434,13 @@ const Admin = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Longest Post</span>
                   <span className="text-lg font-semibold text-gray-900">
-                    {Math.max(...posts.map(post => post.content.split(' ').length))} words
+                    {posts.length > 0 ? Math.max(...posts.map(post => post.content.split(' ').length)) : 0} words
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Publishing Frequency</span>
                   <span className="text-lg font-semibold text-gray-900">
-                    {Math.round(posts.length / 12)} posts/month
+                    {posts.length > 0 ? Math.round(posts.length / 12) : 0} posts/month
                   </span>
                 </div>
               </div>

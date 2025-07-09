@@ -1,35 +1,35 @@
-import React, {useState} from 'react';
-import {Link, useLocation, useNavigate} from 'react-router-dom';
-import {motion} from 'framer-motion';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import {useAuth} from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
-const {FiMenu, FiX, FiHeart, FiLogOut, FiUser, FiSettings, FiChevronDown, FiShoppingBag} = FiIcons;
+const { FiMenu, FiX, FiHeart, FiLogOut, FiUser, FiSettings, FiChevronDown } = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
-  const {isAuthenticated, user, logout, isAdmin, isAuthor} = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, user, logout, isAdmin, isAuthor } = useAuth();
 
   const getNavItems = () => {
     const baseItems = [
-      {path: '/', label: 'Home'},
-      {path: '/about', label: 'About Me'},
-      {path: '/forums', label: 'Forums'},
-      {path: '/products', label: 'Products'},
-      {path: '/contact', label: 'Contact'}
+      { path: '/', label: 'Home' },
+      { path: '/about', label: 'About Me' },
+      { path: '/forums', label: 'Forums' },
+      { path: '/products', label: 'Products' },
+      { path: '/contact', label: 'Contact' }
     ];
 
     if (isAuthor()) {
-      baseItems.splice(4, 0, {path: '/create', label: 'Write'});
+      baseItems.splice(4, 0, { path: '/create', label: 'Write' });
     }
     return baseItems;
   };
 
   const navItems = getNavItems();
+
   const isActive = (path) => location.pathname === path;
 
   const getUserInitials = () => {
@@ -44,6 +44,13 @@ const Header = () => {
       case 'subscriber': return 'bg-gradient-to-r from-green-500 to-teal-500';
       default: return 'bg-gradient-to-r from-gray-500 to-gray-600';
     }
+  };
+
+  const handleLogout = () => {
+    console.log('Logout button clicked');
+    setIsUserMenuOpen(false);
+    setIsMenuOpen(false);
+    logout();
   };
 
   return (
@@ -62,39 +69,17 @@ const Header = () => {
           <div className="hidden md:flex items-center space-x-6">
             {/* Navigation Links */}
             <nav className="flex space-x-6">
-              {isAuthenticated ? (
-                <>
-                  {navItems.map(({path, label}) => (
-                    <Link
-                      key={path}
-                      to={path}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive(path)
-                          ? 'text-white bg-purple-600'
-                          : 'text-purple-100 hover:text-white hover:bg-purple-600'
-                      }`}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </>
-              ) : (
-                <>
-                  {navItems.map(({path, label}) => (
-                    <Link
-                      key={path}
-                      to={path}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive(path)
-                          ? 'text-white bg-purple-600'
-                          : 'text-purple-100 hover:text-white hover:bg-purple-600'
-                      }`}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </>
-              )}
+              {navItems.map(({ path, label }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(path) ? 'text-white bg-purple-600' : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
             </nav>
 
             {/* User Menu or Auth Actions */}
@@ -117,10 +102,10 @@ const Header = () => {
                   {/* User Dropdown Menu */}
                   {isUserMenuOpen && (
                     <motion.div
-                      initial={{opacity: 0, y: -10}}
-                      animate={{opacity: 1, y: 0}}
-                      exit={{opacity: 0, y: -10}}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200 z-50"
                     >
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="text-sm font-medium text-gray-900">{user?.name}</p>
@@ -139,11 +124,9 @@ const Header = () => {
                       )}
 
                       <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          logout();
-                        }}
-                        className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
                       >
                         <SafeIcon icon={FiLogOut} className="mr-2" />
                         Sign Out
@@ -183,9 +166,9 @@ const Header = () => {
       {/* Mobile Navigation */}
       {isMenuOpen && (
         <motion.div
-          initial={{opacity: 0, y: -10}}
-          animate={{opacity: 1, y: 0}}
-          exit={{opacity: 0, y: -10}}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
           className="md:hidden bg-purple-500 border-t border-purple-400"
         >
           <nav className="px-4 py-2 space-y-1">
@@ -204,15 +187,13 @@ const Header = () => {
                   </div>
                 </div>
 
-                {navItems.map(({path, label}) => (
+                {navItems.map(({ path, label }) => (
                   <Link
                     key={path}
                     to={path}
                     onClick={() => setIsMenuOpen(false)}
                     className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(path)
-                        ? 'text-white bg-purple-600'
-                        : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                      isActive(path) ? 'text-white bg-purple-600' : 'text-purple-100 hover:text-white hover:bg-purple-600'
                     }`}
                   >
                     {label}
@@ -231,11 +212,9 @@ const Header = () => {
                 )}
 
                 <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    logout();
-                  }}
-                  className="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors text-left"
                 >
                   <SafeIcon icon={FiLogOut} className="mr-2" />
                   Sign Out
@@ -243,21 +222,19 @@ const Header = () => {
               </>
             ) : (
               <>
-                {navItems.map(({path, label}) => (
+                {navItems.map(({ path, label }) => (
                   <Link
                     key={path}
                     to={path}
                     onClick={() => setIsMenuOpen(false)}
                     className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(path)
-                        ? 'text-white bg-purple-600'
-                        : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                      isActive(path) ? 'text-white bg-purple-600' : 'text-purple-100 hover:text-white hover:bg-purple-600'
                     }`}
                   >
                     {label}
                   </Link>
                 ))}
-                
+
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
@@ -266,6 +243,7 @@ const Header = () => {
                   <SafeIcon icon={FiUser} className="mr-2" />
                   Sign In
                 </Link>
+
                 <Link
                   to="/admin-login"
                   onClick={() => setIsMenuOpen(false)}
@@ -282,7 +260,7 @@ const Header = () => {
 
       {/* Click outside to close user menu */}
       {isUserMenuOpen && (
-        <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
+        <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
       )}
     </header>
   );

@@ -16,6 +16,7 @@ const UserManagement = () => {
       id: 1,
       name: 'BangtanMom',
       email: 'bangtanmom@bangtanmom.com',
+      username: 'bangtanmom',
       role: 'admin',
       status: 'active',
       joinDate: '2024-01-01',
@@ -25,6 +26,7 @@ const UserManagement = () => {
       id: 2,
       name: 'Sarah Mom',
       email: 'sarah@email.com',
+      username: 'sarahmom',
       role: 'author',
       status: 'active',
       joinDate: '2024-01-15',
@@ -34,6 +36,7 @@ const UserManagement = () => {
       id: 3,
       name: 'K-Drama Addict',
       email: 'kdrama@email.com',
+      username: 'kdramalover',
       role: 'subscriber',
       status: 'active',
       joinDate: '2024-01-18',
@@ -44,13 +47,15 @@ const UserManagement = () => {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
+    username: '',
     role: 'subscriber'
   });
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === '' || user.role === filterRole;
     return matchesSearch && matchesRole;
   });
@@ -65,7 +70,7 @@ const UserManagement = () => {
       lastLogin: 'Never'
     };
     setUsers([...users, user]);
-    setNewUser({ name: '', email: '', role: 'subscriber' });
+    setNewUser({ name: '', email: '', username: '', role: 'subscriber' });
     setShowAddUser(false);
   };
 
@@ -152,6 +157,9 @@ const UserManagement = () => {
                   User
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Username
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -182,12 +190,15 @@ const UserManagement = () => {
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    @{user.username}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       className={`text-xs px-2 py-1 rounded-full border-0 ${getRoleColor(user.role)}`}
-                      disabled={user.role === 'admin' && user.email === 'bangtanmom@bangtanmom.com'}
+                      disabled={user.role === 'admin' && user.username === 'bangtanmom'}
                     >
                       <option value="subscriber">Subscriber</option>
                       <option value="author">Author</option>
@@ -213,7 +224,7 @@ const UserManagement = () => {
                       >
                         <SafeIcon icon={FiEdit} className="w-4 h-4" />
                       </button>
-                      {user.email !== 'bangtanmom@bangtanmom.com' && (
+                      {user.username !== 'bangtanmom' && (
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-red-600 hover:text-red-900"
@@ -260,6 +271,18 @@ const UserManagement = () => {
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />

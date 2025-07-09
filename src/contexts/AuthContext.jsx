@@ -13,31 +13,42 @@ export const useAuth = () => {
 
 // Admin credentials - In production, this would be in a secure backend
 const ADMIN_CREDENTIALS = {
-  email: 'bangtanmom@bangtanmom.com',
+  username: 'bangtanmom',
   password: 'admin123',
-  role: 'admin'
+  role: 'admin',
+  email: 'bangtanmom@bangtanmom.com'
 };
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    const userEmail = localStorage.getItem('userEmail');
+    const checkAuth = () => {
+      const userId = localStorage.getItem('userId');
+      const token = localStorage.getItem('token');
+      const userRole = localStorage.getItem('userRole');
+      const userEmail = localStorage.getItem('userEmail');
+      const userName = localStorage.getItem('userName');
 
-    if (userId && token && userRole) {
-      setIsAuthenticated(true);
-      setUser({
-        id: userId,
-        role: userRole,
-        email: userEmail,
-        name: userEmail?.split('@')[0] || 'User'
-      });
-    }
+      if (userId && token && userRole && userEmail) {
+        setIsAuthenticated(true);
+        setUser({
+          id: userId,
+          role: userRole,
+          email: userEmail,
+          name: userName || userEmail?.split('@')[0] || 'User'
+        });
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const login = (userData) => {
@@ -53,6 +64,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('userRole', role);
     localStorage.setItem('userEmail', email);
+    localStorage.setItem('userName', email?.split('@')[0] || 'User');
 
     setIsAuthenticated(true);
     setUser({
@@ -70,22 +82,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const adminLogin = (credentials) => {
-    const { email, password } = credentials;
+    const { username, password } = credentials;
     
-    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
       
       localStorage.setItem('userId', userId);
       localStorage.setItem('token', token);
       localStorage.setItem('userRole', 'admin');
-      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userEmail', ADMIN_CREDENTIALS.email);
+      localStorage.setItem('userName', 'BangtanMom');
 
       setIsAuthenticated(true);
       setUser({
         id: userId,
         role: 'admin',
-        email: email,
+        email: ADMIN_CREDENTIALS.email,
         name: 'BangtanMom'
       });
 
@@ -96,12 +109,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('Logout function called');
+    
+    // Clear all authentication data from localStorage
     localStorage.removeItem('userId');
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+
+    // Reset authentication state
     setIsAuthenticated(false);
     setUser(null);
+
+    // Navigate to login page
     navigate('/login');
   };
 
@@ -113,10 +134,10 @@ export const AuthProvider = ({ children }) => {
       'author': 2,
       'admin': 3
     };
-    
+
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-    
+
     return userLevel >= requiredLevel;
   };
 
@@ -128,6 +149,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       isAuthenticated,
       user,
+      isLoading,
       login,
       adminLogin,
       logout,
