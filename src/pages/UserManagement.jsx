@@ -14,8 +14,8 @@ const UserManagement = () => {
   const [users, setUsers] = useState([
     {
       id: 1,
-      name: 'Melissa',
-      email: 'melissa@bangtanmom.com',
+      name: 'BangtanMom',
+      email: 'bangtanmom@bangtanmom.com',
       role: 'admin',
       status: 'active',
       joinDate: '2024-01-01',
@@ -49,7 +49,7 @@ const UserManagement = () => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === '' || user.role === filterRole;
     return matchesSearch && matchesRole;
@@ -187,7 +187,7 @@ const UserManagement = () => {
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       className={`text-xs px-2 py-1 rounded-full border-0 ${getRoleColor(user.role)}`}
-                      disabled={user.role === 'admin' && user.email === 'melissa@bangtanmom.com'}
+                      disabled={user.role === 'admin' && user.email === 'bangtanmom@bangtanmom.com'}
                     >
                       <option value="subscriber">Subscriber</option>
                       <option value="author">Author</option>
@@ -213,7 +213,7 @@ const UserManagement = () => {
                       >
                         <SafeIcon icon={FiEdit} className="w-4 h-4" />
                       </button>
-                      {user.email !== 'melissa@bangtanmom.com' && (
+                      {user.email !== 'bangtanmom@bangtanmom.com' && (
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-red-600 hover:text-red-900"

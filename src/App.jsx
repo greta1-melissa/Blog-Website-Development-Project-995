@@ -1,9 +1,9 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { QuestProvider } from '@questlabs/react-sdk';
-import { BlogProvider } from './contexts/BlogContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { ForumProvider } from './contexts/ForumContext';
+import {HashRouter as Router, Routes, Route} from 'react-router-dom';
+import {QuestProvider} from '@questlabs/react-sdk';
+import {BlogProvider} from './contexts/BlogContext';
+import {AuthProvider} from './contexts/AuthContext';
+import {ForumProvider} from './contexts/ForumContext';
 import questConfig from './config/questConfig';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -21,12 +21,13 @@ import Forums from './pages/Forums';
 import ForumCategory from './pages/ForumCategory';
 import ForumThread from './pages/ForumThread';
 import NewThread from './pages/NewThread';
+import ProductRecommendations from './pages/ProductRecommendations';
 
 function App() {
   return (
-    <QuestProvider
-      apiKey={questConfig.APIKEY}
-      entityId={questConfig.ENTITYID}
+    <QuestProvider 
+      apiKey={questConfig.APIKEY} 
+      entityId={questConfig.ENTITYID} 
       apiType="PRODUCTION"
     >
       <Router>
@@ -45,14 +46,12 @@ function App() {
                     <Route path="/create" element={<CreatePost />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
-                    <Route 
-                      path="/admin" 
-                      element={
-                        <ProtectedRoute adminOnly={true}>
-                          <Admin />
-                        </ProtectedRoute>
-                      } 
-                    />
+                    <Route path="/products" element={<ProductRecommendations />} />
+                    <Route path="/admin" element={
+                      <ProtectedRoute adminOnly={true}>
+                        <Admin />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/forums" element={<Forums />} />
                     <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
                     <Route path="/forums/thread/:threadId" element={<ForumThread />} />

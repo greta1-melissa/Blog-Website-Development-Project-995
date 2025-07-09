@@ -90,7 +90,7 @@ const AdminLogin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="melissa@bangtanmom.com"
+                placeholder="bangtanmom@bangtanmom.com"
                 required
               />
             </div>
@@ -145,13 +145,12 @@ const AdminLogin = () => {
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
             <h3 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials</h3>
             <p className="text-xs text-gray-600">
-              Email: melissa@bangtanmom.com<br />
+              Email: bangtanmom@bangtanmom.com<br />
               Password: admin123
             </p>
           </div>
-          
-          <Link 
-            to="/login" 
+          <Link
+            to="/login"
             className="inline-flex items-center text-sm text-purple-600 hover:text-purple-700 font-medium"
           >
             <SafeIcon icon={FiArrowLeft} className="mr-1" />

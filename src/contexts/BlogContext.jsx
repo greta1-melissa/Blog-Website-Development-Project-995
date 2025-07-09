@@ -78,6 +78,7 @@ const initialPosts = [
     author: "Melissa",
     date: "2024-01-20",
     category: "Product Recommendations",
+    subcategory: "Beauty & Skincare",
     readTime: "6 min read",
     image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=800&h=400&fit=crop"
   },
@@ -88,8 +89,42 @@ const initialPosts = [
     author: "Melissa",
     date: "2024-01-18",
     category: "Product Recommendations",
+    subcategory: "Fitness & Wellness",
     readTime: "7 min read",
     image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=400&fit=crop"
+  },
+  {
+    id: 9,
+    title: "My Favorite BTS Merch: What's Actually Worth Buying",
+    content: "As a mom who loves BTS, I've become quite selective about the merch I buy. Let's be honest – we can't buy EVERYTHING (though sometimes I want to!). Here are the items that have actually been worth the investment for this budget-conscious ARMY mom.\n\n**BT21 Plushies**: These adorable characters designed by the members themselves make my home office feel cheerful, and my kids love them too! They're well-made and have held up to plenty of hugs. Chimmy and RJ are our favorites! Price: $25-35 depending on size.\n\n**The Notes Books**: These companion books to the BTS Universe provide such amazing storytelling depth. I love reading them during my rare quiet moments. If you enjoy the more narrative aspects of BTS' work, these are absolutely worth it. Price: About $15-20 each.\n\n**BTS Seasons Greetings Calendar**: I actually use this daily! The photo quality is excellent, and it makes planning family activities more fun when I get to see the members each time I check the date. Price: Around $40-50, but it lasts all year.\n\n**ARMY Bomb (Light Stick)**: I hesitated on this purchase for a long time, but after attending a concert, I'm so glad I bought it. Even at home, my kids and I turn it on during BTS YouTube concerts for a more immersive feel. Price: $55-60.\n\n**In The Soop Pajamas**: Absolutely the most comfortable loungewear I own. Perfect for cozy K-drama watching sessions after the kids go to bed. The quality is outstanding, and they've held up beautifully through countless washes. Price: $70-80 for the set.\n\nWhat BTS items have you found worth purchasing? I'd love to hear what other ARMY moms have in their collections!",
+    author: "Melissa",
+    date: "2024-01-25",
+    category: "Product Recommendations",
+    subcategory: "BTS & K-Pop",
+    readTime: "5 min read",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&h=400&fit=crop"
+  },
+  {
+    id: 10,
+    title: "Baby Products I Wish I'd Discovered Sooner",
+    content: "If I could go back in time and give my new-mom self some advice, it would definitely include a list of these game-changing products. These items made parenting so much easier once I discovered them, and I only wish I'd found them sooner!\n\n**Baby Brezza Formula Pro**: For formula-feeding parents, this machine is LIFE-CHANGING. It's essentially a Keurig for formula – perfectly mixed, perfectly warmed bottles at the press of a button, even at 3 AM when you can barely keep your eyes open. Price: $200, but worth every penny for the sleep you'll save.\n\n**Haakaa Silicone Breast Pump**: This simple silicone pump attaches to one breast while you're nursing on the other, collecting milk that would otherwise be wasted. I collected several ounces daily without any extra pumping time. Price: Around $15.\n\n**Hatch Rest Sound Machine**: This sound machine, night light, and time-to-rise alert all in one has helped establish our sleep routines from newborn through toddler years. You control it from your phone, so no more tiptoeing in to adjust settings. Price: $60-70.\n\n**Nanit Baby Monitor**: Unlike traditional video monitors, the Nanit mounts above the crib for a clear bird's-eye view. It tracks sleep patterns and breathing motion without wearables, and the picture quality is incredible, even in night vision. Price: $300, but often on sale.\n\n**Little Sleepies Bamboo Pajamas**: These incredibly soft bamboo pajamas have two-way zippers for easy middle-of-the-night diaper changes. They're breathable, stretchy, and hold up amazingly well through countless washes. Price: $30-35.\n\n**FridaBaby Nose Frida**: It looks weird, but this nasal aspirator works SO much better than the bulb syringes. Essential for cold season with little ones. Price: $10-15.\n\nWhat baby products do you wish you'd discovered sooner? I'd love to hear your recommendations!",
+    author: "Melissa",
+    date: "2024-01-30",
+    category: "Product Recommendations",
+    subcategory: "Baby & Kids",
+    readTime: "6 min read",
+    image: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=800&h=400&fit=crop"
+  },
+  {
+    id: 11,
+    title: "Korean Cooking Essentials: Building Your K-Food Pantry",
+    content: "Since falling in love with Korean culture, I've been recreating some of my favorite dishes at home. If you're looking to explore Korean cooking, here are the essential ingredients and tools to get started – all available online or at most Asian grocery stores.\n\n**Gochujang**: This fermented red chili paste is a fundamental Korean ingredient. It's spicy, sweet, and adds incredible depth to everything from bibimbap to stews. My favorite brand is Chung Jung One. Price: $8-10 for a tub that lasts months.\n\n**Gochugaru**: These Korean red pepper flakes have a different flavor profile than regular crushed red pepper – they're fruity and less intensely spicy. Essential for kimchi and many Korean dishes. Price: $9-12 per bag.\n\n**Doenjang**: This fermented soybean paste is similar to miso but with a stronger flavor. It's the base for doenjang jjigae (soybean paste stew) and adds umami to many dishes. Price: $8-10 per container.\n\n**Korean Short Grain Rice**: Rice is central to Korean cuisine, and the slightly sticky texture of short grain rice works perfectly. I like CJ Hetbahn or Nongshim brands. Price: $15-20 for a large bag.\n\n**Stone Bowl (Dolsot)**: If you want to make authentic bibimbap with the crispy rice bottom, a stone bowl is essential. They're surprisingly affordable and last forever. Price: $20-30.\n\n**Korean Pancake Mix**: For quick and easy pajeon (scallion pancakes), having a premade mix on hand is so convenient. Just add water and your choice of vegetables or seafood. Price: $5-7 per bag.\n\n**Kimchi**: While you can make your own, having a good store-bought kimchi on hand is convenient. Look for Jongga or Chongga brands for authentic flavor. Price: $8-12 per jar.\n\nWhat Korean ingredients or cooking tools do you love? I'm always looking to expand my collection!",
+    author: "Melissa",
+    date: "2024-02-05",
+    category: "Product Recommendations",
+    subcategory: "Food & Kitchen",
+    readTime: "6 min read",
+    image: "https://images.unsplash.com/photo-1583224964978-2d1a9f079621?w=800&h=400&fit=crop"
   }
 ];
 

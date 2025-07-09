@@ -1,8 +1,9 @@
 import React from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { Link } from 'react-router-dom';
 
-const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
+const {FiHeart, FiInstagram, FiTwitter, FiYoutube, FiShoppingBag} = FiIcons;
 
 const Footer = () => {
   return (
@@ -17,8 +18,7 @@ const Footer = () => {
               <span className="text-xl font-bold">Bangtan Mom</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">
-              A personal space where I share my journey as a mom, wellness tips, family moments, 
-              and my love for BTS and K-culture. Join me in navigating the beautiful chaos of motherhood.
+              A personal space where I share my journey as a mom, wellness tips, family moments, and my love for BTS and K-culture. Join me in navigating the beautiful chaos of motherhood.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -32,26 +32,30 @@ const Footer = () => {
               </a>
             </div>
           </div>
+
           <div>
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Home</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Write</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">About Me</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+              <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link></li>
+              <li><Link to="/write" className="text-gray-400 hover:text-white transition-colors">Write</Link></li>
+              <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">About Me</Link></li>
+              <li><Link to="/products" className="text-gray-400 hover:text-white transition-colors">Products</Link></li>
+              <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
             </ul>
           </div>
+
           <div>
             <h3 className="text-lg font-semibold mb-4">Categories</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Health & Wellness</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Fam Bam</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">K-Drama Reviews</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">BTS & K-Pop</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Product Recommendations</a></li>
+              <li><Link to="/?category=Health" className="text-gray-400 hover:text-white transition-colors">Health & Wellness</Link></li>
+              <li><Link to="/?category=Fam%20Bam" className="text-gray-400 hover:text-white transition-colors">Fam Bam</Link></li>
+              <li><Link to="/?category=K-Drama" className="text-gray-400 hover:text-white transition-colors">K-Drama Reviews</Link></li>
+              <li><Link to="/?category=BTS" className="text-gray-400 hover:text-white transition-colors">BTS & K-Pop</Link></li>
+              <li><Link to="/products" className="text-gray-400 hover:text-white transition-colors">Product Recommendations</Link></li>
             </ul>
           </div>
         </div>
+
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <p className="text-gray-400 flex items-center justify-center">
             Made with <SafeIcon icon={FiHeart} className="text-purple-500 mx-1" /> by Melissa

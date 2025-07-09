@@ -13,7 +13,7 @@ export const useAuth = () => {
 
 // Admin credentials - In production, this would be in a secure backend
 const ADMIN_CREDENTIALS = {
-  email: 'melissa@bangtanmom.com',
+  email: 'bangtanmom@bangtanmom.com',
   password: 'admin123',
   role: 'admin'
 };
@@ -71,11 +71,11 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = (credentials) => {
     const { email, password } = credentials;
-
+    
     if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
-
+      
       localStorage.setItem('userId', userId);
       localStorage.setItem('token', token);
       localStorage.setItem('userRole', 'admin');
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }) => {
         id: userId,
         role: 'admin',
         email: email,
-        name: 'Melissa (Admin)'
+        name: 'BangtanMom'
       });
 
       navigate('/admin');
@@ -100,7 +100,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
-    
     setIsAuthenticated(false);
     setUser(null);
     navigate('/login');
@@ -108,16 +107,16 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-
+    
     const roleHierarchy = {
       'subscriber': 1,
       'author': 2,
       'admin': 3
     };
-
+    
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-
+    
     return userLevel >= requiredLevel;
   };
 

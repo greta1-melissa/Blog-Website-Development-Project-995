@@ -1,31 +1,31 @@
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, {useState} from 'react';
+import {Link, useLocation, useNavigate} from 'react-router-dom';
+import {motion} from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { useAuth } from '../contexts/AuthContext';
+import {useAuth} from '../contexts/AuthContext';
 
-const { FiMenu, FiX, FiHeart, FiLogOut, FiUser, FiSettings, FiChevronDown } = FiIcons;
+const {FiMenu, FiX, FiHeart, FiLogOut, FiUser, FiSettings, FiChevronDown, FiShoppingBag} = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
-  const { isAuthenticated, user, logout, isAdmin, isAuthor } = useAuth();
+  const {isAuthenticated, user, logout, isAdmin, isAuthor} = useAuth();
   const navigate = useNavigate();
 
   const getNavItems = () => {
     const baseItems = [
-      { path: '/', label: 'Home' },
-      { path: '/about', label: 'About Me' },
-      { path: '/forums', label: 'Forums' },
-      { path: '/contact', label: 'Contact' }
+      {path: '/', label: 'Home'},
+      {path: '/about', label: 'About Me'},
+      {path: '/forums', label: 'Forums'},
+      {path: '/products', label: 'Products'},
+      {path: '/contact', label: 'Contact'}
     ];
 
     if (isAuthor()) {
-      baseItems.splice(3, 0, { path: '/create', label: 'Write' });
+      baseItems.splice(4, 0, {path: '/create', label: 'Write'});
     }
-
     return baseItems;
   };
 
@@ -64,7 +64,7 @@ const Header = () => {
             <nav className="flex space-x-6">
               {isAuthenticated ? (
                 <>
-                  {navItems.map(({ path, label }) => (
+                  {navItems.map(({path, label}) => (
                     <Link
                       key={path}
                       to={path}
@@ -79,12 +79,21 @@ const Header = () => {
                   ))}
                 </>
               ) : (
-                <Link
-                  to="/login"
-                  className="px-3 py-2 rounded-md text-sm font-medium text-purple-100 hover:text-white hover:bg-purple-600 transition-colors"
-                >
-                  Login
-                </Link>
+                <>
+                  {navItems.map(({path, label}) => (
+                    <Link
+                      key={path}
+                      to={path}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive(path)
+                          ? 'text-white bg-purple-600'
+                          : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </>
               )}
             </nav>
 
@@ -96,7 +105,9 @@ const Header = () => {
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
                   >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}
+                    >
                       {getUserInitials()}
                     </div>
                     <span className="text-white text-sm font-medium">{user?.name?.split(' ')[0]}</span>
@@ -106,16 +117,16 @@ const Header = () => {
                   {/* User Dropdown Menu */}
                   {isUserMenuOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      initial={{opacity: 0, y: -10}}
+                      animate={{opacity: 1, y: 0}}
+                      exit={{opacity: 0, y: -10}}
                       className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 border border-gray-200"
                     >
                       <div className="px-4 py-2 border-b border-gray-100">
                         <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                         <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                       </div>
-                      
+
                       {isAdmin() && (
                         <Link
                           to="/admin"
@@ -126,7 +137,7 @@ const Header = () => {
                           Dashboard
                         </Link>
                       )}
-                      
+
                       <button
                         onClick={() => {
                           setIsUserMenuOpen(false);
@@ -172,9 +183,9 @@ const Header = () => {
       {/* Mobile Navigation */}
       {isMenuOpen && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
+          initial={{opacity: 0, y: -10}}
+          animate={{opacity: 1, y: 0}}
+          exit={{opacity: 0, y: -10}}
           className="md:hidden bg-purple-500 border-t border-purple-400"
         >
           <nav className="px-4 py-2 space-y-1">
@@ -182,7 +193,9 @@ const Header = () => {
               <>
                 {/* User Info at Top */}
                 <div className="flex items-center space-x-3 px-3 py-3 bg-purple-600 rounded-lg mb-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold ${getRoleColor()}`}
+                  >
                     {getUserInitials()}
                   </div>
                   <div>
@@ -191,7 +204,7 @@ const Header = () => {
                   </div>
                 </div>
 
-                {navItems.map(({ path, label }) => (
+                {navItems.map(({path, label}) => (
                   <Link
                     key={path}
                     to={path}
@@ -230,6 +243,21 @@ const Header = () => {
               </>
             ) : (
               <>
+                {navItems.map(({path, label}) => (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive(path)
+                        ? 'text-white bg-purple-600'
+                        : 'text-purple-100 hover:text-white hover:bg-purple-600'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+                
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
@@ -254,10 +282,7 @@ const Header = () => {
 
       {/* Click outside to close user menu */}
       {isUserMenuOpen && (
-        <div
-          className="fixed inset-0 z-10"
-          onClick={() => setIsUserMenuOpen(false)}
-        />
+        <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
       )}
     </header>
   );
