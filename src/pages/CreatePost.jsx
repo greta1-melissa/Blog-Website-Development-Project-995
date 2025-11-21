@@ -7,7 +7,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiSave, FiImage } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -19,6 +19,8 @@ const CreatePost = () => {
     category: '',
     image: ''
   });
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
 
@@ -29,9 +31,41 @@ const CreatePost = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadStatus('Uploading...');
+
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload-to-dropbox', {
+        method: 'POST',
+        body: data
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setFormData(prev => ({ ...prev, image: result.url }));
+        setUploadStatus('Upload Complete!');
+      } else {
+        setUploadStatus('Upload Failed');
+        console.error('Upload failed:', result);
+      }
+    } catch (error) {
+      setUploadStatus('Error uploading');
+      console.error('Error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.title || !formData.content || !formData.category) {
       alert('Please fill in all required fields');
       return;
@@ -43,8 +77,12 @@ const CreatePost = () => {
       author: user?.name || 'Anonymous Author'
     };
 
-    const postId = addPost(postData);
-    navigate(`/post/${postId}`);
+    const postId = await addPost(postData);
+    if (postId) {
+      navigate(`/post/${postId}`);
+    } else {
+      alert('Failed to create post. Please try again.');
+    }
   };
 
   return (
@@ -111,21 +149,53 @@ const CreatePost = () => {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-2">
-              Image URL
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Featured Image
             </label>
-            <div className="relative">
-              <SafeIcon icon={FiImage} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="url"
-                id="image"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="https://example.com/image.jpg"
-              />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* URL Input */}
+              <div className="relative">
+                <SafeIcon icon={FiImage} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="url"
+                  id="image"
+                  name="image"
+                  value={formData.image}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              {/* File Upload */}
+              <div className="relative">
+                <input
+                  type="file"
+                  id="file-upload"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="flex items-center justify-center w-full px-4 py-3 border border-dashed border-purple-300 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors text-purple-600 font-medium"
+                >
+                  {isUploading ? (
+                    <span className="animate-pulse">Uploading...</span>
+                  ) : uploadStatus === 'Upload Complete!' ? (
+                    <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
+                  ) : (
+                    <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload to Dropbox</>
+                  )}
+                </label>
+              </div>
             </div>
+            {formData.image && (
+              <div className="mt-2 text-xs text-gray-500 truncate">
+                Selected: {formData.image}
+              </div>
+            )}
           </div>
 
           <div className="mb-8">

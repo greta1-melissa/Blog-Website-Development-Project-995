@@ -1,5 +1,5 @@
 {
-  "name": "quest-react-starter",
+  "name": "bangtan-mom-blog",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,12 +7,11 @@
     "dev": "vite",
     "build": "npm run lint && vite build",
     "lint": "eslint .",
-    "lint:error": "eslint . --quiet", 
+    "lint:error": "eslint . --quiet",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@questlabs/react-sdk": "^2.1.9",
-    "@supabase/supabase-js": "^2.39.0",
+    "@questlabs/react-sdk": "^2.2.899",
     "react": "^18.3.1",
     "react-router-dom": "^7.1.0",
     "react-dom": "^18.3.1",

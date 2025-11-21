@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { ncbGet, ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -9,40 +10,8 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
-
-  // Mock users data - in production this would come from your backend
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'BangtanMom',
-      email: 'bangtanmom@bangtanmom.com',
-      username: 'bangtanmom',
-      role: 'admin',
-      status: 'active',
-      joinDate: '2024-01-01',
-      lastLogin: '2024-01-20'
-    },
-    {
-      id: 2,
-      name: 'Sarah Mom',
-      email: 'sarah@email.com',
-      username: 'sarahmom',
-      role: 'author',
-      status: 'active',
-      joinDate: '2024-01-15',
-      lastLogin: '2024-01-19'
-    },
-    {
-      id: 3,
-      name: 'K-Drama Addict',
-      email: 'kdrama@email.com',
-      username: 'kdramalover',
-      role: 'subscriber',
-      status: 'active',
-      joinDate: '2024-01-18',
-      lastLogin: '2024-01-20'
-    }
-  ]);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [newUser, setNewUser] = useState({
     name: '',
@@ -51,38 +20,78 @@ const UserManagement = () => {
     role: 'subscriber'
   });
 
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoading(true);
+      try {
+        const data = await ncbGet('users');
+        if (data && Array.isArray(data)) {
+          setUsers(data);
+        } else {
+          // Mock data if backend empty
+           setUsers([
+            { id: 1, name: 'BangtanMom', email: 'bangtanmom@bangtanmom.com', username: 'bangtanmom', role: 'admin', status: 'active', joinDate: '2024-01-01', lastLogin: '2024-01-20' },
+            { id: 2, name: 'Sarah Mom', email: 'sarah@email.com', username: 'sarahmom', role: 'author', status: 'active', joinDate: '2024-01-15', lastLogin: '2024-01-19' }
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch users", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username.toLowerCase().includes(searchTerm.toLowerCase());
+      (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = filterRole === '' || user.role === filterRole;
     return matchesSearch && matchesRole;
   });
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    const user = {
-      id: Date.now(),
+    const userToAdd = {
       ...newUser,
       status: 'active',
       joinDate: new Date().toISOString().split('T')[0],
       lastLogin: 'Never'
     };
-    setUsers([...users, user]);
-    setNewUser({ name: '', email: '', username: '', role: 'subscriber' });
-    setShowAddUser(false);
+    
+    try {
+      const result = await ncbCreate('users', userToAdd);
+      setUsers([...users, { ...userToAdd, id: result?.id || Date.now() }]);
+      setNewUser({ name: '', email: '', username: '', role: 'subscriber' });
+      setShowAddUser(false);
+    } catch (error) {
+      alert('Failed to add user');
+    }
   };
 
-  const handleRoleChange = (userId, newRole) => {
-    setUsers(users.map(user => 
+  const handleRoleChange = async (userId, newRole) => {
+    const updatedUsers = users.map(user => 
       user.id === userId ? { ...user, role: newRole } : user
-    ));
+    );
+    setUsers(updatedUsers);
+    
+    try {
+      await ncbUpdate('users', userId, { role: newRole });
+    } catch (error) {
+      console.error("Failed to update role", error);
+    }
   };
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       setUsers(users.filter(user => user.id !== userId));
+      try {
+        await ncbDelete('users', userId);
+      } catch (error) {
+        console.error("Failed to delete user", error);
+      }
     }
   };
 
@@ -149,96 +158,100 @@ const UserManagement = () => {
 
       {/* Users Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Username
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Join Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <SafeIcon icon={getRoleIcon(user.role)} className="text-purple-600" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    @{user.username}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className={`text-xs px-2 py-1 rounded-full border-0 ${getRoleColor(user.role)}`}
-                      disabled={user.role === 'admin' && user.username === 'bangtanmom'}
-                    >
-                      <option value="subscriber">Subscriber</option>
-                      <option value="author">Author</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.joinDate}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.lastLogin}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => alert('Edit user functionality would be implemented here')}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <SafeIcon icon={FiEdit} className="w-4 h-4" />
-                      </button>
-                      {user.username !== 'bangtanmom' && (
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <SafeIcon icon={FiTrash2} className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {isLoading ? (
+          <div className="p-8 text-center text-gray-500">Loading users...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Username
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Join Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Login
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                          <SafeIcon icon={getRoleIcon(user.role)} className="text-purple-600" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      @{user.username}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        className={`text-xs px-2 py-1 rounded-full border-0 ${getRoleColor(user.role)}`}
+                        disabled={user.role === 'admin' && user.username === 'bangtanmom'}
+                      >
+                        <option value="subscriber">Subscriber</option>
+                        <option value="author">Author</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.joinDate}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.lastLogin}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => alert('Edit user functionality')}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <SafeIcon icon={FiEdit} className="w-4 h-4" />
+                        </button>
+                        {user.username !== 'bangtanmom' && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <SafeIcon icon={FiTrash2} className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Add User Modal */}
