@@ -16,8 +16,6 @@ const getHeaders = () => {
     headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
   }
   
-  // Passing instance via header if supported, otherwise it might need to be in query params
-  // depending on specific API implementation, but standardizing on header/query combo here.
   if (NCB_INSTANCE) {
     headers['Instance'] = NCB_INSTANCE;
   }
@@ -36,6 +34,8 @@ const handleResponse = async (response) => {
 const buildUrl = (tableName, queryParams = {}) => {
   const url = new URL(`${NCB_URL}/api/v1/${tableName}`);
   
+  // Ensure instance is passed if required by specific API flavor, 
+  // though header is usually sufficient.
   if (NCB_INSTANCE) {
     url.searchParams.append('instance_id', NCB_INSTANCE);
   }
@@ -56,6 +56,7 @@ export const ncbGet = async (tableName, queryParams = {}) => {
     return handleResponse(response);
   } catch (error) {
     console.error(`Error fetching from ${tableName}:`, error);
+    // Return empty array to prevent UI crashes on fetch failure
     return [];
   }
 };
@@ -77,7 +78,7 @@ export const ncbCreate = async (tableName, payload) => {
 export const ncbUpdate = async (tableName, id, payload) => {
   try {
     const response = await fetch(`${buildUrl(tableName)}/${id}`, {
-      method: 'PUT', // or PATCH depending on API spec
+      method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(payload),
     });
