@@ -3,62 +3,73 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { Link } from 'react-router-dom';
 
-const {FiHeart, FiInstagram, FiTwitter, FiYoutube, FiShoppingBag} = FiIcons;
+const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                <SafeIcon icon={FiHeart} className="text-white text-lg" />
+    <footer className="bg-white border-t border-gray-100 pt-16 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div className="md:col-span-1">
+            <Link to="/" className="flex items-center space-x-2 mb-6">
+              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <SafeIcon icon={FiHeart} className="text-white text-sm" />
               </div>
-              <span className="text-xl font-bold">Bangtan Mom</span>
-            </div>
-            <p className="text-gray-400 mb-4 max-w-md">
-              A personal space where I share my journey as a mom, wellness tips, family moments, and my love for BTS and K-culture. Join me in navigating the beautiful chaos of motherhood.
+              <span className="text-xl font-serif font-bold text-gray-900">BangtanMom</span>
+            </Link>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+              Navigating motherhood with a little bit of chaos, a lot of love, and the perfect K-Pop playlist.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <SafeIcon icon={FiInstagram} className="text-xl" />
+              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-purple-50 hover:text-purple-600 transition-colors">
+                <SafeIcon icon={FiInstagram} className="text-lg" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <SafeIcon icon={FiTwitter} className="text-xl" />
+              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-colors">
+                <SafeIcon icon={FiTwitter} className="text-lg" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <SafeIcon icon={FiYoutube} className="text-xl" />
+              <a href="#" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                <SafeIcon icon={FiYoutube} className="text-lg" />
               </a>
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
-              <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link></li>
-              <li><Link to="/write" className="text-gray-400 hover:text-white transition-colors">Write</Link></li>
-              <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">About Me</Link></li>
-              <li><Link to="/products" className="text-gray-400 hover:text-white transition-colors">Products</Link></li>
-              <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
+            <h3 className="font-bold text-gray-900 mb-6">Explore</h3>
+            <ul className="space-y-3 text-sm text-gray-500">
+              <li><Link to="/" className="hover:text-purple-600 transition-colors">Home</Link></li>
+              <li><Link to="/about" className="hover:text-purple-600 transition-colors">Our Story</Link></li>
+              <li><Link to="/forums" className="hover:text-purple-600 transition-colors">Community Forums</Link></li>
+              <li><Link to="/products" className="hover:text-purple-600 transition-colors">Shop Favorites</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Categories</h3>
-            <ul className="space-y-2">
-              <li><Link to="/?category=Health" className="text-gray-400 hover:text-white transition-colors">Health & Wellness</Link></li>
-              <li><Link to="/?category=Fam%20Bam" className="text-gray-400 hover:text-white transition-colors">Fam Bam</Link></li>
-              <li><Link to="/?category=K-Drama" className="text-gray-400 hover:text-white transition-colors">K-Drama Reviews</Link></li>
-              <li><Link to="/?category=BTS" className="text-gray-400 hover:text-white transition-colors">BTS & K-Pop</Link></li>
-              <li><Link to="/products" className="text-gray-400 hover:text-white transition-colors">Product Recommendations</Link></li>
+            <h3 className="font-bold text-gray-900 mb-6">Categories</h3>
+            <ul className="space-y-3 text-sm text-gray-500">
+              <li><Link to="/?category=Health" className="hover:text-purple-600 transition-colors">Health & Wellness</Link></li>
+              <li><Link to="/?category=Fam%20Bam" className="hover:text-purple-600 transition-colors">Family Life</Link></li>
+              <li><Link to="/?category=K-Drama" className="hover:text-purple-600 transition-colors">K-Drama Reviews</Link></li>
+              <li><Link to="/?category=BTS" className="hover:text-purple-600 transition-colors">BTS Army</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-gray-900 mb-6">Legal</h3>
+            <ul className="space-y-3 text-sm text-gray-500">
+              <li><a href="#" className="hover:text-purple-600 transition-colors">Privacy Policy</a></li>
+              <li><a href="#" className="hover:text-purple-600 transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-purple-600 transition-colors">Cookie Policy</a></li>
+              <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Contact Us</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-400 flex items-center justify-center">
-            Made with <SafeIcon icon={FiHeart} className="text-purple-500 mx-1" /> by Melissa
+        <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-gray-400 mb-4 md:mb-0">
+            &copy; {new Date().getFullYear()} Bangtan Mom. All rights reserved.
+          </p>
+          <p className="text-sm text-gray-400 flex items-center">
+            Made with <SafeIcon icon={FiHeart} className="text-purple-500 mx-1.5" /> by Melissa
           </p>
         </div>
       </div>

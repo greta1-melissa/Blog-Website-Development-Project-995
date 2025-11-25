@@ -4,99 +4,69 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiClock, FiUser, FiTag, FiArrowRight, FiHeart } = FiIcons;
+const { FiClock, FiUser, FiArrowRight } = FiIcons;
 
 const BlogCard = ({ post, index }) => {
-  const truncateContent = (content, maxLength = 150) => {
-    if (content.length <= maxLength) return content;
-    return content.substr(0, maxLength) + '...';
-  };
-
   const getCategoryColor = (category) => {
     switch (category) {
-      case 'Health':
-        return 'bg-gradient-to-r from-green-500 to-emerald-500';
-      case 'Fam Bam':
-        return 'bg-gradient-to-r from-blue-500 to-cyan-500';
-      case 'K-Drama':
-        return 'bg-gradient-to-r from-purple-500 to-pink-500';
-      case 'BTS':
-        return 'bg-gradient-to-r from-purple-600 to-indigo-600';
-      case 'Product Recommendations':
-        return 'bg-gradient-to-r from-orange-500 to-red-500';
-      default:
-        return 'bg-gradient-to-r from-gray-500 to-gray-600';
+      case 'Health': return 'bg-emerald-100 text-emerald-800';
+      case 'Fam Bam': return 'bg-blue-100 text-blue-800';
+      case 'K-Drama': return 'bg-pink-100 text-pink-800';
+      case 'BTS': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   return (
-    <motion.div
+    <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-purple-100 hover:border-purple-200"
+      className="group flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100"
     >
-      <Link to={`/post/${post.id}`}>
-        <div className="relative overflow-hidden">
-          <img
-            src={post.image}
-            alt={post.title}
-            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          
-          {/* Category Badge */}
-          <div className="absolute top-4 left-4">
-            <span className={`${getCategoryColor(post.category)} text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg`}>
-              {post.category}
-            </span>
-          </div>
-
-          {/* Heart Icon */}
-          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="p-2 bg-white/20 backdrop-blur-sm rounded-full">
-              <SafeIcon icon={FiHeart} className="text-white text-lg" />
-            </div>
-          </div>
+      <Link to={`/post/${post.id}`} className="relative overflow-hidden aspect-[4/3] overflow-hidden">
+        <img 
+          src={post.image} 
+          alt={post.title} 
+          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        <div className="absolute top-4 left-4">
+          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase backdrop-blur-md ${getCategoryColor(post.category)}`}>
+            {post.category}
+          </span>
         </div>
       </Link>
 
-      <div className="p-6">
-        {/* Meta Information */}
-        <div className="flex items-center text-sm text-gray-500 mb-3 space-x-4">
-          <div className="flex items-center bg-purple-50 px-2 py-1 rounded-full">
-            <SafeIcon icon={FiUser} className="mr-1 text-purple-600" />
-            <span className="text-purple-800 font-medium">{post.author}</span>
-          </div>
-          <div className="flex items-center">
-            <SafeIcon icon={FiClock} className="mr-1 text-purple-600" />
-            <span>{post.readTime}</span>
-          </div>
+      <div className="flex-1 p-6 flex flex-col">
+        <div className="flex items-center text-xs text-gray-500 mb-4 space-x-3 font-medium">
+          <span className="flex items-center text-purple-600 bg-purple-50 px-2 py-1 rounded-md">
+            <SafeIcon icon={FiUser} className="mr-1" /> {post.author}
+          </span>
+          <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+          <span className="flex items-center">
+            <SafeIcon icon={FiClock} className="mr-1" /> {post.readTime}
+          </span>
         </div>
 
-        {/* Title */}
-        <Link to={`/post/${post.id}`}>
-          <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
+        <Link to={`/post/${post.id}`} className="block mb-3">
+          <h3 className="text-xl font-serif font-bold text-gray-900 group-hover:text-purple-600 transition-colors leading-tight">
             {post.title}
           </h3>
         </Link>
 
-        {/* Content Preview */}
-        <p className="text-gray-600 mb-4 leading-relaxed line-clamp-3">
-          {truncateContent(post.content)}
+        <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
+          {post.content.substring(0, 120)}...
         </p>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-            {post.date}
-          </span>
-          <Link
-            to={`/post/${post.id}`}
-            className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium transition-colors group"
+        <div className="pt-4 border-t border-gray-50 flex items-center justify-between mt-auto">
+          <span className="text-xs text-gray-400 font-medium">{post.date}</span>
+          <Link 
+            to={`/post/${post.id}`} 
+            className="inline-flex items-center text-sm font-semibold text-purple-600 group-hover:translate-x-1 transition-transform duration-300"
           >
-            <span>Read more</span>
-            <SafeIcon icon={FiArrowRight} className="ml-1 group-hover:translate-x-1 transition-transform" />
+            Read Article <SafeIcon icon={FiArrowRight} className="ml-1" />
           </Link>
         </div>
       </div>

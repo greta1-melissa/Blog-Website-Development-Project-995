@@ -6,15 +6,20 @@ const { FiSearch } = FiIcons;
 
 const SearchBar = ({ searchTerm, onSearchChange }) => {
   return (
-    <div className="relative max-w-md mx-auto mb-8">
-      <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-      <input
-        type="text"
-        placeholder="Search posts..."
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-      />
+    <div className="relative group">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-300 to-pink-300 rounded-xl blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
+      <div className="relative flex items-center bg-white rounded-xl shadow-sm">
+        <div className="pl-4 text-gray-400 group-focus-within:text-purple-500 transition-colors">
+          <SafeIcon icon={FiSearch} className="text-xl" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search posts, authors, or tags..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full pl-3 pr-4 py-4 bg-transparent border-none rounded-xl focus:ring-0 text-gray-700 placeholder-gray-400"
+        />
+      </div>
     </div>
   );
 };
