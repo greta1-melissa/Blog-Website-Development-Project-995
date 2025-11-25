@@ -6,29 +6,11 @@ import { useAuth } from '../contexts/AuthContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { 
-  FiArrowLeft, 
-  FiMessageCircle, 
-  FiEye, 
-  FiClock, 
-  FiPin, 
-  FiLock, 
-  FiHeart,
-  FiSend,
-  FiUser,
-  FiThumbsUp
-} = FiIcons;
+const { FiArrowLeft, FiMessageCircle, FiEye, FiClock, FiPin, FiLock, FiHeart, FiSend, FiUser, FiThumbsUp } = FiIcons;
 
 const ForumThread = () => {
   const { threadId } = useParams();
-  const { 
-    categories, 
-    getThread, 
-    getRepliesByThread, 
-    createReply, 
-    incrementViews, 
-    likeReply 
-  } = useForum();
+  const { categories, getThread, getRepliesByThread, createReply, incrementViews, likeReply } = useForum();
   const { isAuthenticated, user } = useAuth();
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,12 +62,11 @@ const ForumThread = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Thread Not Found</h1>
         <p className="text-gray-600 mb-8">The discussion thread you're looking for doesn't exist.</p>
-        <Link
-          to="/forums"
+        <Link 
+          to="/forums" 
           className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
         >
-          <SafeIcon icon={FiArrowLeft} className="mr-2" />
-          Back to Forums
+          <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Forums
         </Link>
       </div>
     );
@@ -94,7 +75,7 @@ const ForumThread = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Breadcrumb */}
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -112,7 +93,7 @@ const ForumThread = () => {
       </motion.div>
 
       {/* Thread Header */}
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
@@ -130,28 +111,24 @@ const ForumThread = () => {
           </div>
           <span className="text-sm text-gray-600">{category?.name}</span>
         </div>
-
+        
         <h1 className="text-3xl font-bold text-gray-900 mb-4">{thread.title}</h1>
         
         <div className="flex items-center justify-between text-sm text-gray-500 mb-6">
           <div className="flex items-center space-x-4">
             <span className="flex items-center">
-              <SafeIcon icon={FiUser} className="mr-1" />
-              {thread.author}
+              <SafeIcon icon={FiUser} className="mr-1" /> {thread.author}
             </span>
             <span className="flex items-center">
-              <SafeIcon icon={FiClock} className="mr-1" />
-              {formatDate(thread.createdAt)}
+              <SafeIcon icon={FiClock} className="mr-1" /> {formatDate(thread.createdAt)}
             </span>
           </div>
           <div className="flex items-center space-x-4">
             <span className="flex items-center">
-              <SafeIcon icon={FiMessageCircle} className="mr-1" />
-              {thread.replies} replies
+              <SafeIcon icon={FiMessageCircle} className="mr-1" /> {thread.replies} replies
             </span>
             <span className="flex items-center">
-              <SafeIcon icon={FiEye} className="mr-1" />
-              {thread.views} views
+              <SafeIcon icon={FiEye} className="mr-1" /> {thread.views} views
             </span>
           </div>
         </div>
@@ -166,14 +143,14 @@ const ForumThread = () => {
       </motion.div>
 
       {/* Replies */}
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
         className="space-y-6"
       >
         {replies.map((reply, index) => (
-          <motion.div
+          <motion.div 
             key={reply.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -189,13 +166,15 @@ const ForumThread = () => {
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold text-gray-900">{reply.author}</span>
                     {reply.isHelpful && (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                      // Changed from Green to Fuchsia
+                      <span className="bg-fuchsia-100 text-fuchsia-800 text-xs px-2 py-1 rounded-full">
                         Helpful
                       </span>
                     )}
                   </div>
                   <span className="text-sm text-gray-500">{formatDate(reply.createdAt)}</span>
                 </div>
+                
                 <div className="prose max-w-none mb-4">
                   {reply.content.split('\n').map((paragraph, pIndex) => (
                     <p key={pIndex} className="mb-2 text-gray-700 leading-relaxed">
@@ -203,8 +182,9 @@ const ForumThread = () => {
                     </p>
                   ))}
                 </div>
+
                 <div className="flex items-center space-x-4">
-                  <button
+                  <button 
                     onClick={() => handleLikeReply(reply.id)}
                     className="flex items-center space-x-1 text-sm text-gray-500 hover:text-purple-600 transition-colors"
                     disabled={!isAuthenticated}
@@ -221,7 +201,7 @@ const ForumThread = () => {
 
       {/* Reply Form */}
       {isAuthenticated && !thread.isLocked ? (
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
@@ -230,7 +210,7 @@ const ForumThread = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Reply to Thread</h3>
           <form onSubmit={handleReplySubmit}>
             <div className="mb-4">
-              <textarea
+              <textarea 
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Share your thoughts..."
@@ -240,7 +220,7 @@ const ForumThread = () => {
               />
             </div>
             <div className="flex justify-end">
-              <motion.button
+              <motion.button 
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
@@ -254,8 +234,7 @@ const ForumThread = () => {
                   </>
                 ) : (
                   <>
-                    <SafeIcon icon={FiSend} className="mr-2" />
-                    Post Reply
+                    <SafeIcon icon={FiSend} className="mr-2" /> Post Reply
                   </>
                 )}
               </motion.button>
@@ -263,7 +242,7 @@ const ForumThread = () => {
           </form>
         </motion.div>
       ) : thread.isLocked ? (
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
@@ -273,7 +252,7 @@ const ForumThread = () => {
           <p className="text-gray-600">This thread is locked and no longer accepting replies.</p>
         </motion.div>
       ) : (
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
@@ -281,7 +260,7 @@ const ForumThread = () => {
         >
           <SafeIcon icon={FiHeart} className="text-purple-600 text-2xl mb-2" />
           <p className="text-gray-700 mb-4">Join our community to participate in discussions!</p>
-          <Link
+          <Link 
             to="/login"
             className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
           >

@@ -12,13 +12,14 @@ export const useForum = () => {
   return context;
 };
 
+// All colors updated to Purple shades
 const defaultCategories = [
-  { id: 1, name: 'Mom Life & Parenting', description: 'Share your parenting journey', color: 'bg-blue-500', icon: '👶' },
-  { id: 2, name: 'K-Drama & Entertainment', description: 'Discuss your favorite K-dramas', color: 'bg-purple-500', icon: '📺' },
-  { id: 3, name: 'BTS & K-Pop', description: 'ARMY unite!', color: 'bg-pink-500', icon: '🎵' },
-  { id: 4, name: 'Health & Wellness', description: 'Wellness tips', color: 'bg-green-500', icon: '🧘‍♀️' },
-  { id: 5, name: 'Product Reviews', description: 'Amazing products', color: 'bg-orange-500', icon: '🛍️' },
-  { id: 6, name: 'General Chat', description: 'Random thoughts', color: 'bg-gray-500', icon: '💬' }
+  { id: 1, name: 'Mom Life & Parenting', description: 'Share your parenting journey', color: 'bg-purple-500', icon: '👶' },
+  { id: 2, name: 'K-Drama & Entertainment', description: 'Discuss your favorite K-dramas', color: 'bg-purple-600', icon: '📺' },
+  { id: 3, name: 'BTS & K-Pop', description: 'ARMY unite!', color: 'bg-purple-700', icon: '🎵' },
+  { id: 4, name: 'Health & Wellness', description: 'Wellness tips', color: 'bg-purple-400', icon: '🧘‍♀️' },
+  { id: 5, name: 'Product Reviews', description: 'Amazing products', color: 'bg-purple-500', icon: '🛍️' },
+  { id: 6, name: 'General Chat', description: 'Random thoughts', color: 'bg-purple-300', icon: '💬' }
 ];
 
 export const ForumProvider = ({ children }) => {
@@ -33,12 +34,8 @@ export const ForumProvider = ({ children }) => {
         ncbGet('threads'),
         ncbGet('replies')
       ]);
-      
       if (Array.isArray(fetchedThreads)) setThreads(fetchedThreads);
       if (Array.isArray(fetchedReplies)) setReplies(fetchedReplies);
-      
-      // Categories usually static or fetched similarly
-      // setCategories(fetchedCategories);
     } catch (error) {
       console.error("Error fetching forum data:", error);
     }
@@ -50,7 +47,6 @@ export const ForumProvider = ({ children }) => {
 
   const createThread = async (categoryId, threadData) => {
     const newThread = {
-      // id: will be assigned by backend
       categoryId: parseInt(categoryId),
       title: threadData.title,
       content: threadData.content,
@@ -64,14 +60,13 @@ export const ForumProvider = ({ children }) => {
       isLocked: false
     };
 
-    // Optimistic update
     const tempId = Date.now();
-    setThreads(prev => [{ ...newThread, id: tempId }, ...prev]);
+    setThreads(prev => [{...newThread, id: tempId}, ...prev]);
 
     try {
       const savedThread = await ncbCreate('threads', newThread);
       if (savedThread) {
-        setThreads(prev => prev.map(t => t.id === tempId ? { ...t, id: savedThread.id } : t));
+        setThreads(prev => prev.map(t => t.id === tempId ? {...t, id: savedThread.id} : t));
         return savedThread.id;
       }
       return tempId;
@@ -92,10 +87,7 @@ export const ForumProvider = ({ children }) => {
       likes: 0
     };
 
-    // Optimistic
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
-    
-    // Update thread reply count
     setThreads(prev => prev.map(thread => 
       String(thread.id) === String(threadId) 
         ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
@@ -104,7 +96,6 @@ export const ForumProvider = ({ children }) => {
 
     try {
       await ncbCreate('replies', newReply);
-      // Ideally update the thread's reply count in DB too
       const thread = threads.find(t => String(t.id) === String(threadId));
       if (thread) {
         await ncbUpdate('threads', threadId, { replies: (thread.replies || 0) + 1 });
@@ -127,20 +118,17 @@ export const ForumProvider = ({ children }) => {
   };
 
   const incrementViews = (threadId) => {
-    // Local update
     setThreads(prev => prev.map(thread => 
-      String(thread.id) === String(threadId) 
-        ? { ...thread, views: (thread.views || 0) + 1 } 
+      String(thread.id) === String(threadId)
+        ? { ...thread, views: (thread.views || 0) + 1 }
         : thread
     ));
-    // Fire and forget DB update
-    // ncbUpdate('threads', threadId, { views: ... })
   };
 
   const likeReply = (replyId) => {
     setReplies(prev => prev.map(reply => 
-      String(reply.id) === String(replyId) 
-        ? { ...reply, likes: (reply.likes || 0) + 1 } 
+      String(reply.id) === String(replyId)
+        ? { ...reply, likes: (reply.likes || 0) + 1 }
         : reply
     ));
   };

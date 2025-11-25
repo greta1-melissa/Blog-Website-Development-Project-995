@@ -12,13 +12,7 @@ const UserManagement = () => {
   const [showAddUser, setShowAddUser] = useState(false);
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    username: '',
-    role: 'subscriber'
-  });
+  const [newUser, setNewUser] = useState({ name: '', email: '', username: '', role: 'subscriber' });
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -29,7 +23,7 @@ const UserManagement = () => {
           setUsers(data);
         } else {
           // Mock data if backend empty
-           setUsers([
+          setUsers([
             { id: 1, name: 'BangtanMom', email: 'bangtanmom@bangtanmom.com', username: 'bangtanmom', role: 'admin', status: 'active', joinDate: '2024-01-01', lastLogin: '2024-01-20' },
             { id: 2, name: 'Sarah Mom', email: 'sarah@email.com', username: 'sarahmom', role: 'author', status: 'active', joinDate: '2024-01-15', lastLogin: '2024-01-19' }
           ]);
@@ -45,10 +39,12 @@ const UserManagement = () => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()));
+    
     const matchesRole = filterRole === '' || user.role === filterRole;
+    
     return matchesSearch && matchesRole;
   });
 
@@ -76,7 +72,6 @@ const UserManagement = () => {
       user.id === userId ? { ...user, role: newRole } : user
     );
     setUsers(updatedUsers);
-    
     try {
       await ncbUpdate('users', userId, { role: newRole });
     } catch (error) {
@@ -97,9 +92,9 @@ const UserManagement = () => {
 
   const getRoleColor = (role) => {
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'author': return 'bg-blue-100 text-blue-800';
-      case 'subscriber': return 'bg-green-100 text-green-800';
+      case 'admin': return 'bg-fuchsia-100 text-fuchsia-800'; // Was Red (kept slightly distinct but in pink/purple family)
+      case 'author': return 'bg-violet-100 text-violet-800'; // Was Blue
+      case 'subscriber': return 'bg-purple-100 text-purple-800'; // Was Green
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -117,12 +112,11 @@ const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        <button
+        <button 
           onClick={() => setShowAddUser(true)}
           className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
-          <SafeIcon icon={FiUserPlus} className="mr-2" />
-          Add User
+          <SafeIcon icon={FiUserPlus} className="mr-2" /> Add User
         </button>
       </div>
 
@@ -132,9 +126,9 @@ const UserManagement = () => {
           <div className="flex-1">
             <div className="relative">
               <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search users..."
+              <input 
+                type="text" 
+                placeholder="Search users..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -142,8 +136,8 @@ const UserManagement = () => {
             </div>
           </div>
           <div className="md:w-48">
-            <select
-              value={filterRole}
+            <select 
+              value={filterRole} 
               onChange={(e) => setFilterRole(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
@@ -206,8 +200,8 @@ const UserManagement = () => {
                       @{user.username}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={user.role}
+                      <select 
+                        value={user.role} 
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
                         className={`text-xs px-2 py-1 rounded-full border-0 ${getRoleColor(user.role)}`}
                         disabled={user.role === 'admin' && user.username === 'bangtanmom'}
@@ -218,7 +212,8 @@ const UserManagement = () => {
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      {/* Changed from Green to Fuchsia */}
+                      <span className="px-2 py-1 text-xs bg-fuchsia-100 text-fuchsia-800 rounded-full">
                         {user.status}
                       </span>
                     </td>
@@ -230,17 +225,11 @@ const UserManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => alert('Edit user functionality')}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
+                        <button onClick={() => alert('Edit user functionality')} className="text-indigo-600 hover:text-indigo-900">
                           <SafeIcon icon={FiEdit} className="w-4 h-4" />
                         </button>
                         {user.username !== 'bangtanmom' && (
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
+                          <button onClick={() => handleDeleteUser(user.id)} className="text-fuchsia-600 hover:text-fuchsia-900">
                             <SafeIcon icon={FiTrash2} className="w-4 h-4" />
                           </button>
                         )}
@@ -257,7 +246,7 @@ const UserManagement = () => {
       {/* Add User Modal */}
       {showAddUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-lg p-6 w-full max-w-md"
@@ -268,10 +257,10 @@ const UserManagement = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Name
                 </label>
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
@@ -280,10 +269,10 @@ const UserManagement = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email
                 </label>
-                <input
-                  type="email"
+                <input 
+                  type="email" 
                   value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
@@ -292,10 +281,10 @@ const UserManagement = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Username
                 </label>
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   value={newUser.username}
-                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                  onChange={(e) => setNewUser({...newUser, username: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 />
@@ -304,9 +293,9 @@ const UserManagement = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role
                 </label>
-                <select
+                <select 
                   value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="subscriber">Subscriber</option>
@@ -315,15 +304,15 @@ const UserManagement = () => {
                 </select>
               </div>
               <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
+                <button 
+                  type="button" 
                   onClick={() => setShowAddUser(false)}
                   className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
+                <button 
+                  type="submit" 
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   Add User

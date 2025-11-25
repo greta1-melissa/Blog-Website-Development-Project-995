@@ -7,7 +7,8 @@ import UserManagement from './UserManagement';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiBarChart3, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield } = FiIcons;
+// Use FiBarChart2 as it is the standard Feather icon name
+const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield } = FiIcons;
 
 // Component to display when access is denied
 const AccessDenied = () => (
@@ -19,14 +20,14 @@ const AccessDenied = () => (
         This area is restricted to administrators only.
       </p>
       <div className="space-x-4">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Go Home
         </Link>
-        <Link 
-          to="/admin-login" 
+        <Link
+          to="/admin-login"
           className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
           Admin Login
@@ -37,7 +38,7 @@ const AccessDenied = () => (
 );
 
 const Admin = () => {
-  const { posts, categories } = useBlog();
+  const { posts = [], categories = [] } = useBlog();
   const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,19 +46,26 @@ const Admin = () => {
 
   // Calculate stats - moved outside of conditional rendering
   const stats = useMemo(() => {
-    const totalPosts = posts.length;
-    const totalCategories = categories.length;
-    const avgWordsPerPost = totalPosts > 0 ? Math.round(
-      posts.reduce((sum, post) => sum + post.content.split(' ').length, 0) / totalPosts
-    ) : 0;
+    // Ensure posts is an array to prevent crashes
+    const safePosts = Array.isArray(posts) ? posts : [];
+    const totalPosts = safePosts.length;
+    const totalCategories = Array.isArray(categories) ? categories.length : 0;
 
-    const categoryStats = categories.map(cat => ({
+    const avgWordsPerPost = totalPosts > 0
+      ? Math.round(
+          safePosts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0) / totalPosts
+        )
+      : 0;
+
+    const categoryStats = (Array.isArray(categories) ? categories : []).map(cat => ({
       name: cat,
-      count: posts.filter(post => post.category === cat).length,
-      percentage: totalPosts > 0 ? Math.round((posts.filter(post => post.category === cat).length / totalPosts) * 100) : 0
+      count: safePosts.filter(post => post.category === cat).length,
+      percentage: totalPosts > 0
+        ? Math.round((safePosts.filter(post => post.category === cat).length / totalPosts) * 100)
+        : 0
     }));
 
-    const recentPosts = posts.slice(0, 5);
+    const recentPosts = safePosts.slice(0, 5);
 
     return {
       totalPosts,
@@ -70,11 +78,15 @@ const Admin = () => {
 
   // Filter posts for management - moved outside of conditional rendering
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
+    const safePosts = Array.isArray(posts) ? posts : [];
+    return safePosts.filter(post => {
+      const postTitle = post.title || '';
+      const postContent = post.content || '';
       const matchesSearch = searchTerm === '' || 
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.content.toLowerCase().includes(searchTerm.toLowerCase());
+        postTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        postContent.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
+      
       return matchesSearch && matchesCategory;
     });
   }, [posts, searchTerm, filterCategory]);
@@ -88,7 +100,7 @@ const Admin = () => {
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: FiBarChart3 },
+    { id: 'overview', label: 'Overview', icon: FiBarChart2 },
     { id: 'posts', label: 'Manage Posts', icon: FiFileText },
     { id: 'users', label: 'User Management', icon: FiUsers },
     { id: 'analytics', label: 'Analytics', icon: FiTrendingUp },
@@ -154,8 +166,8 @@ const Admin = () => {
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <SafeIcon icon={FiTag} className="text-2xl text-blue-600" />
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <SafeIcon icon={FiTag} className="text-2xl text-indigo-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">{stats.totalCategories}</p>
@@ -166,8 +178,9 @@ const Admin = () => {
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <SafeIcon icon={FiUsers} className="text-2xl text-green-600" />
+                {/* Changed from Green to Fuchsia */}
+                <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center">
+                  <SafeIcon icon={FiUsers} className="text-2xl text-fuchsia-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">500+</p>
@@ -178,8 +191,8 @@ const Admin = () => {
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <SafeIcon icon={FiBarChart3} className="text-2xl text-yellow-600" />
+                <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                  <SafeIcon icon={FiBarChart2} className="text-2xl text-pink-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">{stats.avgWordsPerPost}</p>
@@ -194,20 +207,24 @@ const Admin = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Distribution</h3>
               <div className="space-y-4">
-                {stats.categoryStats.map((cat) => (
-                  <div key={cat.name} className="flex items-center justify-between">
-                    <span className="text-gray-700">{cat.name}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-purple-500 h-2 rounded-full" 
-                          style={{ width: `${cat.percentage}%` }}
-                        ></div>
+                {stats.categoryStats.length > 0 ? (
+                  stats.categoryStats.map((cat) => (
+                    <div key={cat.name} className="flex items-center justify-between">
+                      <span className="text-gray-700">{cat.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-purple-500 h-2 rounded-full"
+                            style={{ width: `${cat.percentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-500">{cat.count}</span>
                       </div>
-                      <span className="text-sm text-gray-500">{cat.count}</span>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No category data available.</p>
+                )}
               </div>
             </div>
 
@@ -215,33 +232,36 @@ const Admin = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Posts</h3>
-                <Link 
-                  to="/create" 
+                <Link
+                  to="/create"
                   className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
                 >
-                  <SafeIcon icon={FiPlus} className="mr-1" />
-                  New Post
+                  <SafeIcon icon={FiPlus} className="mr-1" /> New Post
                 </Link>
               </div>
               <div className="space-y-4">
-                {stats.recentPosts.map((post) => (
-                  <div key={post.id} className="flex items-center space-x-3">
-                    <img 
-                      src={post.image} 
-                      alt={post.title} 
-                      className="w-12 h-12 rounded-lg object-cover" 
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {post.title}
-                      </p>
-                      <p className="text-sm text-gray-500">{post.date}</p>
+                {stats.recentPosts.length > 0 ? (
+                  stats.recentPosts.map((post) => (
+                    <div key={post.id} className="flex items-center space-x-3">
+                      <img 
+                        src={post.image || 'https://via.placeholder.com/150'} 
+                        alt={post.title} 
+                        className="w-12 h-12 rounded-lg object-cover" 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {post.title}
+                        </p>
+                        <p className="text-sm text-gray-500">{post.date}</p>
+                      </div>
+                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                        {post.category}
+                      </span>
                     </div>
-                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                      {post.category}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No posts yet.</p>
+                )}
               </div>
             </div>
           </div>
@@ -282,12 +302,11 @@ const Admin = () => {
                   ))}
                 </select>
               </div>
-              <Link 
-                to="/create" 
+              <Link
+                to="/create"
                 className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
-                <SafeIcon icon={FiPlus} className="mr-2" />
-                New Post
+                <SafeIcon icon={FiPlus} className="mr-2" /> New Post
               </Link>
             </div>
           </div>
@@ -321,7 +340,7 @@ const Admin = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img 
-                            src={post.image} 
+                            src={post.image || 'https://via.placeholder.com/150'} 
                             alt={post.title} 
                             className="w-10 h-10 rounded-lg object-cover mr-3" 
                           />
@@ -346,22 +365,13 @@ const Admin = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <Link 
-                            to={`/post/${post.id}`} 
-                            className="text-blue-600 hover:text-blue-900"
-                          >
+                          <Link to={`/post/${post.id}`} className="text-indigo-600 hover:text-indigo-900">
                             <SafeIcon icon={FiEye} className="w-4 h-4" />
                           </Link>
-                          <button 
-                            onClick={() => alert('Edit functionality would be implemented here')}
-                            className="text-green-600 hover:text-green-900"
-                          >
+                          <button onClick={() => alert('Edit functionality would be implemented here')} className="text-fuchsia-600 hover:text-fuchsia-900">
                             <SafeIcon icon={FiEdit} className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => handleDeletePost(post.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
+                          <button onClick={() => handleDeletePost(post.id)} className="text-pink-600 hover:text-pink-900">
                             <SafeIcon icon={FiTrash2} className="w-4 h-4" />
                           </button>
                         </div>
@@ -398,20 +408,24 @@ const Admin = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Popular Categories</h3>
               <div className="space-y-4">
-                {stats.categoryStats.map((cat) => (
-                  <div key={cat.name} className="flex items-center justify-between">
-                    <span className="text-gray-700">{cat.name}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-gray-200 rounded-full h-3">
-                        <div 
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" 
-                          style={{ width: `${cat.percentage}%` }}
-                        ></div>
+                {stats.categoryStats.length > 0 ? (
+                  stats.categoryStats.map((cat) => (
+                    <div key={cat.name} className="flex items-center justify-between">
+                      <span className="text-gray-700">{cat.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-3">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full"
+                            style={{ width: `${cat.percentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{cat.percentage}%</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{cat.percentage}%</span>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No data available</p>
+                )}
               </div>
             </div>
 
@@ -422,7 +436,7 @@ const Admin = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Total Words Written</span>
                   <span className="text-lg font-semibold text-gray-900">
-                    {posts.reduce((sum, post) => sum + post.content.split(' ').length, 0).toLocaleString()}
+                    {posts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -434,7 +448,7 @@ const Admin = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Longest Post</span>
                   <span className="text-lg font-semibold text-gray-900">
-                    {posts.length > 0 ? Math.max(...posts.map(post => post.content.split(' ').length)) : 0} words
+                    {posts.length > 0 ? Math.max(...posts.map(post => post.content ? post.content.split(' ').length : 0)) : 0} words
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

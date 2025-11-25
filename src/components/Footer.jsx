@@ -2,6 +2,7 @@ import React from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { Link } from 'react-router-dom';
+import { LOGO_URL as logo } from '../config/assets';
 
 const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
 
@@ -12,9 +13,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center space-x-2 mb-6">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <SafeIcon icon={FiHeart} className="text-white text-sm" />
-              </div>
+              <img src={logo} alt="BangtanMom" className="w-8 h-8 rounded-lg object-cover" />
               <span className="text-xl font-serif font-bold text-gray-900">BangtanMom</span>
             </Link>
             <p className="text-gray-500 text-sm leading-relaxed mb-6">
