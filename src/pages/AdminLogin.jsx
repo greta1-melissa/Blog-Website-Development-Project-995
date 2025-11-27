@@ -45,7 +45,7 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -65,7 +65,7 @@ const AdminLogin = () => {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-red-50 border border-red-200 rounded-lg p-4"
@@ -83,10 +83,10 @@ const AdminLogin = () => {
             </label>
             <div className="relative">
               <SafeIcon icon={FiUser} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                id="username"
-                name="username"
+              <input 
+                type="text" 
+                id="username" 
+                name="username" 
                 value={formData.username}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -102,17 +102,17 @@ const AdminLogin = () => {
             </label>
             <div className="relative">
               <SafeIcon icon={FiLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                id="password" 
+                name="password" 
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Enter your password"
                 required
               />
-              <button
+              <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -149,12 +149,8 @@ const AdminLogin = () => {
               Password: admin123
             </p>
           </div>
-          <Link 
-            to="/login" 
-            className="inline-flex items-center text-sm text-purple-600 hover:text-purple-700 font-medium"
-          >
-            <SafeIcon icon={FiArrowLeft} className="mr-1" />
-            Back to User Login
+          <Link to="/login" className="inline-flex items-center text-sm text-purple-600 hover:text-purple-700 font-medium">
+            <SafeIcon icon={FiArrowLeft} className="mr-1" /> Back to User Login
           </Link>
         </div>
       </motion.div>

@@ -97,30 +97,40 @@ export const BlogProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const uniqueCategories = [...new Set(posts.map(post => post.category))];
-    setCategories(uniqueCategories);
+    if (posts.length > 0) {
+        const uniqueCategories = [...new Set(posts.map(post => post.category))];
+        setCategories(uniqueCategories);
+    }
   }, [posts]);
 
   const addPost = async (post) => {
+    const tempId = Date.now();
+    const wordCount = post.content ? post.content.split(' ').length : 0;
+    const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
+
     const newPost = {
       ...post,
+      id: tempId, // Temporary ID for immediate UI update
       date: new Date().toISOString().split('T')[0],
-      readTime: `${Math.ceil(post.content.split(' ').length / 200)} min read`,
-      author: "Melissa",
+      readTime: readTime,
+      author: post.author || "Melissa", // Use passed author, default to Melissa
       isHandPicked: false
     };
 
+    // Optimistic update
+    setPosts(prev => [newPost, ...prev]);
+
     try {
-      setPosts(prev => [newPost, ...prev]);
       const result = await ncbCreate('posts', newPost);
       if (result && result.id) {
-        setPosts(prev => prev.map(p => p === newPost ? { ...p, id: result.id } : p));
+        // Update the post with the real ID from backend
+        setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
         return result.id;
       }
-      return Date.now();
+      return tempId;
     } catch (error) {
       console.error("Failed to save post:", error);
-      return null;
+      return tempId;
     }
   };
 

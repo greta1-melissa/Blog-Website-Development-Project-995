@@ -33,8 +33,10 @@ const Header = () => {
       { path: '/contact', label: 'Contact' }
     ];
     
-    // Admin/Author management links
-    if (isAuthor()) {
+    // Safely check for author permission to avoid crashes if context isn't fully ready
+    const hasAuthorPermission = isAuthor && typeof isAuthor === 'function' ? isAuthor() : false;
+
+    if (hasAuthorPermission) {
       baseItems.push({ path: '/admin', label: 'My Stories', icon: FiGrid });
       baseItems.push({ path: '/create', label: 'New Post', icon: FiEdit });
     }
@@ -47,12 +49,16 @@ const Header = () => {
 
   const getUserInitials = () => {
     if (!user?.name) return 'U';
-    return user.name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    try {
+        return user.name
+          .split(' ')
+          .map((n) => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+    } catch (e) {
+        return 'U';
+    }
   };
 
   const getRoleColor = () => {
@@ -73,6 +79,9 @@ const Header = () => {
     setIsMenuOpen(false);
     logout();
   };
+  
+  // Safely check admin permission
+  const hasAdminPermission = isAdmin && typeof isAdmin === 'function' ? isAdmin() : false;
 
   return (
     <header
@@ -134,7 +143,7 @@ const Header = () => {
                       {getUserInitials()}
                     </div>
                     <div className="hidden lg:block text-left">
-                      <span className="block text-sm font-semibold text-gray-800 leading-none">{user?.name?.split(' ')[0]}</span>
+                      <span className="block text-sm font-semibold text-gray-800 leading-none">{user?.name?.split(' ')[0] || 'User'}</span>
                       <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase">{user?.role}</span>
                     </div>
                     <SafeIcon icon={FiChevronDown} className={`text-gray-400 text-sm transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
@@ -150,11 +159,11 @@ const Header = () => {
                         className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl ring-1 ring-purple-100 ring-opacity-50 py-2 z-50 overflow-hidden"
                       >
                         <div className="px-4 py-3 border-b border-purple-50 bg-purple-50/30">
-                          <p className="text-sm font-bold text-gray-900 truncate">{user?.name}</p>
+                          <p className="text-sm font-bold text-gray-900 truncate">{user?.name || 'User'}</p>
                           <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                         <div className="p-2">
-                          {isAdmin() && (
+                          {hasAdminPermission && (
                             <Link 
                               to="/admin" 
                               onClick={() => setIsUserMenuOpen(false)}
@@ -237,11 +246,11 @@ const Header = () => {
                       {getUserInitials()}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900">{user?.name}</p>
+                      <p className="text-sm font-bold text-gray-900">{user?.name || 'User'}</p>
                       <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                     </div>
                   </div>
-                  {isAdmin() && (
+                  {hasAdminPermission && (
                     <Link
                       to="/admin"
                       onClick={() => setIsMenuOpen(false)}

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import BlogCard from '../components/BlogCard';
@@ -12,11 +12,16 @@ const { FiPlay, FiTv, FiMusic, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 const Home = () => {
   const { posts } = useBlog();
   
+  // Lazy load ref for footer video
+  const footerVideoRef = useRef(null);
+  const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
+
   // Logic for Featured Section: 1 Most Recent + 2 Hand Picked
   const featuredPosts = useMemo(() => {
     if (posts.length === 0) return [];
-
+    
     const mostRecent = posts[0];
+    
     // Find up to 2 other posts that are flagged as hand-picked and not the most recent one
     const handPicked = posts
       .filter(p => p.id !== mostRecent.id && p.isHandPicked)
@@ -78,7 +83,6 @@ const Home = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         {/* Adjusted grid height and gap */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
-          
           {/* Main Feature: Latest Post */}
           {mostRecentPost && (
             <motion.div
@@ -87,16 +91,16 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
-              {/* Video Background */}
-              <video 
-                src={FEATURED_STORY_VIDEO_URL} 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              {/* Video Background - Priority Load */}
+              <video
+                src={FEATURED_STORY_VIDEO_URL}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
-              
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/40 to-transparent" />
               
               <div className="absolute bottom-0 left-0 p-8 md:p-10 text-white relative z-10">
@@ -108,14 +112,17 @@ const Home = () => {
                     <SafeIcon icon={FiCalendar} className="mr-2" /> {mostRecentPost.date}
                   </span>
                 </div>
+                
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
                   <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight group-hover:text-purple-200 transition-colors drop-shadow-sm">
                     {mostRecentPost.title}
                   </h2>
                 </Link>
+                
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {mostRecentPost.content}
                 </p>
+                
                 <Link 
                   to={`/post/${mostRecentPost.id}`}
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
@@ -128,7 +135,6 @@ const Home = () => {
 
           {/* Right Column */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
-            
             {/* Top Right: Currently Watching */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -139,9 +145,10 @@ const Home = () => {
               <img 
                 src={currentKDrama.image} 
                 alt="K-Drama" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
+              
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
@@ -154,6 +161,7 @@ const Home = () => {
                     {currentKDrama.status}
                   </span>
                 </div>
+                
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
                   <p className="text-sm text-purple-200 mb-3">{currentKDrama.episode}</p>
@@ -189,7 +197,7 @@ const Home = () => {
                 </div>
                 <a 
                   href={spotifyPlaylist.url} 
-                  target="_blank" 
+                  target="_blank"
                   className="w-10 h-10 bg-white text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform flex-shrink-0"
                 >
                   <SafeIcon icon={FiPlay} className="ml-1" />
@@ -230,23 +238,26 @@ const Home = () => {
 
         {/* Newsletter / CTA Section */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
           
           <div className="relative z-10 max-w-2xl mx-auto">
-            <div className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
-              <video 
-                src={ANIMATED_LOGO_VIDEO_URL} 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
-                className="w-full h-full object-cover transform scale-110"
-              />
+            <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
+              {/* Lazy load the footer video only when in view */}
+              {isFooterInView && (
+                <video
+                  src={ANIMATED_LOGO_VIDEO_URL}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover transform scale-110"
+                />
+              )}
             </div>
             
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">

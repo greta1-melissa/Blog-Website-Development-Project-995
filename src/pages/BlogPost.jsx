@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2 } = FiIcons;
+const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
 
 const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
+  const [isFollowing, setIsFollowing] = useState(false);
   const post = getPost(id);
 
   if (!post) {
@@ -19,8 +20,8 @@ const BlogPost = () => {
           <SafeIcon icon={FiHeart} className="text-purple-400 text-6xl mb-4 mx-auto" />
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Post Not Found</h1>
           <p className="text-gray-600 mb-8">The blog post you're looking for doesn't exist.</p>
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
           >
             <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
@@ -48,16 +49,20 @@ const BlogPost = () => {
     }
   };
 
+  const toggleFollow = () => {
+    setIsFollowing(!isFollowing);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
-      <motion.article 
+      <motion.article
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
       >
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 border border-purple-200 transition-colors mb-8 shadow-sm"
         >
           <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
@@ -66,14 +71,12 @@ const BlogPost = () => {
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100">
           <img src={post.image} alt={post.title} className="w-full h-64 md:h-96 object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
-          
           <div className="absolute top-6 left-6">
             <span className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${getCategoryStyle(post.category)}`}>
               <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
             </span>
           </div>
-
-          <button 
+          <button
             onClick={handleShare}
             className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
           >
@@ -111,13 +114,13 @@ const BlogPost = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
           <div className="prose prose-lg max-w-none prose-headings:text-purple-900 prose-a:text-purple-600">
             {post.content.split('\n').map((paragraph, index) => (
-              <motion.p 
+              <motion.p
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="mb-6 text-gray-700 leading-relaxed text-lg"
-                style={{ 
+                style={{
                   textIndent: index === 0 ? '2rem' : '0',
                   fontSize: index === 0 ? '1.25rem' : '1.125rem',
                   fontWeight: index === 0 ? '500' : '400'
@@ -129,7 +132,7 @@ const BlogPost = () => {
           </div>
         </div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
@@ -148,10 +151,18 @@ const BlogPost = () => {
             Hi! I'm Melissa, a mom who loves sharing authentic stories about family life, wellness, and my passion for K-culture. Thank you for reading and being part of this amazing community! 💜
           </p>
           <div className="flex items-center mt-6 space-x-4">
-            <button className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors">
-              <SafeIcon icon={FiHeart} className="mr-2" /> Follow
-            </button>
             <button 
+              onClick={toggleFollow}
+              className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
+                isFollowing 
+                  ? 'bg-white text-purple-600 font-bold' 
+                  : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white'
+              }`}
+            >
+              <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} /> 
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+            <button
               onClick={handleShare}
               className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
             >
@@ -160,7 +171,7 @@ const BlogPost = () => {
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
@@ -175,8 +186,8 @@ const BlogPost = () => {
             <p className="text-gray-600 mb-6">
               Discover more stories, tips, and insights from our blog
             </p>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to All Posts
@@ -184,8 +195,7 @@ const BlogPost = () => {
           </div>
         </motion.div>
       </motion.article>
-
-      <script dangerouslySetInnerHTML={{ __html: `
+      <script dangerouslySetInnerHTML={{__html: `
         window.addEventListener('scroll', function() {
           const article = document.querySelector('article');
           const progressBar = document.getElementById('reading-progress');

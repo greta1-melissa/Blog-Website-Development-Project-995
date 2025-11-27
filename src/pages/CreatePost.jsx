@@ -7,7 +7,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -21,14 +21,11 @@ const CreatePost = () => {
   });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
-
+  
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleFileUpload = async (e) => {
@@ -46,19 +43,25 @@ const CreatePost = () => {
         method: 'POST',
         body: data
       });
-      
+
+      // Handle cases where the API route might not exist (e.g., local preview)
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
+         throw new Error("Upload service unavailable in preview");
+      }
+
       const result = await response.json();
-      
-      if (response.ok && result.success) {
+
+      if (result.success) {
         setFormData(prev => ({ ...prev, image: result.url }));
         setUploadStatus('Upload Complete!');
       } else {
-        setUploadStatus('Upload Failed');
-        console.error('Upload failed:', result);
+        throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
-      setUploadStatus('Error uploading');
+      setUploadStatus('Upload Failed');
       console.error('Error:', error);
+      alert("Image upload failed (The backend service might not be available in this preview environment). Please enter an Image URL manually.");
     } finally {
       setIsUploading(false);
     }
@@ -78,6 +81,7 @@ const CreatePost = () => {
     };
 
     const postId = await addPost(postData);
+
     if (postId) {
       navigate(`/post/${postId}`);
     } else {
@@ -101,14 +105,14 @@ const CreatePost = () => {
             What's on your heart today? Let's share it with our community 💜
           </p>
           <div className="mt-4 inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-            Writing as: <strong className="ml-1">{user?.name}</strong>
+            Writing as: <strong className="ml-1">{user?.name}</strong> 
             <span className="ml-2 text-xs bg-purple-200 px-2 py-1 rounded-full">
               {user?.role}
             </span>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8 border border-purple-50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,7 +129,6 @@ const CreatePost = () => {
                 required
               />
             </div>
-
             <div>
               <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
                 Category *
@@ -152,7 +155,6 @@ const CreatePost = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Featured Image
             </label>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* URL Input */}
               <div className="relative">
@@ -167,7 +169,7 @@ const CreatePost = () => {
                   placeholder="https://example.com/image.jpg"
                 />
               </div>
-
+              
               {/* File Upload */}
               <div className="relative">
                 <input
@@ -179,12 +181,18 @@ const CreatePost = () => {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="flex items-center justify-center w-full px-4 py-3 border border-dashed border-purple-300 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors text-purple-600 font-medium"
+                  className={`flex items-center justify-center w-full px-4 py-3 border border-dashed rounded-lg cursor-pointer transition-colors font-medium ${
+                    uploadStatus === 'Upload Failed' 
+                      ? 'border-red-300 text-red-600 bg-red-50' 
+                      : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                  }`}
                 >
                   {isUploading ? (
                     <span className="animate-pulse">Uploading...</span>
                   ) : uploadStatus === 'Upload Complete!' ? (
                     <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
+                  ) : uploadStatus === 'Upload Failed' ? (
+                     <><SafeIcon icon={FiAlertCircle} className="mr-2" /> Retry Upload</>
                   ) : (
                     <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload to Dropbox</>
                   )}
@@ -192,8 +200,11 @@ const CreatePost = () => {
               </div>
             </div>
             {formData.image && (
-              <div className="mt-2 text-xs text-gray-500 truncate">
-                Selected: {formData.image}
+              <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200">
+                 <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate px-2">
+                   Image Preview
+                 </div>
               </div>
             )}
           </div>
@@ -219,10 +230,9 @@ const CreatePost = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200"
             >
-              <SafeIcon icon={FiSave} className="mr-2" />
-              Publish Post
+              <SafeIcon icon={FiSave} className="mr-2" /> Publish Post
             </motion.button>
           </div>
         </form>

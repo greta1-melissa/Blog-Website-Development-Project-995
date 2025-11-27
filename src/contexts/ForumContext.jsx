@@ -61,12 +61,12 @@ export const ForumProvider = ({ children }) => {
     };
 
     const tempId = Date.now();
-    setThreads(prev => [{...newThread, id: tempId}, ...prev]);
+    setThreads(prev => [{ ...newThread, id: tempId }, ...prev]);
 
     try {
       const savedThread = await ncbCreate('threads', newThread);
       if (savedThread) {
-        setThreads(prev => prev.map(t => t.id === tempId ? {...t, id: savedThread.id} : t));
+        setThreads(prev => prev.map(t => t.id === tempId ? { ...t, id: savedThread.id } : t));
         return savedThread.id;
       }
       return tempId;
@@ -90,7 +90,7 @@ export const ForumProvider = ({ children }) => {
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
     setThreads(prev => prev.map(thread => 
       String(thread.id) === String(threadId) 
-        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
+        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() }
         : thread
     ));
 
@@ -119,18 +119,33 @@ export const ForumProvider = ({ children }) => {
 
   const incrementViews = (threadId) => {
     setThreads(prev => prev.map(thread => 
-      String(thread.id) === String(threadId)
+      String(thread.id) === String(threadId) 
         ? { ...thread, views: (thread.views || 0) + 1 }
         : thread
     ));
+    // Note: We typically don't await view count updates to keep UI snappy
+    try {
+       const thread = threads.find(t => String(t.id) === String(threadId));
+       if(thread) ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 });
+    } catch(e) {
+      console.error("Failed to update views:", e);
+    }
   };
 
-  const likeReply = (replyId) => {
-    setReplies(prev => prev.map(reply => 
-      String(reply.id) === String(replyId)
-        ? { ...reply, likes: (reply.likes || 0) + 1 }
-        : reply
+  const likeReply = async (replyId) => {
+    const reply = replies.find(r => String(r.id) === String(replyId));
+    const newLikes = (reply?.likes || 0) + 1;
+
+    // Optimistic UI update
+    setReplies(prev => prev.map(r => 
+      String(r.id) === String(replyId) ? { ...r, likes: newLikes } : r
     ));
+
+    try {
+      await ncbUpdate('replies', replyId, { likes: newLikes });
+    } catch (e) {
+      console.error("Like save failed", e);
+    }
   };
 
   const value = {

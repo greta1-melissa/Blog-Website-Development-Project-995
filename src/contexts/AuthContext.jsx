@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     const { userId, token, newUser, email } = userData;
     
-    // Determine user role - default to subscriber
+    // Determine user role - default to subscriber 
     let role = 'subscriber';
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
         email: ADMIN_CREDENTIALS.email,
         name: 'BangtanMom'
       });
-
+      
       navigate('/admin');
       return true;
     }
@@ -110,18 +110,17 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     console.log('Logout function called');
-    
     // Clear all authentication data from localStorage
     localStorage.removeItem('userId');
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
-
+    
     // Reset authentication state
     setIsAuthenticated(false);
     setUser(null);
-
+    
     // Navigate to login page
     navigate('/login');
   };
@@ -146,12 +145,12 @@ export const AuthProvider = ({ children }) => {
   const isSubscriber = () => user?.role === 'subscriber' || user?.role === 'author' || user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      user,
-      isLoading,
-      login,
-      adminLogin,
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      isLoading, 
+      login, 
+      adminLogin, 
       logout,
       hasPermission,
       isAdmin,
