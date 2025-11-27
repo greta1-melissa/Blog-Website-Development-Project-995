@@ -6,18 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { 
-  FiMessageCircle, 
-  FiUsers, 
-  FiEye, 
-  FiClock, 
-  FiPin, 
-  FiLock, 
-  FiPlus,
-  FiArrowRight,
-  FiTrendingUp,
-  FiActivity
-} = FiIcons;
+const { FiMessageCircle, FiUsers, FiEye, FiClock, FiPin, FiLock, FiPlus, FiArrowRight, FiTrendingUp, FiActivity } = FiIcons;
 
 const Forums = () => {
   const { categories, threads } = useForum();
@@ -71,9 +60,9 @@ const Forums = () => {
           Community <span className="text-purple-600">Forums</span>
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-          Connect with fellow moms, share experiences, and build lasting friendships in our supportive community
+          A welcoming space for guests and friends to share experiences, discuss K-dramas, and connect with other moms!
         </p>
-        
+
         {/* Stats */}
         <div className="flex justify-center space-x-8 mb-8">
           <div className="text-center">
@@ -107,7 +96,7 @@ const Forums = () => {
                 const categoryThreads = threads.filter(t => t.categoryId === category.id);
                 const totalReplies = categoryThreads.reduce((sum, thread) => sum + thread.replies, 0);
                 const latestThread = categoryThreads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
-                
+
                 return (
                   <motion.div
                     key={category.id}
@@ -160,7 +149,7 @@ const Forums = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Recent Discussions</h2>
               {isAuthenticated && (
-                <Link
+                <Link 
                   to="/forums/new-thread"
                   className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
@@ -169,7 +158,7 @@ const Forums = () => {
                 </Link>
               )}
             </div>
-
+            
             <div className="space-y-4">
               {getRecentThreads().map((thread) => {
                 const category = getCategoryById(thread.categoryId);
@@ -242,8 +231,8 @@ const Forums = () => {
               </div>
               <div className="space-y-3">
                 {getPopularThreads().map((thread) => (
-                  <Link
-                    key={thread.id}
+                  <Link 
+                    key={thread.id} 
                     to={`/forums/thread/${thread.id}`}
                     className="block p-3 rounded-lg hover:bg-gray-50 transition-colors"
                   >
@@ -297,12 +286,11 @@ const Forums = () => {
                 <p className="text-sm text-purple-100 mb-4">
                   Sign up to start discussions, reply to threads, and connect with amazing moms!
                 </p>
-                <Link
+                <Link 
                   to="/login"
                   className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition-colors font-medium"
                 >
-                  Sign Up Now
-                  <SafeIcon icon={FiArrowRight} className="ml-2" />
+                  Sign Up Now <SafeIcon icon={FiArrowRight} className="ml-2" />
                 </Link>
               </motion.div>
             )}

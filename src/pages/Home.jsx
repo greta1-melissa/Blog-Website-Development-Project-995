@@ -3,28 +3,28 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import BlogCard from '../components/BlogCard';
-import CategoryFilter from '../components/CategoryFilter';
-import SearchBar from '../components/SearchBar';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
-const { FiPlay, FiTv, FiMusic, FiArrowRight, FiCalendar, FiHeart } = FiIcons;
+const { FiPlay, FiTv, FiMusic, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 
 const Home = () => {
-  const { posts, categories } = useBlog();
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const { posts } = useBlog();
+  
+  // Logic for Featured Section: 1 Most Recent + 2 Hand Picked
+  const featuredPosts = useMemo(() => {
+    if (posts.length === 0) return [];
 
-  const filteredPosts = useMemo(() => {
-    return posts.filter(post => {
-      const matchesCategory = selectedCategory === '' || post.category === selectedCategory;
-      const matchesSearch = searchTerm === '' || 
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        post.content.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [posts, selectedCategory, searchTerm]);
+    const mostRecent = posts[0];
+    // Find up to 2 other posts that are flagged as hand-picked and not the most recent one
+    const handPicked = posts
+      .filter(p => p.id !== mostRecent.id && p.isHandPicked)
+      .slice(0, 2);
+    
+    // Combine them
+    return [mostRecent, ...handPicked];
+  }, [posts]);
 
   const mostRecentPost = posts[0];
 
@@ -32,7 +32,7 @@ const Home = () => {
     title: "Would You Marry Me?",
     episode: "Choi Woo Sik",
     status: "Rewatching",
-    image: "https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?w=600&h=800&fit=crop", // Romantic/Drama vibe
+    image: "https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?w=600&h=800&fit=crop",
     description: "The chemistry is unmatched! Choi Woo Sik's performance is pure gold. ❤️",
     year: "2024"
   };
@@ -126,7 +126,7 @@ const Home = () => {
             </motion.div>
           )}
 
-          {/* Right Column - Fixed Height Issues */}
+          {/* Right Column */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
             
             {/* Top Right: Currently Watching */}
@@ -200,40 +200,33 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Main Content Feed */}
+      {/* Featured Collection Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
           <div>
-            <h2 className="text-3xl font-serif font-bold text-gray-900">Latest Stories</h2>
-            <p className="text-gray-500 mt-1">Updates from the blog & life</p>
+            <div className="flex items-center space-x-2 mb-2">
+              <SafeIcon icon={FiStar} className="text-purple-600 text-xl" />
+              <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Editor's Picks</span>
+            </div>
+            <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
+            <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
-          <div className="mt-4 md:mt-0 w-full md:w-auto">
-            <CategoryFilter 
-              categories={categories} 
-              selectedCategory={selectedCategory} 
-              onCategoryChange={setSelectedCategory} 
-            />
+          <div className="mt-4 md:mt-0">
+            <Link 
+              to="/blogs"
+              className="inline-flex items-center px-6 py-3 bg-white text-purple-600 border border-purple-200 rounded-full font-medium hover:bg-purple-50 transition-colors shadow-sm"
+            >
+              View All Stories <SafeIcon icon={FiArrowRight} className="ml-2" />
+            </Link>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="max-w-lg mx-auto mb-12">
-          <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+        {/* Featured Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+          {featuredPosts.map((post, index) => (
+            <BlogCard key={post.id} post={post} index={index} />
+          ))}
         </div>
-
-        {filteredPosts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-purple-200">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-gray-900">No stories found</h3>
-            <p className="text-gray-500">Try searching for something else or check back later!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
-            {filteredPosts.map((post, index) => (
-              <BlogCard key={post.id} post={post} index={index} />
-            ))}
-          </div>
-        )}
 
         {/* Newsletter / CTA Section */}
         <motion.div
@@ -257,7 +250,7 @@ const Home = () => {
             </div>
             
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
-              Join the Bangtan Mom Club
+              Join the Bangtan Mom Community
             </h2>
             <p className="text-purple-200 mb-8 text-lg">
               Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.

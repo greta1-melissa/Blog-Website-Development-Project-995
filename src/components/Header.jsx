@@ -6,7 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiMenu, FiX, FiLogOut, FiUser, FiSettings, FiChevronDown } = FiIcons;
+const { FiMenu, FiX, FiLogOut, FiUser, FiSettings, FiChevronDown, FiEdit, FiGrid, FiBook } = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,20 +27,22 @@ const Header = () => {
     const baseItems = [
       { path: '/', label: 'Home' },
       { path: '/about', label: 'About' },
-      { path: '/forums', label: 'Community' },
       { path: '/products', label: 'Picks' },
+      { path: '/blogs', label: 'Blogs', icon: FiBook },
+      { path: '/forums', label: 'Community' },
       { path: '/contact', label: 'Contact' }
     ];
     
+    // Admin/Author management links
     if (isAuthor()) {
-      baseItems.splice(4, 0, { path: '/create', label: 'Write' });
+      baseItems.push({ path: '/admin', label: 'My Stories', icon: FiGrid });
+      baseItems.push({ path: '/create', label: 'New Post', icon: FiEdit });
     }
     
     return baseItems;
   };
 
   const navItems = getNavItems();
-
   const isActive = (path) => location.pathname === path;
 
   const getUserInitials = () => {
@@ -95,18 +97,19 @@ const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             <nav className="flex space-x-1">
-              {navItems.map(({ path, label }) => (
+              {navItems.map(({ path, label, icon: Icon }) => (
                 <Link
                   key={path}
                   to={path}
-                  className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center ${
                     isActive(path)
                       ? 'text-purple-800 bg-purple-50'
                       : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50/50'
                   }`}
                 >
+                  {Icon && <SafeIcon icon={Icon} className="mr-2 text-sm" />}
                   {label}
                   {isActive(path) && (
                     <motion.div
@@ -152,8 +155,8 @@ const Header = () => {
                         </div>
                         <div className="p-2">
                           {isAdmin() && (
-                            <Link
-                              to="/admin"
+                            <Link 
+                              to="/admin" 
                               onClick={() => setIsUserMenuOpen(false)}
                               className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-colors"
                             >
@@ -211,17 +214,18 @@ const Header = () => {
             className="md:hidden bg-white border-b border-purple-100 overflow-hidden"
           >
             <nav className="px-4 py-4 space-y-2">
-              {navItems.map(({ path, label }) => (
+              {navItems.map(({ path, label, icon: Icon }) => (
                 <Link
                   key={path}
                   to={path}
                   onClick={() => setIsMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${
+                  className={`flex items-center px-4 py-3 rounded-xl text-base font-medium transition-colors ${
                     isActive(path)
                       ? 'bg-purple-50 text-purple-800'
                       : 'text-gray-600 hover:bg-purple-50'
                   }`}
                 >
+                  {Icon && <SafeIcon icon={Icon} className="mr-3" />}
                   {label}
                 </Link>
               ))}
@@ -277,7 +281,7 @@ const Header = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
+
       {isUserMenuOpen && (
         <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsUserMenuOpen(false)} />
       )}

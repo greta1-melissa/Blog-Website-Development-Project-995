@@ -1,14 +1,15 @@
 import React from 'react';
-import {HashRouter as Router, Routes, Route} from 'react-router-dom';
-import {QuestProvider} from '@questlabs/react-sdk';
-import {BlogProvider} from './contexts/BlogContext';
-import {AuthProvider} from './contexts/AuthContext';
-import {ForumProvider} from './contexts/ForumContext';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { QuestProvider } from '@questlabs/react-sdk';
+import { BlogProvider } from './contexts/BlogContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ForumProvider } from './contexts/ForumContext';
 import questConfig from './config/questConfig';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
+import AllBlogs from './pages/AllBlogs';
 import BlogPost from './pages/BlogPost';
 import CreatePost from './pages/CreatePost';
 import About from './pages/About';
@@ -25,9 +26,9 @@ import ProductRecommendations from './pages/ProductRecommendations';
 
 function App() {
   return (
-    <QuestProvider 
-      apiKey={questConfig.APIKEY} 
-      entityId={questConfig.ENTITYID} 
+    <QuestProvider
+      apiKey={questConfig.APIKEY}
+      entityId={questConfig.ENTITYID}
       apiType="PRODUCTION"
     >
       <Router>
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/admin-login" element={<AdminLogin />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     <Route path="/" element={<Home />} />
+                    <Route path="/blogs" element={<AllBlogs />} />
                     <Route path="/post/:id" element={<BlogPost />} />
                     <Route path="/create" element={<CreatePost />} />
                     <Route path="/about" element={<About />} />

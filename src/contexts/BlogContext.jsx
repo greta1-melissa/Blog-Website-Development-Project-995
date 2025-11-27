@@ -11,17 +11,62 @@ export const useBlog = () => {
   return context;
 };
 
-// Fallback data for initial load or if backend is empty
+// Fallback data with 'isHandPicked' flag added for manual curation
 const initialPosts = [
   {
     id: 1,
+    title: "Why 'Our Beloved Summer' is the Comfort Watch We All Need",
+    content: "I recently re-watched 'Our Beloved Summer' and fell in love with Choi Woo Sik all over again. The cinematography, the subtle emotions, the soundtrack—it's a masterpiece of nostalgia. As a mom, I appreciate dramas that don't rely on heavy villains but rather explore the complexities of human relationships. Watching Yeon-su and Ung find their way back to each other reminded me that love is often about timing and growth. Plus, the aesthetic of this show is just...",
+    author: "Melissa",
+    date: "2024-02-28",
+    category: "K-Drama",
+    readTime: "6 min read",
+    image: "https://images.unsplash.com/photo-1517604931442-71053e6e2306?w=800&h=400&fit=crop",
+    isHandPicked: false // Most recent
+  },
+  {
+    id: 2,
+    title: "Finding My Magic Shop: How BTS Helped Me Reclaim My Identity",
+    content: "Before I was a mom, I had so many hobbies. Somewhere between diaper changes and school runs, I lost a bit of myself. Then I discovered BTS. Their lyrics about self-love and perseverance resonated so deeply. 'Magic Shop' isn't just a song; it's a reminder that it's okay to not be okay, and that there's a door in your heart you can open towards comfort. Now, blasting 'Mic Drop' while doing laundry is my form of therapy!",
+    author: "Melissa",
+    date: "2024-02-18",
+    category: "BTS",
+    readTime: "5 min read",
+    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
+    isHandPicked: true // Hand picked selection 1
+  },
+  {
+    id: 3,
     title: "Morning Wellness Routine: How I Start My Day as a Busy Mom",
-    content: "Being a mom means juggling countless responsibilities...",
+    content: "Being a mom means juggling countless responsibilities, from packing lunches to managing schedules. But I've learned that if I don't fill my own cup first, I can't pour into others. My morning routine isn't about perfection; it's about grounding. I start with 10 minutes of stretching (usually while listening to 'Zero O'Clock'), followed by a warm cup of barley tea. It's these small moments of peace that help me tackle the chaos...",
     author: "Melissa",
     date: "2024-01-15",
     category: "Health",
     readTime: "4 min read",
-    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop"
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop",
+    isHandPicked: false
+  },
+  {
+    id: 4,
+    title: "5 Kitchen Gadgets That Saved My Weeknight Dinners",
+    content: "Let's be real, cooking dinner every single night is exhausting. I used to dread the 5 PM question: 'Mom, what's for dinner?' Over the years, I've curated a few tools that make prep faster and cleanup easier. From my beloved air fryer (seriously, how did we live without them?) to a high-quality rice cooker that sings when it's done, here are the products that keep my kitchen running smoothly...",
+    author: "Melissa",
+    date: "2024-02-22",
+    category: "Product Recommendations",
+    readTime: "7 min read",
+    image: "https://images.unsplash.com/photo-1556910103-1c02745a30bf?w=800&h=400&fit=crop",
+    isHandPicked: true // Hand picked selection 2
+  },
+  {
+    id: 5,
+    title: "Weekend Getaway: Creating Memories with the Fam Bam",
+    content: "We decided to take a spontaneous road trip last weekend. No strict itinerary, just snacks, a good playlist, and the open road. It wasn't perfect—there were tantrums and spilled juice—but those messy moments are the ones we laugh about later. We visited a local farm, picked strawberries, and just enjoyed being present without screens. Here is why I think unstructured play is vital for kids (and parents!)...",
+    author: "Melissa",
+    date: "2024-02-25",
+    category: "Fam Bam",
+    readTime: "4 min read",
+    image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&h=400&fit=crop",
+    isHandPicked: false
   }
 ];
 
@@ -61,30 +106,25 @@ export const BlogProvider = ({ children }) => {
       ...post,
       date: new Date().toISOString().split('T')[0],
       readTime: `${Math.ceil(post.content.split(' ').length / 200)} min read`,
-      author: "Melissa" // In real app, get from AuthContext
+      author: "Melissa",
+      isHandPicked: false
     };
 
     try {
-      // Optimistic update
       setPosts(prev => [newPost, ...prev]);
-      
-      // Persist to NCB
       const result = await ncbCreate('posts', newPost);
       if (result && result.id) {
-        // Update with real ID if needed
         setPosts(prev => prev.map(p => p === newPost ? { ...p, id: result.id } : p));
         return result.id;
       }
-      return Date.now(); // Fallback ID
+      return Date.now();
     } catch (error) {
       console.error("Failed to save post:", error);
-      // Revert on failure would go here
       return null;
     }
   };
 
   const getPost = (id) => {
-    // Handle both string/number IDs
     return posts.find(post => String(post.id) === String(id));
   };
 
