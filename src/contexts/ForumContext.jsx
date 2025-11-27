@@ -22,11 +22,31 @@ const defaultCategories = [
   { id: 6, name: 'General Chat', description: 'Random thoughts', color: 'bg-purple-300', icon: '💬' }
 ];
 
+// Helper for local storage
+const getLocalData = (key) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 export const ForumProvider = ({ children }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState(defaultCategories);
-  const [threads, setThreads] = useState([]);
-  const [replies, setReplies] = useState([]);
+  // Initialize with local data to prevent data loss on refresh
+  const [threads, setThreads] = useState(() => getLocalData('forum_threads'));
+  const [replies, setReplies] = useState(() => getLocalData('forum_replies'));
+
+  // Persistence effects
+  useEffect(() => {
+    if (threads.length > 0) localStorage.setItem('forum_threads', JSON.stringify(threads));
+  }, [threads]);
+
+  useEffect(() => {
+    if (replies.length > 0) localStorage.setItem('forum_replies', JSON.stringify(replies));
+  }, [replies]);
 
   const fetchData = async () => {
     try {
@@ -34,10 +54,16 @@ export const ForumProvider = ({ children }) => {
         ncbGet('threads'),
         ncbGet('replies')
       ]);
-      if (Array.isArray(fetchedThreads)) setThreads(fetchedThreads);
-      if (Array.isArray(fetchedReplies)) setReplies(fetchedReplies);
+      
+      // Only overwrite if we got data back from the server
+      if (Array.isArray(fetchedThreads) && fetchedThreads.length > 0) {
+        setThreads(fetchedThreads);
+      }
+      if (Array.isArray(fetchedReplies) && fetchedReplies.length > 0) {
+        setReplies(fetchedReplies);
+      }
     } catch (error) {
-      console.error("Error fetching forum data:", error);
+      console.error("Error fetching forum data, using local data", error);
     }
   };
 
@@ -88,9 +114,11 @@ export const ForumProvider = ({ children }) => {
     };
 
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
+    
+    // Optimistic update for thread reply count
     setThreads(prev => prev.map(thread => 
       String(thread.id) === String(threadId) 
-        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() }
+        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
         : thread
     ));
 
@@ -120,15 +148,13 @@ export const ForumProvider = ({ children }) => {
   const incrementViews = (threadId) => {
     setThreads(prev => prev.map(thread => 
       String(thread.id) === String(threadId) 
-        ? { ...thread, views: (thread.views || 0) + 1 }
+        ? { ...thread, views: (thread.views || 0) + 1 } 
         : thread
     ));
-    // Note: We typically don't await view count updates to keep UI snappy
-    try {
-       const thread = threads.find(t => String(t.id) === String(threadId));
-       if(thread) ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 });
-    } catch(e) {
-      console.error("Failed to update views:", e);
+    // Try to update backend but don't await
+    const thread = threads.find(t => String(t.id) === String(threadId));
+    if(thread) {
+       ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 }).catch(e => console.error(e));
     }
   };
 

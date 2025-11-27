@@ -35,33 +35,58 @@ const CreatePost = () => {
     setIsUploading(true);
     setUploadStatus('Uploading...');
 
-    const data = new FormData();
-    data.append('file', file);
-
     try {
+      // 1. Attempt Server-Side Upload (Dropbox)
+      // This might fail in local/preview environments if the API isn't running
+      const data = new FormData();
+      data.append('file', file);
+
+      // Set a timeout to fail fast if API is unreachable
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
-        body: data
-      });
+        body: data,
+        signal: controller.signal
+      }).catch(() => null); // Catch network errors immediately
+      
+      clearTimeout(timeoutId);
 
-      // Handle cases where the API route might not exist (e.g., local preview)
-      const contentType = response.headers.get("content-type");
-      if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
-         throw new Error("Upload service unavailable in preview");
+      const contentType = response?.headers?.get("content-type");
+      
+      if (response?.ok && contentType && contentType.includes("application/json")) {
+        const result = await response.json();
+        if (result.success) {
+          setFormData(prev => ({ ...prev, image: result.url }));
+          setUploadStatus('Upload Complete!');
+          return; // Success!
+        }
       }
 
-      const result = await response.json();
+      // If we reach here, server upload failed or didn't return success
+      throw new Error("Server upload unavailable");
 
-      if (result.success) {
-        setFormData(prev => ({ ...prev, image: result.url }));
-        setUploadStatus('Upload Complete!');
-      } else {
-        throw new Error(result.error || "Upload failed");
-      }
     } catch (error) {
-      setUploadStatus('Upload Failed');
-      console.error('Error:', error);
-      alert("Image upload failed (The backend service might not be available in this preview environment). Please enter an Image URL manually.");
+      console.warn("Server upload failed, falling back to local compression:", error);
+      
+      // 2. Fallback: Local File Reading (Base64)
+      // This ensures the feature works even without the backend 
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        setFormData(prev => ({ ...prev, image: base64 }));
+        setUploadStatus('Upload Complete!');
+      } catch (localError) {
+        console.error('Local read error:', localError);
+        setUploadStatus('Upload Failed');
+        alert("Could not process image. Please try a different file or use an image URL.");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -194,7 +219,7 @@ const CreatePost = () => {
                   ) : uploadStatus === 'Upload Failed' ? (
                      <><SafeIcon icon={FiAlertCircle} className="mr-2" /> Retry Upload</>
                   ) : (
-                    <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload to Dropbox</>
+                    <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload Photo</>
                   )}
                 </label>
               </div>

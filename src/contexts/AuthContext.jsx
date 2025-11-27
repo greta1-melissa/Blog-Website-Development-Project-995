@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     const { userId, token, newUser, email } = userData;
     
-    // Determine user role - default to subscriber 
+    // Determine user role - default to subscriber
     let role = 'subscriber';
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
@@ -83,7 +83,6 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = (credentials) => {
     const { username, password } = credentials;
-    
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
@@ -101,7 +100,6 @@ export const AuthProvider = ({ children }) => {
         email: ADMIN_CREDENTIALS.email,
         name: 'BangtanMom'
       });
-      
       navigate('/admin');
       return true;
     }
@@ -109,34 +107,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('Logout function called');
-    // Clear all authentication data from localStorage
     localStorage.removeItem('userId');
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
-    
-    // Reset authentication state
+
     setIsAuthenticated(false);
     setUser(null);
-    
-    // Navigate to login page
     navigate('/login');
   };
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    
-    const roleHierarchy = {
-      'subscriber': 1,
-      'author': 2,
-      'admin': 3
-    };
-
+    const roleHierarchy = { 'subscriber': 1, 'author': 2, 'admin': 3 };
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-
     return userLevel >= requiredLevel;
   };
 
@@ -145,12 +131,12 @@ export const AuthProvider = ({ children }) => {
   const isSubscriber = () => user?.role === 'subscriber' || user?.role === 'author' || user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      isLoading, 
-      login, 
-      adminLogin, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      isLoading,
+      login,
+      adminLogin,
       logout,
       hasPermission,
       isAdmin,

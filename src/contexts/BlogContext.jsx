@@ -22,7 +22,7 @@ const initialPosts = [
     category: "K-Drama",
     readTime: "6 min read",
     image: "https://images.unsplash.com/photo-1517604931442-71053e6e2306?w=800&h=400&fit=crop",
-    isHandPicked: false // Most recent
+    isHandPicked: false
   },
   {
     id: 2,
@@ -33,7 +33,7 @@ const initialPosts = [
     category: "BTS",
     readTime: "5 min read",
     image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
-    isHandPicked: true // Hand picked selection 1
+    isHandPicked: true
   },
   {
     id: 3,
@@ -55,7 +55,7 @@ const initialPosts = [
     category: "Product Recommendations",
     readTime: "7 min read",
     image: "https://images.unsplash.com/photo-1556910103-1c02745a30bf?w=800&h=400&fit=crop",
-    isHandPicked: true // Hand picked selection 2
+    isHandPicked: true
   },
   {
     id: 5,
@@ -70,29 +70,61 @@ const initialPosts = [
   }
 ];
 
+// Helper to get local data
+const getLocalPosts = () => {
+  try {
+    const local = localStorage.getItem('blog_posts');
+    return local ? JSON.parse(local) : null;
+  } catch (e) {
+    console.error("Error parsing local posts", e);
+    return null;
+  }
+};
+
 export const BlogProvider = ({ children }) => {
-  const [posts, setPosts] = useState([]);
+  // Initialize from local storage if available to prevent flash of default content
+  const [posts, setPosts] = useState(() => getLocalPosts() || []);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Save to local storage whenever posts change
+  useEffect(() => {
+    if (posts.length > 0) {
+      localStorage.setItem('blog_posts', JSON.stringify(posts));
+    }
+  }, [posts]);
 
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
+      // 1. Try fetching from API
       const data = await ncbGet('posts');
+      
       if (data && Array.isArray(data) && data.length > 0) {
+        // API success - Use this data
         setPosts(data);
       } else {
-        setPosts(initialPosts); // Fallback if DB is empty
+        // 2. API returned nothing/failed - Check if we have local data
+        const localData = getLocalPosts();
+        if (localData && localData.length > 0) {
+          setPosts(localData);
+        } else {
+          // 3. No local data either - Use initial hardcoded data
+          setPosts(initialPosts);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch posts:", error);
-      setPosts(initialPosts); // Fallback on error
+      // On error, rely on local data or fallback
+      const localData = getLocalPosts();
+      setPosts(localData || initialPosts);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // Only fetch if we haven't initialized from local storage yet, or to refresh
     fetchPosts();
   }, []);
 
@@ -110,14 +142,14 @@ export const BlogProvider = ({ children }) => {
 
     const newPost = {
       ...post,
-      id: tempId, // Temporary ID for immediate UI update
+      id: tempId, // Temporary ID
       date: new Date().toISOString().split('T')[0],
       readTime: readTime,
-      author: post.author || "Melissa", // Use passed author, default to Melissa
+      author: post.author || "Melissa",
       isHandPicked: false
     };
 
-    // Optimistic update
+    // Optimistic update - immediately saves to state (and thus localStorage via useEffect)
     setPosts(prev => [newPost, ...prev]);
 
     try {
@@ -129,8 +161,21 @@ export const BlogProvider = ({ children }) => {
       }
       return tempId;
     } catch (error) {
-      console.error("Failed to save post:", error);
+      console.error("Failed to save post to backend:", error);
+      // We don't revert the state here, so the post remains locally
       return tempId;
+    }
+  };
+
+  const deletePost = async (id) => {
+    // Optimistic update
+    setPosts(prev => prev.filter(post => post.id !== id));
+    try {
+      await ncbDelete('posts', id);
+    } catch (error) {
+      console.error("Failed to delete post:", error);
+      // If backend delete fails, we might want to revert, 
+      // but for now we keep the local deletion to be responsive
     }
   };
 
@@ -147,6 +192,7 @@ export const BlogProvider = ({ children }) => {
     categories,
     isLoading,
     addPost,
+    deletePost,
     getPost,
     getPostsByCategory
   };

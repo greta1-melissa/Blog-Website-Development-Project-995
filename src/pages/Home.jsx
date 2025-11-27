@@ -18,7 +18,7 @@ const Home = () => {
 
   // Logic for Featured Section: 1 Most Recent + 2 Hand Picked
   const featuredPosts = useMemo(() => {
-    if (posts.length === 0) return [];
+    if (!posts || posts.length === 0) return [];
     
     const mostRecent = posts[0];
     
@@ -26,12 +26,13 @@ const Home = () => {
     const handPicked = posts
       .filter(p => p.id !== mostRecent.id && p.isHandPicked)
       .slice(0, 2);
-    
+      
     // Combine them
     return [mostRecent, ...handPicked];
   }, [posts]);
 
-  const mostRecentPost = posts[0];
+  // Safely access the most recent post
+  const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
 
   const currentKDrama = {
     title: "Would You Marry Me?",
@@ -81,10 +82,9 @@ const Home = () => {
 
       {/* Bento Grid Featured Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
-        {/* Adjusted grid height and gap */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
           {/* Main Feature: Latest Post */}
-          {mostRecentPost && (
+          {mostRecentPost ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -92,12 +92,12 @@ const Home = () => {
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
               {/* Video Background - Priority Load */}
-              <video
-                src={FEATURED_STORY_VIDEO_URL}
-                autoPlay
-                loop
-                muted
-                playsInline
+              <video 
+                src={FEATURED_STORY_VIDEO_URL} 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
                 preload="auto"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -112,18 +112,15 @@ const Home = () => {
                     <SafeIcon icon={FiCalendar} className="mr-2" /> {mostRecentPost.date}
                   </span>
                 </div>
-                
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
                   <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight group-hover:text-purple-200 transition-colors drop-shadow-sm">
                     {mostRecentPost.title}
                   </h2>
                 </Link>
-                
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {mostRecentPost.content}
                 </p>
-                
-                <Link 
+                <Link
                   to={`/post/${mostRecentPost.id}`}
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
                 >
@@ -131,6 +128,14 @@ const Home = () => {
                 </Link>
               </div>
             </motion.div>
+          ) : (
+             <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm flex items-center justify-center border border-purple-100 p-10 h-[400px] lg:h-full">
+               <div className="text-center">
+                 <div className="text-4xl mb-4">✍️</div>
+                 <h3 className="text-xl font-bold text-gray-900">Stories loading...</h3>
+                 <p className="text-gray-500">Getting the latest updates for you.</p>
+               </div>
+             </div>
           )}
 
           {/* Right Column */}
@@ -145,10 +150,9 @@ const Home = () => {
               <img 
                 src={currentKDrama.image} 
                 alt="K-Drama" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
-              
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
@@ -161,7 +165,6 @@ const Home = () => {
                     {currentKDrama.status}
                   </span>
                 </div>
-                
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
                   <p className="text-sm text-purple-200 mb-3">{currentKDrama.episode}</p>
@@ -220,7 +223,7 @@ const Home = () => {
             <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
           <div className="mt-4 md:mt-0">
-            <Link 
+            <Link
               to="/blogs"
               className="inline-flex items-center px-6 py-3 bg-white text-purple-600 border border-purple-200 rounded-full font-medium hover:bg-purple-50 transition-colors shadow-sm"
             >
@@ -238,39 +241,36 @@ const Home = () => {
 
         {/* Newsletter / CTA Section */}
         <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
-              {/* Lazy load the footer video only when in view */}
-              {isFooterInView && (
-                <video
-                  src={ANIMATED_LOGO_VIDEO_URL}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover transform scale-110"
-                />
-              )}
+               {/* Lazy load the footer video only when in view */}
+               {isFooterInView && (
+                 <video 
+                   src={ANIMATED_LOGO_VIDEO_URL} 
+                   autoPlay 
+                   loop 
+                   muted 
+                   playsInline 
+                   className="w-full h-full object-cover transform scale-110" 
+                 />
+               )}
             </div>
-            
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
             <p className="text-purple-200 mb-8 text-lg">
               Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.
             </p>
-            
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Your email address" 
+              <input
+                type="email"
+                placeholder="Your email address"
                 className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
               />
               <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">

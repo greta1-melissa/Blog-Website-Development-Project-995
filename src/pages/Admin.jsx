@@ -38,7 +38,7 @@ const AccessDenied = () => (
 );
 
 const Admin = () => {
-  const { posts = [], categories = [] } = useBlog();
+  const { posts = [], categories = [], deletePost } = useBlog();
   const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,8 +50,8 @@ const Admin = () => {
     const safePosts = Array.isArray(posts) ? posts : [];
     const totalPosts = safePosts.length;
     const totalCategories = Array.isArray(categories) ? categories.length : 0;
-
-    const avgWordsPerPost = totalPosts > 0
+    
+    const avgWordsPerPost = totalPosts > 0 
       ? Math.round(
           safePosts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0) / totalPosts
         )
@@ -60,20 +60,14 @@ const Admin = () => {
     const categoryStats = (Array.isArray(categories) ? categories : []).map(cat => ({
       name: cat,
       count: safePosts.filter(post => post.category === cat).length,
-      percentage: totalPosts > 0
+      percentage: totalPosts > 0 
         ? Math.round((safePosts.filter(post => post.category === cat).length / totalPosts) * 100)
         : 0
     }));
 
     const recentPosts = safePosts.slice(0, 5);
 
-    return {
-      totalPosts,
-      totalCategories,
-      avgWordsPerPost,
-      categoryStats,
-      recentPosts
-    };
+    return { totalPosts, totalCategories, avgWordsPerPost, categoryStats, recentPosts };
   }, [posts, categories]);
 
   // Filter posts for management - moved outside of conditional rendering
@@ -82,20 +76,20 @@ const Admin = () => {
     return safePosts.filter(post => {
       const postTitle = post.title || '';
       const postContent = post.content || '';
+      
       const matchesSearch = searchTerm === '' || 
-        postTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        postTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
         postContent.toLowerCase().includes(searchTerm.toLowerCase());
+      
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
       
       return matchesSearch && matchesCategory;
     });
   }, [posts, searchTerm, filterCategory]);
 
-  const handleDeletePost = (postId) => {
+  const handleDeletePost = async (postId) => {
     if (window.confirm('Are you sure you want to delete this post?')) {
-      // In a real app, this would call a delete function from BlogContext
-      console.log('Delete post:', postId);
-      alert('Post deletion would be implemented here');
+      await deletePost(postId);
     }
   };
 
@@ -163,7 +157,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
-
+            
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -175,7 +169,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
-
+            
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 {/* Changed from Green to Fuchsia */}
@@ -188,7 +182,7 @@ const Admin = () => {
                 </div>
               </div>
             </div>
-
+            
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
@@ -213,8 +207,8 @@ const Admin = () => {
                       <span className="text-gray-700">{cat.name}</span>
                       <div className="flex items-center space-x-2">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-purple-500 h-2 rounded-full"
+                          <div 
+                            className="bg-purple-500 h-2 rounded-full" 
                             style={{ width: `${cat.percentage}%` }}
                           ></div>
                         </div>
@@ -232,7 +226,7 @@ const Admin = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Posts</h3>
-                <Link
+                <Link 
                   to="/create"
                   className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
                 >
@@ -246,7 +240,7 @@ const Admin = () => {
                       <img 
                         src={post.image || 'https://via.placeholder.com/150'} 
                         alt={post.title} 
-                        className="w-12 h-12 rounded-lg object-cover" 
+                        className="w-12 h-12 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
@@ -342,7 +336,7 @@ const Admin = () => {
                           <img 
                             src={post.image || 'https://via.placeholder.com/150'} 
                             alt={post.title} 
-                            className="w-10 h-10 rounded-lg object-cover mr-3" 
+                            className="w-10 h-10 rounded-lg object-cover mr-3"
                           />
                           <div>
                             <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
@@ -414,8 +408,8 @@ const Admin = () => {
                       <span className="text-gray-700">{cat.name}</span>
                       <div className="flex items-center space-x-2">
                         <div className="w-32 bg-gray-200 rounded-full h-3">
-                          <div
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full"
+                          <div 
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" 
                             style={{ width: `${cat.percentage}%` }}
                           ></div>
                         </div>
