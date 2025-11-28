@@ -82,7 +82,6 @@ const getLocalPosts = () => {
 };
 
 export const BlogProvider = ({ children }) => {
-  // Initialize from local storage if available to prevent flash of default content
   const [posts, setPosts] = useState(() => getLocalPosts() || []);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,46 +96,30 @@ export const BlogProvider = ({ children }) => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch from API (NCB)
-      // ncbGet now guarantees an array return, even on error (returns [])
       const serverData = await ncbGet('posts');
-      
       let mergedPosts = [];
 
       if (serverData && serverData.length > 0) {
         // We have data from the server!
-        
-        // 2. Handle Local Drafts
-        // We only want to keep local posts that have 'temporary' IDs not present on the server.
-        // This handles the case where you created a post but it hasn't synced yet.
         const localData = getLocalPosts() || [];
         const serverIds = new Set(serverData.map(p => String(p.id)));
         
+        // Only keep local posts that are NOT on the server (drafts/unsynced)
         const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
         
-        // Merge: Local drafts + Server posts
         mergedPosts = [...localDrafts, ...serverData];
-        
       } else {
-        // No server data (or API failed). Fallback logic.
-        console.warn("NoCodeBackend: No posts returned. Falling back to local/seed data.");
-        
+        // Fallback
         const localData = getLocalPosts();
-        if (localData && localData.length > 0) {
-          mergedPosts = localData;
-        } else {
-          mergedPosts = initialPosts;
-        }
+        mergedPosts = (localData && localData.length > 0) ? localData : initialPosts;
       }
       
-      // 3. Sort by Date (Newest First)
+      // Sort: Newest First
       mergedPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setPosts(mergedPosts);
-
     } catch (error) {
       console.error("NoCodeBackend: Critical failure in fetchPosts.", error);
-      // Fallback to local data on critical error
       const localData = getLocalPosts();
       setPosts(localData && localData.length > 0 ? localData : initialPosts);
     } finally {
@@ -162,40 +145,36 @@ export const BlogProvider = ({ children }) => {
 
     const newPost = {
       ...post,
-      id: tempId, // Temporary ID (Timestamp)
+      id: tempId, // Temporary ID for UI only
       date: new Date().toISOString().split('T')[0],
       readTime: readTime,
       author: post.author || "Melissa",
       isHandPicked: false
     };
 
-    // Optimistic update - immediately saves to state
+    // Optimistic update
     setPosts(prev => [newPost, ...prev]);
 
     try {
-      // Attempt to save to backend
-      const result = await ncbCreate('posts', newPost);
+      // CRITICAL FIX: Remove 'id' before sending to backend
+      // We want the backend to generate its own ID or handle creation without conflict
+      const { id, ...postPayload } = newPost;
       
-      // Check if we got a valid ID back
+      const result = await ncbCreate('posts', postPayload);
+      
       if (result && result.id) {
-        // Update the post in state with the REAL ID from backend
+        // Update state with REAL ID
         setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
         return result.id;
       }
-      
-      // If result exists but no ID (unlikely with NCB), just return tempId
       return tempId;
-      
     } catch (error) {
       console.error("NoCodeBackend: Failed to save post.", error);
-      // We do NOT revert the state, keeping the post locally so user work isn't lost.
-      // It will have the tempId.
       return tempId;
     }
   };
 
   const deletePost = async (id) => {
-    // Optimistic update
     setPosts(prev => prev.filter(post => post.id !== id));
     try {
       await ncbDelete('posts', id);

@@ -12,8 +12,10 @@ const getHeaders = () => {
   };
   if (NCB_API_KEY) {
     headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
+  } else {
+    console.warn("NCB: VITE_NCB_API_KEY is missing! API calls will likely fail.");
   }
-  // Though we pass instance_id in query params, some versions might check headers too
+  
   if (NCB_INSTANCE) {
     headers['Instance'] = NCB_INSTANCE;
   }
@@ -22,7 +24,6 @@ const getHeaders = () => {
 
 const buildUrl = (tableName, queryParams = {}) => {
   const url = new URL(`${NCB_URL}/api/v1/${tableName}`);
-  // Ensure instance is passed if required
   if (NCB_INSTANCE) {
     url.searchParams.append('instance_id', NCB_INSTANCE);
   }
@@ -41,24 +42,21 @@ export const ncbGet = async (tableName, queryParams = {}) => {
     });
 
     if (!response.ok) {
-      console.error(`NCB: Error fetching ${tableName}. Status: ${response.status}`);
+      console.error(`NCB: Get ${tableName} failed: ${response.status}`);
       return [];
     }
 
     const json = await response.json();
 
-    // Handle different response shapes
     if (Array.isArray(json)) {
       return json;
     } else if (json && Array.isArray(json.data)) {
       return json.data;
     } else {
-      console.warn(`NCB: Unexpected response shape for ${tableName}`, json);
       return [];
     }
   } catch (error) {
-    console.error(`NCB: Network/Parse error fetching ${tableName}`, error);
-    // Return empty array to prevent UI crashes
+    console.error(`NCB: Network error ${tableName}`, error);
     return [];
   }
 };
@@ -73,19 +71,17 @@ export const ncbCreate = async (tableName, payload) => {
     });
 
     if (!response.ok) {
-      console.error(`NCB: Create failed in ${tableName}. Status: ${response.status}`);
+      console.error(`NCB: Create ${tableName} failed: ${response.status}`);
       throw new Error(`NCB Error: ${response.status}`);
     }
 
     const json = await response.json();
-    
-    // Handle wrapped response { success: true, data: {...} } vs flat object
     if (json && json.data) {
       return json.data;
     }
     return json;
   } catch (error) {
-    console.error(`NCB: Error creating item in ${tableName}`, error);
+    console.error(`NCB: Create error ${tableName}`, error);
     throw error;
   }
 };
@@ -100,7 +96,7 @@ export const ncbUpdate = async (tableName, id, payload) => {
     });
 
     if (!response.ok) {
-      console.error(`NCB: Update failed in ${tableName}. Status: ${response.status}`);
+      console.error(`NCB: Update ${tableName} failed: ${response.status}`);
       throw new Error(`NCB Update Error: ${response.status}`);
     }
     
@@ -110,7 +106,7 @@ export const ncbUpdate = async (tableName, id, payload) => {
     }
     return json;
   } catch (error) {
-    console.error(`NCB: Error updating ${tableName} ID ${id}`, error);
+    console.error(`NCB: Update error ${tableName}`, error);
     throw error;
   }
 };
@@ -124,7 +120,7 @@ export const ncbDelete = async (tableName, id) => {
     });
 
     if (!response.ok) {
-      console.error(`NCB: Delete failed in ${tableName}. Status: ${response.status}`);
+      console.error(`NCB: Delete ${tableName} failed: ${response.status}`);
       throw new Error(`NCB Delete Error: ${response.status}`);
     }
 
@@ -134,15 +130,11 @@ export const ncbDelete = async (tableName, id) => {
     }
     return json;
   } catch (error) {
-    console.error(`NCB: Error deleting from ${tableName} ID ${id}`, error);
+    console.error(`NCB: Delete error ${tableName}`, error);
     throw error;
   }
 };
 
-/**
- * Debug helper to check NCB connection status.
- * WARNING: Do not expose sensitive values in the return object.
- */
 export const getNcbStatus = async () => {
     const checks = {
         hasUrl: !!NCB_URL,
@@ -154,7 +146,6 @@ export const getNcbStatus = async () => {
     };
 
     try {
-        // Try to fetch posts as a connectivity test
         const posts = await ncbGet('posts');
         checks.canReadPosts = true;
         checks.postCount = Array.isArray(posts) ? posts.length : 0;

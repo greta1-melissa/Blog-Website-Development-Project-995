@@ -5,12 +5,14 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
+const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck, FiImage } = FiIcons;
 
 const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
   const [isFollowing, setIsFollowing] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
   const post = getPost(id);
 
   if (!post) {
@@ -32,7 +34,6 @@ const BlogPost = () => {
   }
 
   const getCategoryStyle = (category) => {
-    // All purple gradients
     return 'bg-gradient-to-r from-purple-500 to-purple-700 text-white';
   };
 
@@ -53,6 +54,8 @@ const BlogPost = () => {
     setIsFollowing(!isFollowing);
   };
 
+  const fallbackImage = "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
       <motion.article
@@ -68,14 +71,29 @@ const BlogPost = () => {
           <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
         </Link>
 
-        <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100">
-          <img src={post.image} alt={post.title} className="w-full h-64 md:h-96 object-cover" />
+        <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
+           {!imgError ? (
+            <img
+              src={post.image || fallbackImage}
+              alt={post.title}
+              className="w-full h-64 md:h-96 object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center text-gray-400">
+               <SafeIcon icon={FiImage} className="text-6xl mb-3 opacity-50" />
+               <span className="text-sm font-medium">Image unavailable</span>
+            </div>
+          )}
+          
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
+          
           <div className="absolute top-6 left-6">
             <span className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${getCategoryStyle(post.category)}`}>
               <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
             </span>
           </div>
+          
           <button
             onClick={handleShare}
             className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
@@ -107,7 +125,10 @@ const BlogPost = () => {
           </h1>
 
           <div className="w-full bg-purple-100 rounded-full h-2 mb-6">
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300" id="reading-progress"></div>
+            <div
+              className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300"
+              id="reading-progress"
+            ></div>
           </div>
         </div>
 
@@ -150,16 +171,15 @@ const BlogPost = () => {
           <p className="text-purple-100 leading-relaxed">
             Hi! I'm Melissa, a mom who loves sharing authentic stories about family life, wellness, and my passion for K-culture. Thank you for reading and being part of this amazing community! 💜
           </p>
+
           <div className="flex items-center mt-6 space-x-4">
-            <button 
+            <button
               onClick={toggleFollow}
               className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
-                isFollowing 
-                  ? 'bg-white text-purple-600 font-bold' 
-                  : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white'
+                isFollowing ? 'bg-white text-purple-600 font-bold' : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white'
               }`}
             >
-              <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} /> 
+              <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} />
               {isFollowing ? 'Following' : 'Follow'}
             </button>
             <button
@@ -195,18 +215,21 @@ const BlogPost = () => {
           </div>
         </motion.div>
       </motion.article>
-      <script dangerouslySetInnerHTML={{__html: `
-        window.addEventListener('scroll', function() {
-          const article = document.querySelector('article');
-          const progressBar = document.getElementById('reading-progress');
-          if (article && progressBar) {
-            const articleHeight = article.offsetHeight;
-            const scrolled = window.scrollY;
-            const progress = (scrolled / (articleHeight - window.innerHeight)) * 100;
-            progressBar.style.width = Math.min(progress, 100) + '%';
-          }
-        });
-      `}} />
+      
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          window.addEventListener('scroll', function() {
+            const article = document.querySelector('article');
+            const progressBar = document.getElementById('reading-progress');
+            if (article && progressBar) {
+              const articleHeight = article.offsetHeight;
+              const scrolled = window.scrollY;
+              const progress = (scrolled / (articleHeight - window.innerHeight)) * 100;
+              progressBar.style.width = Math.min(progress, 100) + '%';
+            }
+          });
+        `
+      }} />
     </div>
   );
 };

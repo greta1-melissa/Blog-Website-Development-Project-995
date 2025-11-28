@@ -12,7 +12,7 @@ export const useForum = () => {
   return context;
 };
 
-// All colors updated to Purple shades
+// Default categories (Purple shades)
 const defaultCategories = [
   { id: 1, name: 'Mom Life & Parenting', description: 'Share your parenting journey', color: 'bg-purple-500', icon: '👶' },
   { id: 2, name: 'K-Drama & Entertainment', description: 'Discuss your favorite K-dramas', color: 'bg-purple-600', icon: '📺' },
@@ -22,7 +22,6 @@ const defaultCategories = [
   { id: 6, name: 'General Chat', description: 'Random thoughts', color: 'bg-purple-300', icon: '💬' }
 ];
 
-// Helper for local storage
 const getLocalData = (key) => {
   try {
     const data = localStorage.getItem(key);
@@ -35,11 +34,9 @@ const getLocalData = (key) => {
 export const ForumProvider = ({ children }) => {
   const { user } = useAuth();
   const [categories, setCategories] = useState(defaultCategories);
-  // Initialize with local data to prevent data loss on refresh
   const [threads, setThreads] = useState(() => getLocalData('forum_threads'));
   const [replies, setReplies] = useState(() => getLocalData('forum_replies'));
 
-  // Persistence effects
   useEffect(() => {
     if (threads.length > 0) localStorage.setItem('forum_threads', JSON.stringify(threads));
   }, [threads]);
@@ -55,20 +52,15 @@ export const ForumProvider = ({ children }) => {
         ncbGet('replies')
       ]);
       
-      // Smart Merge for Threads
       if (Array.isArray(serverThreads) && serverThreads.length > 0) {
         const localThreads = getLocalData('forum_threads');
         const serverIds = new Set(serverThreads.map(t => String(t.id)));
         const localOnly = localThreads.filter(t => !serverIds.has(String(t.id)));
         const mergedThreads = [...localOnly, ...serverThreads];
-        
-        // Sort threads by most recent update
         mergedThreads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-        
         setThreads(mergedThreads);
       }
 
-      // Smart Merge for Replies
       if (Array.isArray(serverReplies) && serverReplies.length > 0) {
         const localReplies = getLocalData('forum_replies');
         const serverIds = new Set(serverReplies.map(r => String(r.id)));
@@ -76,7 +68,7 @@ export const ForumProvider = ({ children }) => {
         setReplies([...localOnly, ...serverReplies]);
       }
     } catch (error) {
-      console.error("Error fetching forum data, using local data", error);
+      console.error("Error fetching forum data", error);
     }
   };
 
@@ -103,6 +95,7 @@ export const ForumProvider = ({ children }) => {
     setThreads(prev => [{ ...newThread, id: tempId }, ...prev]);
 
     try {
+      // CRITICAL FIX: Send payload without ID
       const savedThread = await ncbCreate('threads', newThread);
       if (savedThread) {
         setThreads(prev => prev.map(t => t.id === tempId ? { ...t, id: savedThread.id } : t));
@@ -126,9 +119,9 @@ export const ForumProvider = ({ children }) => {
       likes: 0
     };
 
+    // Optimistic update
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
     
-    // Optimistic update for thread reply count
     setThreads(prev => prev.map(thread => 
       String(thread.id) === String(threadId) 
         ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
@@ -136,7 +129,9 @@ export const ForumProvider = ({ children }) => {
     ));
 
     try {
+      // CRITICAL FIX: Send payload without ID
       await ncbCreate('replies', newReply);
+      
       const thread = threads.find(t => String(t.id) === String(threadId));
       if (thread) {
         await ncbUpdate('threads', threadId, { replies: (thread.replies || 0) + 1 });
@@ -164,7 +159,6 @@ export const ForumProvider = ({ children }) => {
         ? { ...thread, views: (thread.views || 0) + 1 } 
         : thread
     ));
-    // Try to update backend but don't await
     const thread = threads.find(t => String(t.id) === String(threadId));
     if(thread) {
        ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 }).catch(e => console.error(e));
@@ -175,7 +169,6 @@ export const ForumProvider = ({ children }) => {
     const reply = replies.find(r => String(r.id) === String(replyId));
     const newLikes = (reply?.likes || 0) + 1;
 
-    // Optimistic UI update
     setReplies(prev => prev.map(r => 
       String(r.id) === String(replyId) ? { ...r, likes: newLikes } : r
     ));

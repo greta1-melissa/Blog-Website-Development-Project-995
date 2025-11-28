@@ -21,11 +21,28 @@ const CreatePost = () => {
   });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
-  
+  const [imageError, setImageError] = useState(false);
+
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
 
+  const processImageUrl = (url) => {
+    if (!url) return '';
+    // Automatically convert Dropbox share links (dl=0) to direct raw images (raw=1)
+    if (url.includes('dropbox.com') && url.includes('dl=0')) {
+      return url.replace('dl=0', 'raw=1');
+    }
+    return url;
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'image') {
+      const processedUrl = processImageUrl(value);
+      setFormData({ ...formData, [name]: processedUrl });
+      setImageError(false); // Reset error state on change
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -34,14 +51,13 @@ const CreatePost = () => {
 
     setIsUploading(true);
     setUploadStatus('Uploading...');
+    setImageError(false);
 
     try {
       // 1. Attempt Server-Side Upload (Dropbox)
-      // This might fail in local/preview environments if the API isn't running
       const data = new FormData();
       data.append('file', file);
 
-      // Set a timeout to fail fast if API is unreachable
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -49,29 +65,25 @@ const CreatePost = () => {
         method: 'POST',
         body: data,
         signal: controller.signal
-      }).catch(() => null); // Catch network errors immediately
-      
+      }).catch(() => null);
+
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
-      
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
-          return; // Success!
+          return;
         }
       }
-
-      // If we reach here, server upload failed or didn't return success
       throw new Error("Server upload unavailable");
 
     } catch (error) {
       console.warn("Server upload failed, falling back to local compression:", error);
       
       // 2. Fallback: Local File Reading (Base64)
-      // This ensures the feature works even without the backend 
       try {
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -79,7 +91,6 @@ const CreatePost = () => {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-
         setFormData(prev => ({ ...prev, image: base64 }));
         setUploadStatus('Upload Complete!');
       } catch (localError) {
@@ -106,7 +117,6 @@ const CreatePost = () => {
     };
 
     const postId = await addPost(postData);
-
     if (postId) {
       navigate(`/post/${postId}`);
     } else {
@@ -130,7 +140,7 @@ const CreatePost = () => {
             What's on your heart today? Let's share it with our community 💜
           </p>
           <div className="mt-4 inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-            Writing as: <strong className="ml-1">{user?.name}</strong> 
+            Writing as: <strong className="ml-1">{user?.name}</strong>
             <span className="ml-2 text-xs bg-purple-200 px-2 py-1 rounded-full">
               {user?.role}
             </span>
@@ -217,19 +227,39 @@ const CreatePost = () => {
                   ) : uploadStatus === 'Upload Complete!' ? (
                     <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
                   ) : uploadStatus === 'Upload Failed' ? (
-                     <><SafeIcon icon={FiAlertCircle} className="mr-2" /> Retry Upload</>
+                    <><SafeIcon icon={FiAlertCircle} className="mr-2" /> Retry Upload</>
                   ) : (
                     <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload Photo</>
                   )}
                 </label>
               </div>
             </div>
+
+            {/* Image Preview Area */}
             {formData.image && (
-              <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200">
-                 <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
-                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate px-2">
-                   Image Preview
-                 </div>
+              <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200 bg-gray-50">
+                <img
+                  src={formData.image}
+                  alt="Preview"
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                  onError={(e) => {
+                    console.log("Image load error, setting fallback state");
+                    setImageError(true);
+                  }}
+                  onLoad={() => setImageError(false)}
+                />
+                {imageError && (
+                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                     <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
+                     <span className="text-xs">Preview unavailable</span>
+                     <span className="text-[10px] text-gray-400 mt-1 px-2 text-center">Check the URL</span>
+                   </div>
+                )}
+                {!imageError && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate px-2">
+                    Image Preview
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -257,7 +287,8 @@ const CreatePost = () => {
               type="submit"
               className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200"
             >
-              <SafeIcon icon={FiSave} className="mr-2" /> Publish Post
+              <SafeIcon icon={FiSave} className="mr-2" />
+              Publish Post
             </motion.button>
           </div>
         </form>
