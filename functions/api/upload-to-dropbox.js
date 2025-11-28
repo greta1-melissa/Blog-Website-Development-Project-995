@@ -19,7 +19,7 @@ export async function onRequest(context) {
 
     const filename = file.name;
     const arrayBuffer = await file.arrayBuffer();
-    
+
     // Dropbox API requires the file path in a special header
     const dbxArgs = {
       path: `/Apps/BangtanMom/uploads/${Date.now()}_${filename}`,
@@ -46,8 +46,7 @@ export async function onRequest(context) {
 
     const dbxData = await dbxResponse.json();
 
-    // Create a shared link (optional, or use a temporary link)
-    // For permanent usage, we usually create a shared link
+    // Create a shared link
     const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
       headers: {
@@ -60,20 +59,21 @@ export async function onRequest(context) {
     let publicUrl = '';
     if (shareResponse.ok) {
       const shareData = await shareResponse.json();
-      // Convert dl=0 to raw=1 for direct image display
+      // CRITICAL: Convert dl=0 to raw=1 for direct image display
       publicUrl = shareData.url.replace('dl=0', 'raw=1');
     } else {
-      // Fallback or handle error - sometimes link already exists
-      // Just return the path if sharing fails, frontend might handle differently
+      // If link exists, Dropbox returns error, we might need to fetch existing links
+      // For now, if sharing fails, we can't display it easily
+      // A robust implementation would check for existing links here
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       path: dbxData.path_lower,
       url: publicUrl,
       name: dbxData.name
-    }), { 
-      headers: { 'Content-Type': 'application/json' } 
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {

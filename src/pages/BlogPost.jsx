@@ -71,6 +71,7 @@ const BlogPost = () => {
           <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
         </Link>
 
+        {/* Image Section with Error Handling */}
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
            {!imgError ? (
             <img

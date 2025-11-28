@@ -93,6 +93,7 @@ export const BlogProvider = ({ children }) => {
     }
   }, [posts]);
 
+  // Fetch posts from backend
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
@@ -105,11 +106,12 @@ export const BlogProvider = ({ children }) => {
         const serverIds = new Set(serverData.map(p => String(p.id)));
         
         // Only keep local posts that are NOT on the server (drafts/unsynced)
+        // This is a simple conflict resolution strategy
         const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
         
         mergedPosts = [...localDrafts, ...serverData];
       } else {
-        // Fallback
+        // Fallback to local or initial data
         const localData = getLocalPosts();
         mergedPosts = (localData && localData.length > 0) ? localData : initialPosts;
       }
@@ -157,13 +159,13 @@ export const BlogProvider = ({ children }) => {
 
     try {
       // CRITICAL FIX: Remove 'id' before sending to backend
-      // We want the backend to generate its own ID or handle creation without conflict
+      // This prevents conflict with backend auto-increment IDs
       const { id, ...postPayload } = newPost;
       
       const result = await ncbCreate('posts', postPayload);
       
       if (result && result.id) {
-        // Update state with REAL ID
+        // Update state with REAL ID from backend
         setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
         return result.id;
       }

@@ -25,9 +25,10 @@ const CreatePost = () => {
 
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
 
+  // AUTOMATICALLY FIX DROPBOX LINKS
   const processImageUrl = (url) => {
     if (!url) return '';
-    // Automatically convert Dropbox share links (dl=0) to direct raw images (raw=1)
+    // Convert Dropbox share links (dl=0) to direct raw images (raw=1)
     if (url.includes('dropbox.com') && url.includes('dl=0')) {
       return url.replace('dl=0', 'raw=1');
     }
@@ -39,7 +40,7 @@ const CreatePost = () => {
     if (name === 'image') {
       const processedUrl = processImageUrl(value);
       setFormData({ ...formData, [name]: processedUrl });
-      setImageError(false); // Reset error state on change
+      setImageError(false); // Reset error state on new input
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -59,13 +60,17 @@ const CreatePost = () => {
       data.append('file', file);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
 
+      // Note: This endpoint works on Cloudflare Pages but might 404 in local dev without wrangler
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
         signal: controller.signal
-      }).catch(() => null);
+      }).catch((err) => {
+        console.warn("Fetch failed (likely local dev or timeout):", err);
+        return null;
+      });
 
       clearTimeout(timeoutId);
 
@@ -78,7 +83,7 @@ const CreatePost = () => {
           return;
         }
       }
-      throw new Error("Server upload unavailable");
+      throw new Error("Server upload unavailable or failed");
 
     } catch (error) {
       console.warn("Server upload failed, falling back to local compression:", error);
@@ -92,7 +97,7 @@ const CreatePost = () => {
           reader.readAsDataURL(file);
         });
         setFormData(prev => ({ ...prev, image: base64 }));
-        setUploadStatus('Upload Complete!');
+        setUploadStatus('Upload Complete! (Local)');
       } catch (localError) {
         console.error('Local read error:', localError);
         setUploadStatus('Upload Failed');
@@ -201,7 +206,7 @@ const CreatePost = () => {
                   value={formData.image}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
+                  placeholder="Paste Dropbox link here..."
                 />
               </div>
               
@@ -224,7 +229,7 @@ const CreatePost = () => {
                 >
                   {isUploading ? (
                     <span className="animate-pulse">Uploading...</span>
-                  ) : uploadStatus === 'Upload Complete!' ? (
+                  ) : uploadStatus.includes('Upload Complete') ? (
                     <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
                   ) : uploadStatus === 'Upload Failed' ? (
                     <><SafeIcon icon={FiAlertCircle} className="mr-2" /> Retry Upload</>
@@ -235,24 +240,21 @@ const CreatePost = () => {
               </div>
             </div>
 
-            {/* Image Preview Area */}
+            {/* Image Preview Area - FIXED RENDERING */}
             {formData.image && (
               <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200 bg-gray-50">
                 <img
                   src={formData.image}
                   alt="Preview"
                   className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                  onError={(e) => {
-                    console.log("Image load error, setting fallback state");
-                    setImageError(true);
-                  }}
+                  onError={() => setImageError(true)}
                   onLoad={() => setImageError(false)}
                 />
                 {imageError && (
                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                      <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
                      <span className="text-xs">Preview unavailable</span>
-                     <span className="text-[10px] text-gray-400 mt-1 px-2 text-center">Check the URL</span>
+                     <span className="text-[10px] text-gray-400 mt-1 px-2 text-center">Link might be broken</span>
                    </div>
                 )}
                 {!imageError && (
