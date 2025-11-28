@@ -7,7 +7,8 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
-const { FiPlay, FiTv, FiMusic, FiArrowRight, FiCalendar, FiStar } = FiIcons;
+// Removed FiPlay and FiMusic as they were specific to the static Spotify card
+const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 
 const Home = () => {
   const { posts } = useBlog();
@@ -43,13 +44,6 @@ const Home = () => {
     year: "2024"
   };
 
-  const spotifyPlaylist = {
-    name: "Mom Vibes",
-    trackCount: 47,
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-    url: "https://open.spotify.com/playlist/37i9dQZF1DX9tPFwDMOaN1"
-  };
-
   return (
     <div className="min-h-screen pb-20 bg-primary-50">
       {/* Hero Section */}
@@ -83,9 +77,10 @@ const Home = () => {
       {/* Bento Grid Featured Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
+          
           {/* Main Feature: Latest Post */}
           {mostRecentPost ? (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -112,16 +107,19 @@ const Home = () => {
                     <SafeIcon icon={FiCalendar} className="mr-2" /> {mostRecentPost.date}
                   </span>
                 </div>
+                
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
                   <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight group-hover:text-purple-200 transition-colors drop-shadow-sm">
                     {mostRecentPost.title}
                   </h2>
                 </Link>
+                
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {mostRecentPost.content}
                 </p>
-                <Link
-                  to={`/post/${mostRecentPost.id}`}
+                
+                <Link 
+                  to={`/post/${mostRecentPost.id}`} 
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
                 >
                   Read Full Story <SafeIcon icon={FiArrowRight} className="ml-2" />
@@ -129,19 +127,19 @@ const Home = () => {
               </div>
             </motion.div>
           ) : (
-             <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm flex items-center justify-center border border-purple-100 p-10 h-[400px] lg:h-full">
-               <div className="text-center">
-                 <div className="text-4xl mb-4">✍️</div>
-                 <h3 className="text-xl font-bold text-gray-900">Stories loading...</h3>
-                 <p className="text-gray-500">Getting the latest updates for you.</p>
-               </div>
-             </div>
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm flex items-center justify-center border border-purple-100 p-10 h-[400px] lg:h-full">
+              <div className="text-center">
+                <div className="text-4xl mb-4">✍️</div>
+                <h3 className="text-xl font-bold text-gray-900">Stories loading...</h3>
+                <p className="text-gray-500">Getting the latest updates for you.</p>
+              </div>
+            </div>
           )}
 
           {/* Right Column */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
             {/* Top Right: Currently Watching */}
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -153,6 +151,7 @@ const Home = () => {
                 className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
+              
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
@@ -165,6 +164,7 @@ const Home = () => {
                     {currentKDrama.status}
                   </span>
                 </div>
+                
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
                   <p className="text-sm text-purple-200 mb-3">{currentKDrama.episode}</p>
@@ -173,39 +173,25 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Bottom Right: Spotify */}
-            <motion.div
+            {/* Bottom Right: Spotify Embed */}
+            <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex-1 bg-gradient-to-br from-purple-600 to-purple-800 rounded-3xl shadow-lg p-6 text-white flex flex-col justify-between relative overflow-hidden group border border-purple-500 min-h-[240px]"
+              className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
             >
-              <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all" />
-              
-              <div className="flex justify-between items-start relative z-10 w-full">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest opacity-80">Jamming To</span>
-                  <h3 className="text-2xl font-bold mt-1 line-clamp-1">{spotifyPlaylist.name}</h3>
-                </div>
-                <SafeIcon icon={FiMusic} className="text-3xl opacity-80 flex-shrink-0" />
-              </div>
-
-              <div className="flex items-center gap-4 relative z-10 mt-4">
-                <img src={spotifyPlaylist.image} alt="Album" className="w-12 h-12 rounded-lg shadow-md flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="h-1 bg-white/30 rounded-full overflow-hidden w-full">
-                    <div className="h-full bg-white w-2/3"></div>
-                  </div>
-                  <p className="text-xs mt-2 opacity-90 truncate">{spotifyPlaylist.trackCount} tracks • Mom Life</p>
-                </div>
-                <a 
-                  href={spotifyPlaylist.url} 
-                  target="_blank"
-                  className="w-10 h-10 bg-white text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform flex-shrink-0"
-                >
-                  <SafeIcon icon={FiPlay} className="ml-1" />
-                </a>
-              </div>
+              <iframe 
+                style={{ borderRadius: '0px' }} 
+                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0" 
+                width="100%" 
+                height="100%" 
+                frameBorder="0" 
+                allowFullScreen="" 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy"
+                title="Spotify Playlist"
+                className="absolute inset-0 w-full h-full"
+              ></iframe>
             </motion.div>
           </div>
         </div>
@@ -223,8 +209,8 @@ const Home = () => {
             <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
           <div className="mt-4 md:mt-0">
-            <Link
-              to="/blogs"
+            <Link 
+              to="/blogs" 
               className="inline-flex items-center px-6 py-3 bg-white text-purple-600 border border-purple-200 rounded-full font-medium hover:bg-purple-50 transition-colors shadow-sm"
             >
               View All Stories <SafeIcon icon={FiArrowRight} className="ml-2" />
@@ -240,13 +226,14 @@ const Home = () => {
         </div>
 
         {/* Newsletter / CTA Section */}
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
                {/* Lazy load the footer video only when in view */}
@@ -261,16 +248,18 @@ const Home = () => {
                  />
                )}
             </div>
+            
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
             <p className="text-purple-200 mb-8 text-lg">
               Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.
             </p>
+            
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="Your email address"
+              <input 
+                type="email" 
+                placeholder="Your email address" 
                 className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
               />
               <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">
