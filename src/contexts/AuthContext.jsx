@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ncbCreate } from '../services/nocodebackendClient';
 
 const AuthContext = createContext();
 
@@ -51,31 +52,55 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = (userData) => {
+  const login = async (userData) => {
     const { userId, token, newUser, email } = userData;
-    
+
     // Determine user role - default to subscriber
     let role = 'subscriber';
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
     }
 
+    const name = email?.split('@')[0] || 'User';
+
     localStorage.setItem('userId', userId);
     localStorage.setItem('token', token);
     localStorage.setItem('userRole', role);
     localStorage.setItem('userEmail', email);
-    localStorage.setItem('userName', email?.split('@')[0] || 'User');
+    localStorage.setItem('userName', name);
 
     setIsAuthenticated(true);
     setUser({
       id: userId,
       role: role,
       email: email,
-      name: email?.split('@')[0] || 'User'
+      name: name
     });
 
+    // CRITICAL: Sync new users to NCB so they appear in Admin Dashboard
     if (newUser) {
-      navigate('/onboarding');
+      try {
+        const userPayload = {
+          name: name,
+          email: email,
+          username: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+          role: role,
+          status: 'active',
+          joinDate: new Date().toISOString().split('T')[0],
+          lastLogin: new Date().toISOString().split('T')[0],
+          userId: userId // Store Quest ID for reference
+        };
+        
+        // We don't await this to avoid blocking the UI transition
+        ncbCreate('users', userPayload).catch(err => 
+          console.error("Auth: Failed to sync new user to NCB", err)
+        );
+        
+        navigate('/onboarding');
+      } catch (err) {
+        console.error("Auth: Error during user sync", err);
+        navigate('/');
+      }
     } else {
       navigate('/');
     }
@@ -83,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   const adminLogin = (credentials) => {
     const { username, password } = credentials;
+
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
@@ -100,6 +126,7 @@ export const AuthProvider = ({ children }) => {
         email: ADMIN_CREDENTIALS.email,
         name: 'BangtanMom'
       });
+      
       navigate('/admin');
       return true;
     }
@@ -112,7 +139,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
-
+    
     setIsAuthenticated(false);
     setUser(null);
     navigate('/login');
@@ -120,9 +147,16 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    const roleHierarchy = { 'subscriber': 1, 'author': 2, 'admin': 3 };
+    
+    const roleHierarchy = {
+      'subscriber': 1,
+      'author': 2,
+      'admin': 3
+    };
+
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
+
     return userLevel >= requiredLevel;
   };
 
@@ -131,12 +165,12 @@ export const AuthProvider = ({ children }) => {
   const isSubscriber = () => user?.role === 'subscriber' || user?.role === 'author' || user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      user,
-      isLoading,
-      login,
-      adminLogin,
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      isLoading, 
+      login, 
+      adminLogin, 
       logout,
       hasPermission,
       isAdmin,

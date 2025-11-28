@@ -2,7 +2,11 @@
  * NoCodeBackend (NCB) Client
  * Handles all REST API interactions with the NoCodeBackend service.
  */
-const NCB_URL = import.meta.env.VITE_NCB_URL || 'https://openapi.nocodebackend.com';
+
+// Ensure URL doesn't have a trailing slash to prevent double slashes
+const rawUrl = import.meta.env.VITE_NCB_URL || 'https://openapi.nocodebackend.com';
+const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
+
 const NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE;
 const NCB_API_KEY = import.meta.env.VITE_NCB_API_KEY;
 
@@ -10,28 +14,50 @@ const getHeaders = () => {
   const headers = {
     'Content-Type': 'application/json',
   };
+  
   if (NCB_API_KEY) {
     headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
   } else {
-    console.warn("NCB: VITE_NCB_API_KEY is missing! API calls will likely fail.");
+    // Only warn in development to avoid console noise in prod
+    if (import.meta.env.DEV) {
+      console.warn("NCB: VITE_NCB_API_KEY is missing! API calls will likely fail.");
+    }
   }
   
   if (NCB_INSTANCE) {
     headers['Instance'] = NCB_INSTANCE;
   }
+  
   return headers;
 };
 
 const buildUrl = (tableName, queryParams = {}) => {
   const url = new URL(`${NCB_URL}/api/v1/${tableName}`);
+  
   if (NCB_INSTANCE) {
     url.searchParams.append('instance_id', NCB_INSTANCE);
   }
+  
   Object.keys(queryParams).forEach((key) => {
     url.searchParams.append(key, queryParams[key]);
   });
+  
   return url.toString();
 };
+
+// --- Debugging Helper ---
+export const getNcbConfig = () => {
+  return {
+    url: NCB_URL,
+    hasInstance: !!NCB_INSTANCE,
+    hasApiKey: !!NCB_API_KEY,
+    // Mask sensitive data for display
+    maskedInstance: NCB_INSTANCE ? `${NCB_INSTANCE.substring(0, 4)}...${NCB_INSTANCE.slice(-4)}` : 'Missing',
+    maskedKey: NCB_API_KEY ? `${NCB_API_KEY.substring(0, 4)}...${NCB_API_KEY.slice(-4)}` : 'Missing'
+  };
+};
+
+// --- API Methods ---
 
 export const ncbGet = async (tableName, queryParams = {}) => {
   try {
@@ -47,7 +73,6 @@ export const ncbGet = async (tableName, queryParams = {}) => {
     }
 
     const json = await response.json();
-
     if (Array.isArray(json)) {
       return json;
     } else if (json && Array.isArray(json.data)) {
@@ -99,7 +124,7 @@ export const ncbUpdate = async (tableName, id, payload) => {
       console.error(`NCB: Update ${tableName} failed: ${response.status}`);
       throw new Error(`NCB Update Error: ${response.status}`);
     }
-    
+
     const json = await response.json();
     if (json && json.data) {
       return json.data;
@@ -136,22 +161,23 @@ export const ncbDelete = async (tableName, id) => {
 };
 
 export const getNcbStatus = async () => {
-    const checks = {
-        hasUrl: !!NCB_URL,
-        hasInstance: !!NCB_INSTANCE,
-        hasApiKey: !!NCB_API_KEY,
-        canReadPosts: false,
-        postCount: 0,
-        message: ''
-    };
+  const config = getNcbConfig();
+  const checks = {
+    ...config,
+    canReadPosts: false,
+    postCount: 0,
+    message: ''
+  };
 
-    try {
-        const posts = await ncbGet('posts');
-        checks.canReadPosts = true;
-        checks.postCount = Array.isArray(posts) ? posts.length : 0;
-        checks.message = 'Connection successful';
-    } catch (e) {
-        checks.message = `Connection failed: ${e.message}`;
-    }
-    return checks;
+  try {
+    // Try to fetch posts to verify connection
+    const posts = await ncbGet('posts');
+    checks.canReadPosts = true;
+    checks.postCount = Array.isArray(posts) ? posts.length : 0;
+    checks.message = 'Connection successful';
+  } catch (e) {
+    checks.message = `Connection failed: ${e.message}`;
+  }
+
+  return checks;
 };

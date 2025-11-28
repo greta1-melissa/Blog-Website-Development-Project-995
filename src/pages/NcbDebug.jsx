@@ -3,7 +3,7 @@ import { getNcbStatus } from '../services/nocodebackendClient';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiCheckCircle, FiXCircle, FiRefreshCw, FiServer } = FiIcons;
+const { FiCheckCircle, FiXCircle, FiRefreshCw, FiServer, FiGlobe, FiKey, FiDatabase } = FiIcons;
 
 const NcbDebug = () => {
   const [status, setStatus] = useState(null);
@@ -20,22 +20,25 @@ const NcbDebug = () => {
     checkStatus();
   }, []);
 
-  const StatusItem = ({ label, value, isBool = false }) => (
+  const StatusItem = ({ label, value, isBool = false, icon: Icon }) => (
     <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0">
-      <span className="text-gray-600 font-medium">{label}</span>
+      <div className="flex items-center text-gray-600 font-medium">
+        {Icon && <SafeIcon icon={Icon} className="mr-2 text-gray-400" />}
+        {label}
+      </div>
       <div className="flex items-center">
         {isBool ? (
           value ? (
-            <span className="flex items-center text-green-600 font-bold">
-              <SafeIcon icon={FiCheckCircle} className="mr-2" /> Present
+            <span className="flex items-center text-green-600 font-bold text-sm bg-green-50 px-2 py-1 rounded-full">
+              <SafeIcon icon={FiCheckCircle} className="mr-1" /> Configured
             </span>
           ) : (
-            <span className="flex items-center text-red-500 font-bold">
-              <SafeIcon icon={FiXCircle} className="mr-2" /> Missing
+            <span className="flex items-center text-red-500 font-bold text-sm bg-red-50 px-2 py-1 rounded-full">
+              <SafeIcon icon={FiXCircle} className="mr-1" /> Missing
             </span>
           )
         ) : (
-          <span className="text-gray-900 font-bold">{value}</span>
+          <span className="text-gray-900 font-mono text-sm bg-gray-50 px-2 py-1 rounded">{value}</span>
         )}
       </div>
     </div>
@@ -43,11 +46,14 @@ const NcbDebug = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-purple-600 px-6 py-4 flex items-center justify-between">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
           <div className="flex items-center text-white">
             <SafeIcon icon={FiServer} className="text-2xl mr-3" />
-            <h1 className="text-xl font-bold">NCB Connection Debug</h1>
+            <div>
+              <h1 className="text-xl font-bold">NCB Connection Debug</h1>
+              <p className="text-purple-100 text-xs">Environment & Connectivity Check</p>
+            </div>
           </div>
           <button 
             onClick={checkStatus} 
@@ -60,44 +66,55 @@ const NcbDebug = () => {
 
         <div className="p-6">
           {loading && !status ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-12 text-gray-500 flex flex-col items-center">
+              <SafeIcon icon={FiRefreshCw} className="animate-spin text-3xl mb-3 text-purple-400" />
               Checking connection...
             </div>
           ) : status ? (
-            <div className="space-y-2">
-              <StatusItem label="VITE_NCB_URL" value={status.hasUrl} isBool />
-              <StatusItem label="VITE_NCB_INSTANCE" value={status.hasInstance} isBool />
-              <StatusItem label="VITE_NCB_API_KEY" value={status.hasApiKey} isBool />
-              
-              <div className="my-4 border-t border-gray-200"></div>
-              
-              <div className="flex justify-between items-center py-3">
-                <span className="text-gray-600 font-medium">Read Permission</span>
-                {status.canReadPosts ? (
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">
-                    Working
-                  </span>
-                ) : (
-                  <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">
-                    Failed
-                  </span>
-                )}
-              </div>
-              
-              <StatusItem label="Fetched Posts Count" value={status.postCount} />
-
-              {status.message && (
-                <div className="mt-4 p-3 bg-gray-100 rounded-lg text-sm text-gray-700">
-                  Status: {status.message}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Configuration</h3>
+                <div className="bg-white border border-gray-200 rounded-lg px-4">
+                  <StatusItem label="API URL" value={status.url} icon={FiGlobe} />
+                  <StatusItem label="Instance ID" value={status.maskedInstance} icon={FiDatabase} />
+                  <StatusItem label="API Key" value={status.maskedKey} icon={FiKey} />
                 </div>
-              )}
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Connectivity</h3>
+                <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-gray-600 font-medium">Read Permission (Posts)</span>
+                    {status.canReadPosts ? (
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
+                        <SafeIcon icon={FiCheckCircle} className="mr-1" /> Working
+                      </span>
+                    ) : (
+                      <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
+                        <SafeIcon icon={FiXCircle} className="mr-1" /> Failed
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Fetched <strong>{status.postCount}</strong> posts from the database.
+                  </div>
+                  {status.message && status.message !== 'Connection successful' && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
+                      <strong>Error:</strong> {status.message}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="text-center text-red-500">Failed to load status.</div>
+            <div className="text-center text-red-500 py-8">Failed to load status.</div>
           )}
         </div>
-        <div className="bg-gray-50 px-6 py-3 text-xs text-gray-500 text-center">
-          This page is for admin diagnostics only. Do not share screenshots containing sensitive data.
+
+        <div className="bg-gray-50 px-6 py-4 text-xs text-gray-500 flex items-center justify-between border-t border-gray-100">
+          <span>Admin Diagnostics Tool</span>
+          <span className="text-purple-600 font-medium">Bangtan Mom Blog</span>
         </div>
       </div>
     </div>
