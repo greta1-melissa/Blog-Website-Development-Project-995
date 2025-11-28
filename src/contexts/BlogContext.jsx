@@ -11,7 +11,7 @@ export const useBlog = () => {
   return context;
 };
 
-// Fallback data with 'isHandPicked' flag added for manual curation
+// Fallback data
 const initialPosts = [
   {
     id: 1,
@@ -97,34 +97,50 @@ export const BlogProvider = ({ children }) => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      // 1. Try fetching from API
-      const data = await ncbGet('posts');
+      // 1. Fetch from API
+      const serverData = await ncbGet('posts');
+      const localData = getLocalPosts() || [];
       
-      if (data && Array.isArray(data) && data.length > 0) {
-        // API success - Use this data
-        setPosts(data);
+      let mergedPosts = [];
+
+      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+        // We have server data.
+        // Identify posts that are ONLY in local storage (unsaved ones)
+        // We assume server IDs are distinct (or we check for matching IDs)
+        const serverIds = new Set(serverData.map(p => String(p.id)));
+        
+        // Keep local posts that don't exist on server yet
+        const localOnly = localData.filter(p => !serverIds.has(String(p.id)));
+        
+        // Merge: Local unsaved posts first (newest), then server posts
+        mergedPosts = [...localOnly, ...serverData];
+        
+        // Deduplicate just in case (prefer server version if ID matches)
+        // The filter above handles ID collision, but let's be safe against content
+        // This simple merge is robust enough for this use case
       } else {
-        // 2. API returned nothing/failed - Check if we have local data
-        const localData = getLocalPosts();
-        if (localData && localData.length > 0) {
-          setPosts(localData);
+        // No server data. Use local data.
+        if (localData.length > 0) {
+          mergedPosts = localData;
         } else {
-          // 3. No local data either - Use initial hardcoded data
-          setPosts(initialPosts);
+          // Nothing anywhere. Use initial hardcoded data.
+          mergedPosts = initialPosts;
         }
       }
+      
+      setPosts(mergedPosts);
+
     } catch (error) {
       console.error("Failed to fetch posts:", error);
-      // On error, rely on local data or fallback
+      // On error, rely on local data
       const localData = getLocalPosts();
-      setPosts(localData || initialPosts);
+      setPosts(localData && localData.length > 0 ? localData : initialPosts);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Only fetch if we haven't initialized from local storage yet, or to refresh
     fetchPosts();
   }, []);
 
@@ -162,7 +178,8 @@ export const BlogProvider = ({ children }) => {
       return tempId;
     } catch (error) {
       console.error("Failed to save post to backend:", error);
-      // We don't revert the state here, so the post remains locally
+      // We don't revert the state, so the post remains locally
+      // It will have the tempId, which fetchPosts knows how to preserve
       return tempId;
     }
   };
@@ -174,8 +191,6 @@ export const BlogProvider = ({ children }) => {
       await ncbDelete('posts', id);
     } catch (error) {
       console.error("Failed to delete post:", error);
-      // If backend delete fails, we might want to revert, 
-      // but for now we keep the local deletion to be responsive
     }
   };
 

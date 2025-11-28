@@ -50,17 +50,25 @@ export const ForumProvider = ({ children }) => {
 
   const fetchData = async () => {
     try {
-      const [fetchedThreads, fetchedReplies] = await Promise.all([
+      const [serverThreads, serverReplies] = await Promise.all([
         ncbGet('threads'),
         ncbGet('replies')
       ]);
       
-      // Only overwrite if we got data back from the server
-      if (Array.isArray(fetchedThreads) && fetchedThreads.length > 0) {
-        setThreads(fetchedThreads);
+      // Smart Merge for Threads
+      if (Array.isArray(serverThreads) && serverThreads.length > 0) {
+        const localThreads = getLocalData('forum_threads');
+        const serverIds = new Set(serverThreads.map(t => String(t.id)));
+        const localOnly = localThreads.filter(t => !serverIds.has(String(t.id)));
+        setThreads([...localOnly, ...serverThreads]);
       }
-      if (Array.isArray(fetchedReplies) && fetchedReplies.length > 0) {
-        setReplies(fetchedReplies);
+
+      // Smart Merge for Replies
+      if (Array.isArray(serverReplies) && serverReplies.length > 0) {
+        const localReplies = getLocalData('forum_replies');
+        const serverIds = new Set(serverReplies.map(r => String(r.id)));
+        const localOnly = localReplies.filter(r => !serverIds.has(String(r.id)));
+        setReplies([...localOnly, ...serverReplies]);
       }
     } catch (error) {
       console.error("Error fetching forum data, using local data", error);
