@@ -97,38 +97,46 @@ export const BlogProvider = ({ children }) => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      // 1. Get Local Data First (Source of Truth for Drafts/Unsaved)
-      const localData = getLocalPosts() || [];
-
-      // 2. Fetch from API
+      // 1. Fetch from API (NCB)
+      // ncbGet now guarantees an array return, even on error (returns [])
       const serverData = await ncbGet('posts');
       
       let mergedPosts = [];
 
-      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        // Create a Set of Server IDs for fast lookup
+      if (serverData && serverData.length > 0) {
+        // We have data from the server!
+        
+        // 2. Handle Local Drafts
+        // We only want to keep local posts that have 'temporary' IDs not present on the server.
+        // This handles the case where you created a post but it hasn't synced yet.
+        const localData = getLocalPosts() || [];
         const serverIds = new Set(serverData.map(p => String(p.id)));
         
-        // Keep local posts that are NOT in the server data (New/Unsaved posts)
-        // This ensures your "test" post (which has a timestamp ID usually) is kept
-        const localOnly = localData.filter(p => !serverIds.has(String(p.id)));
+        const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
         
-        // Merge: Local unsaved posts + Server posts
-        mergedPosts = [...localOnly, ...serverData];
+        // Merge: Local drafts + Server posts
+        mergedPosts = [...localDrafts, ...serverData];
+        
       } else {
-        // No valid server data? Fallback to local data if it exists, otherwise initial defaults
-        mergedPosts = localData.length > 0 ? localData : initialPosts;
+        // No server data (or API failed). Fallback logic.
+        console.warn("NoCodeBackend: No posts returned. Falling back to local/seed data.");
+        
+        const localData = getLocalPosts();
+        if (localData && localData.length > 0) {
+          mergedPosts = localData;
+        } else {
+          mergedPosts = initialPosts;
+        }
       }
       
-      // 3. FORCE SORT BY DATE (Newest First)
-      // This ensures your new post appears at the top regardless of merge order
+      // 3. Sort by Date (Newest First)
       mergedPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setPosts(mergedPosts);
 
     } catch (error) {
-      console.error("Failed to fetch posts:", error);
-      // On error, strictly rely on local data if available
+      console.error("NoCodeBackend: Critical failure in fetchPosts.", error);
+      // Fallback to local data on critical error
       const localData = getLocalPosts();
       setPosts(localData && localData.length > 0 ? localData : initialPosts);
     } finally {
@@ -162,20 +170,26 @@ export const BlogProvider = ({ children }) => {
     };
 
     // Optimistic update - immediately saves to state
-    // We prepend it (put it first) but the sort in fetchPosts will also respect the date
     setPosts(prev => [newPost, ...prev]);
 
     try {
+      // Attempt to save to backend
       const result = await ncbCreate('posts', newPost);
+      
+      // Check if we got a valid ID back
       if (result && result.id) {
-        // Update the post with the real ID from backend
+        // Update the post in state with the REAL ID from backend
         setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
         return result.id;
       }
+      
+      // If result exists but no ID (unlikely with NCB), just return tempId
       return tempId;
+      
     } catch (error) {
-      console.error("Failed to save post to backend:", error);
-      // We don't revert the state, so the post remains locally
+      console.error("NoCodeBackend: Failed to save post.", error);
+      // We do NOT revert the state, keeping the post locally so user work isn't lost.
+      // It will have the tempId.
       return tempId;
     }
   };

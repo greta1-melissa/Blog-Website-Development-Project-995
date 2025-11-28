@@ -23,14 +23,11 @@ import ForumCategory from './pages/ForumCategory';
 import ForumThread from './pages/ForumThread';
 import NewThread from './pages/NewThread';
 import ProductRecommendations from './pages/ProductRecommendations';
+import NcbDebug from './pages/NcbDebug';
 
 function App() {
   return (
-    <QuestProvider
-      apiKey={questConfig.APIKEY}
-      entityId={questConfig.ENTITYID}
-      apiType="PRODUCTION"
-    >
+    <QuestProvider apiKey={questConfig.APIKEY} entityId={questConfig.ENTITYID} apiType="PRODUCTION">
       <Router>
         <AuthProvider>
           <BlogProvider>
@@ -58,6 +55,12 @@ function App() {
                     <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
                     <Route path="/forums/thread/:threadId" element={<ForumThread />} />
                     <Route path="/forums/new-thread" element={<NewThread />} />
+                    {/* Admin Debug Route */}
+                    <Route path="/debug/ncb" element={
+                      <ProtectedRoute adminOnly={true}>
+                        <NcbDebug />
+                      </ProtectedRoute>
+                    } />
                   </Routes>
                 </main>
                 <Footer />
