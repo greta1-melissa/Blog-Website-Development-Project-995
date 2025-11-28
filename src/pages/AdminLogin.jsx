@@ -10,19 +10,17 @@ const { FiShield, FiEye, FiEyeOff, FiLock, FiUser, FiArrowLeft } = FiIcons;
 const AdminLogin = () => {
   const { adminLogin } = useAuth();
   const navigate = useNavigate();
+  // Pre-filled credentials for easier access
   const [formData, setFormData] = useState({
-    username: '',
-    password: ''
+    username: 'bangtanmom',
+    password: 'admin123'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
   };
 
@@ -32,6 +30,9 @@ const AdminLogin = () => {
     setError('');
 
     try {
+      // Simulate network delay for effect
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       const success = adminLogin(formData);
       if (!success) {
         setError('Invalid username or password. Please try again.');
@@ -45,7 +46,7 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -53,8 +54,8 @@ const AdminLogin = () => {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <SafeIcon icon={FiShield} className="text-white text-2xl" />
+          <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
+            <SafeIcon icon={FiShield} className="text-white text-3xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access</h1>
           <p className="text-gray-600">
@@ -65,14 +66,14 @@ const AdminLogin = () => {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-red-50 border border-red-200 rounded-lg p-4"
             >
               <div className="flex items-center">
                 <SafeIcon icon={FiLock} className="text-red-500 mr-2" />
-                <span className="text-red-700 text-sm">{error}</span>
+                <span className="text-red-700 text-sm font-medium">{error}</span>
               </div>
             </motion.div>
           )}
@@ -83,13 +84,13 @@ const AdminLogin = () => {
             </label>
             <div className="relative">
               <SafeIcon icon={FiUser} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input 
-                type="text" 
-                id="username" 
-                name="username" 
+              <input
+                type="text"
+                id="username"
+                name="username"
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 placeholder="Enter your username"
                 required
               />
@@ -102,20 +103,20 @@ const AdminLogin = () => {
             </label>
             <div className="relative">
               <SafeIcon icon={FiLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input 
-                type={showPassword ? 'text' : 'password'} 
-                id="password" 
-                name="password" 
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 placeholder="Enter your password"
                 required
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors p-1"
               >
                 <SafeIcon icon={showPassword ? FiEyeOff : FiEye} />
               </button>
@@ -127,12 +128,12 @@ const AdminLogin = () => {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={isLoading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all shadow-lg shadow-purple-200 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                Signing in...
+                Verifying...
               </div>
             ) : (
               'Sign In as Admin'
@@ -142,15 +143,19 @@ const AdminLogin = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Demo Credentials</h3>
-            <p className="text-xs text-gray-600">
-              Username: bangtanmom<br />
-              Password: admin123
+          <div className="bg-purple-50 rounded-lg p-3 mb-6 border border-purple-100">
+            <h3 className="text-xs font-bold text-purple-900 mb-1 uppercase tracking-wide">Credentials Auto-Filled</h3>
+            <p className="text-xs text-purple-700">
+              Username: <strong>bangtanmom</strong><br />
+              Password: <strong>admin123</strong>
             </p>
           </div>
-          <Link to="/login" className="inline-flex items-center text-sm text-purple-600 hover:text-purple-700 font-medium">
-            <SafeIcon icon={FiArrowLeft} className="mr-1" /> Back to User Login
+          
+          <Link
+            to="/login"
+            className="inline-flex items-center text-sm text-purple-200 hover:text-white font-medium transition-colors"
+          >
+            <SafeIcon icon={FiArrowLeft} className="mr-1" /> Back to Main Login
           </Link>
         </div>
       </motion.div>

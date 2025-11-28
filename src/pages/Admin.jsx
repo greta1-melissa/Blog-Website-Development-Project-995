@@ -8,7 +8,11 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
 // Use FiBarChart2 as it is the standard Feather icon name
-const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield } = FiIcons;
+const { 
+  FiBarChart2, FiUsers, FiFileText, FiTrendingUp, 
+  FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, 
+  FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut 
+} = FiIcons;
 
 // Component to display when access is denied
 const AccessDenied = () => (
@@ -39,7 +43,7 @@ const AccessDenied = () => (
 
 const Admin = () => {
   const { posts = [], categories = [], deletePost } = useBlog();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -54,7 +58,7 @@ const Admin = () => {
     const avgWordsPerPost = totalPosts > 0 
       ? Math.round(
           safePosts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0) / totalPosts
-        )
+        ) 
       : 0;
 
     const categoryStats = (Array.isArray(categories) ? categories : []).map(cat => ({
@@ -76,13 +80,10 @@ const Admin = () => {
     return safePosts.filter(post => {
       const postTitle = post.title || '';
       const postContent = post.content || '';
-      
       const matchesSearch = searchTerm === '' || 
         postTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
         postContent.toLowerCase().includes(searchTerm.toLowerCase());
-      
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
-      
       return matchesSearch && matchesCategory;
     });
   }, [posts, searchTerm, filterCategory]);
@@ -107,30 +108,41 @@ const Admin = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <SafeIcon icon={FiShield} className="text-purple-600 text-2xl" />
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+        <div>
+          <div className="flex items-center space-x-3 mb-2">
+            <SafeIcon icon={FiShield} className="text-purple-600 text-2xl" />
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          </div>
+          <p className="text-gray-600">
+            Welcome back, <strong>{user?.name}</strong>! Complete control over your Bangtan Mom blog
+          </p>
         </div>
-        <p className="text-gray-600">
-          Welcome back, <strong>{user?.name}</strong>! Complete control over your Bangtan Mom blog
-        </p>
+        <div className="mt-4 md:mt-0">
+          <button
+            onClick={logout}
+            className="inline-flex items-center px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm font-medium"
+          >
+            <SafeIcon icon={FiLogOut} className="mr-2" />
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-8">
-        <nav className="flex space-x-8">
+        <nav className="flex space-x-8 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'border-purple-500 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <SafeIcon icon={tab.icon} className="text-sm" />
+              <SafeIcon icon={tab.icon} className="text-lg" />
               <span>{tab.label}</span>
             </button>
           ))}
@@ -146,31 +158,29 @@ const Admin = () => {
         >
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <SafeIcon icon={FiFileText} className="text-2xl text-purple-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">{stats.totalPosts}</p>
-                  <p className="text-gray-600">Total Posts</p>
+                  <p className="text-gray-600 text-sm">Total Posts</p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <SafeIcon icon={FiTag} className="text-2xl text-indigo-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">{stats.totalCategories}</p>
-                  <p className="text-gray-600">Categories</p>
+                  <p className="text-gray-600 text-sm">Categories</p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <div className="flex items-center">
                 {/* Changed from Green to Fuchsia */}
                 <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center">
@@ -178,19 +188,18 @@ const Admin = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">500+</p>
-                  <p className="text-gray-600">Readers</p>
+                  <p className="text-gray-600 text-sm">Readers</p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
                   <SafeIcon icon={FiBarChart2} className="text-2xl text-pink-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-2xl font-bold text-gray-900">{stats.avgWordsPerPost}</p>
-                  <p className="text-gray-600">Avg Words</p>
+                  <p className="text-gray-600 text-sm">Avg Words</p>
                 </div>
               </div>
             </div>
@@ -198,21 +207,21 @@ const Admin = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Category Distribution */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Category Distribution</h3>
               <div className="space-y-4">
                 {stats.categoryStats.length > 0 ? (
                   stats.categoryStats.map((cat) => (
                     <div key={cat.name} className="flex items-center justify-between">
-                      <span className="text-gray-700">{cat.name}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-purple-500 h-2 rounded-full" 
+                      <span className="text-gray-700 font-medium">{cat.name}</span>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-32 bg-gray-100 rounded-full h-2">
+                          <div
+                            className="bg-purple-500 h-2 rounded-full"
                             style={{ width: `${cat.percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-500">{cat.count}</span>
+                        <span className="text-sm text-gray-500 w-8 text-right">{cat.count}</span>
                       </div>
                     </div>
                   ))
@@ -223,12 +232,12 @@ const Admin = () => {
             </div>
 
             {/* Recent Posts */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Posts</h3>
-                <Link 
+                <Link
                   to="/create"
-                  className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium"
+                  className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium text-sm"
                 >
                   <SafeIcon icon={FiPlus} className="mr-1" /> New Post
                 </Link>
@@ -236,25 +245,25 @@ const Admin = () => {
               <div className="space-y-4">
                 {stats.recentPosts.length > 0 ? (
                   stats.recentPosts.map((post) => (
-                    <div key={post.id} className="flex items-center space-x-3">
-                      <img 
-                        src={post.image || 'https://via.placeholder.com/150'} 
-                        alt={post.title} 
-                        className="w-12 h-12 rounded-lg object-cover"
+                    <div key={post.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                      <img
+                        src={post.image || 'https://via.placeholder.com/150'}
+                        alt={post.title}
+                        className="w-12 h-12 rounded-lg object-cover shadow-sm"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {post.title}
                         </p>
-                        <p className="text-sm text-gray-500">{post.date}</p>
+                        <p className="text-xs text-gray-500">{post.date}</p>
                       </div>
-                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full whitespace-nowrap">
                         {post.category}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500">No posts yet.</p>
+                  <p className="text-sm text-gray-500 text-center py-4">No posts yet.</p>
                 )}
               </div>
             </div>
@@ -270,7 +279,7 @@ const Admin = () => {
           transition={{ duration: 0.5 }}
         >
           {/* Search and Filter */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
@@ -280,7 +289,7 @@ const Admin = () => {
                     placeholder="Search posts..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
               </div>
@@ -288,7 +297,7 @@ const Admin = () => {
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                 >
                   <option value="">All Categories</option>
                   {categories.map((category) => (
@@ -298,7 +307,7 @@ const Admin = () => {
               </div>
               <Link
                 to="/create"
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium"
               >
                 <SafeIcon icon={FiPlus} className="mr-2" /> New Post
               </Link>
@@ -306,66 +315,66 @@ const Admin = () => {
           </div>
 
           {/* Posts Table */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Post
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Post Detail
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Read Time
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Time
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredPosts.map((post) => (
-                    <tr key={post.id} className="hover:bg-gray-50">
+                    <tr key={post.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <img 
-                            src={post.image || 'https://via.placeholder.com/150'} 
-                            alt={post.title} 
-                            className="w-10 h-10 rounded-lg object-cover mr-3"
+                          <img
+                            src={post.image || 'https://via.placeholder.com/150'}
+                            alt={post.title}
+                            className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm"
                           />
                           <div>
-                            <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
+                            <div className="text-sm font-semibold text-gray-900 max-w-xs truncate">
                               {post.title}
                             </div>
-                            <div className="text-sm text-gray-500">by {post.author}</div>
+                            <div className="text-xs text-gray-500">by {post.author}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                        <span className="px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full border border-purple-200">
                           {post.category}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {post.date}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {post.readTime}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Link to={`/post/${post.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        <div className="flex space-x-3">
+                          <Link to={`/post/${post.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors" title="View">
                             <SafeIcon icon={FiEye} className="w-4 h-4" />
                           </Link>
-                          <button onClick={() => alert('Edit functionality would be implemented here')} className="text-fuchsia-600 hover:text-fuchsia-900">
+                          <button onClick={() => alert('Edit functionality would be implemented here')} className="text-fuchsia-600 hover:text-fuchsia-900 transition-colors" title="Edit">
                             <SafeIcon icon={FiEdit} className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDeletePost(post.id)} className="text-pink-600 hover:text-pink-900">
+                          <button onClick={() => handleDeletePost(post.id)} className="text-red-500 hover:text-red-700 transition-colors" title="Delete">
                             <SafeIcon icon={FiTrash2} className="w-4 h-4" />
                           </button>
                         </div>
@@ -399,22 +408,22 @@ const Admin = () => {
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Popular Categories */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Popular Categories</h3>
-              <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Popular Categories</h3>
+              <div className="space-y-5">
                 {stats.categoryStats.length > 0 ? (
                   stats.categoryStats.map((cat) => (
                     <div key={cat.name} className="flex items-center justify-between">
-                      <span className="text-gray-700">{cat.name}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-32 bg-gray-200 rounded-full h-3">
-                          <div 
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full" 
+                      <span className="text-gray-700 font-medium min-w-[120px]">{cat.name}</span>
+                      <div className="flex-1 mx-4">
+                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full"
                             style={{ width: `${cat.percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{cat.percentage}%</span>
                       </div>
+                      <span className="text-sm font-bold text-gray-900 w-10 text-right">{cat.percentage}%</span>
                     </div>
                   ))
                 ) : (
@@ -424,30 +433,30 @@ const Admin = () => {
             </div>
 
             {/* Content Insights */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Content Insights</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Content Insights</h3>
+              <div className="space-y-5">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">Total Words Written</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-lg font-bold text-gray-900">
                     {posts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">Average Post Length</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-lg font-bold text-gray-900">
                     {stats.avgWordsPerPost} words
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">Longest Post</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-lg font-bold text-gray-900">
                     {posts.length > 0 ? Math.max(...posts.map(post => post.content ? post.content.split(' ').length : 0)) : 0} words
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700">Publishing Frequency</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-lg font-bold text-gray-900">
                     {posts.length > 0 ? Math.round(posts.length / 12) : 0} posts/month
                   </span>
                 </div>
@@ -456,19 +465,19 @@ const Admin = () => {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mt-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <div className="bg-white rounded-lg shadow-sm p-6 mt-8 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Recent Activity</h3>
             <div className="space-y-4">
               {posts.slice(0, 10).map((post) => (
-                <div key={post.id} className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <SafeIcon icon={FiFileText} className="text-purple-600 text-sm" />
+                <div key={post.id} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <SafeIcon icon={FiFileText} className="text-purple-600 text-lg" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900">
-                      Published "<strong>{post.title}</strong>" in {post.category}
+                    <p className="text-sm text-gray-900 leading-snug">
+                      Published <strong>{post.title}</strong> in <span className="text-purple-600">{post.category}</span>
                     </p>
-                    <p className="text-xs text-gray-500">{post.date}</p>
+                    <p className="text-xs text-gray-500 mt-1">{post.date}</p>
                   </div>
                 </div>
               ))}
