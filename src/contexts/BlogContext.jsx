@@ -70,7 +70,7 @@ const initialPosts = [
   }
 ];
 
-// Helper to get local data
+// Helper to get local data safely
 const getLocalPosts = () => {
   try {
     const local = localStorage.getItem('blog_posts');
@@ -97,42 +97,38 @@ export const BlogProvider = ({ children }) => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch from API
-      const serverData = await ncbGet('posts');
+      // 1. Get Local Data First (Source of Truth for Drafts/Unsaved)
       const localData = getLocalPosts() || [];
+
+      // 2. Fetch from API
+      const serverData = await ncbGet('posts');
       
       let mergedPosts = [];
 
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        // We have server data.
-        // Identify posts that are ONLY in local storage (unsaved ones)
-        // We assume server IDs are distinct (or we check for matching IDs)
+        // Create a Set of Server IDs for fast lookup
         const serverIds = new Set(serverData.map(p => String(p.id)));
         
-        // Keep local posts that don't exist on server yet
+        // Keep local posts that are NOT in the server data (New/Unsaved posts)
+        // This ensures your "test" post (which has a timestamp ID usually) is kept
         const localOnly = localData.filter(p => !serverIds.has(String(p.id)));
         
-        // Merge: Local unsaved posts first (newest), then server posts
+        // Merge: Local unsaved posts + Server posts
         mergedPosts = [...localOnly, ...serverData];
-        
-        // Deduplicate just in case (prefer server version if ID matches)
-        // The filter above handles ID collision, but let's be safe against content
-        // This simple merge is robust enough for this use case
       } else {
-        // No server data. Use local data.
-        if (localData.length > 0) {
-          mergedPosts = localData;
-        } else {
-          // Nothing anywhere. Use initial hardcoded data.
-          mergedPosts = initialPosts;
-        }
+        // No valid server data? Fallback to local data if it exists, otherwise initial defaults
+        mergedPosts = localData.length > 0 ? localData : initialPosts;
       }
       
+      // 3. FORCE SORT BY DATE (Newest First)
+      // This ensures your new post appears at the top regardless of merge order
+      mergedPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
       setPosts(mergedPosts);
 
     } catch (error) {
       console.error("Failed to fetch posts:", error);
-      // On error, rely on local data
+      // On error, strictly rely on local data if available
       const localData = getLocalPosts();
       setPosts(localData && localData.length > 0 ? localData : initialPosts);
     } finally {
@@ -158,14 +154,15 @@ export const BlogProvider = ({ children }) => {
 
     const newPost = {
       ...post,
-      id: tempId, // Temporary ID
+      id: tempId, // Temporary ID (Timestamp)
       date: new Date().toISOString().split('T')[0],
       readTime: readTime,
       author: post.author || "Melissa",
       isHandPicked: false
     };
 
-    // Optimistic update - immediately saves to state (and thus localStorage via useEffect)
+    // Optimistic update - immediately saves to state
+    // We prepend it (put it first) but the sort in fetchPosts will also respect the date
     setPosts(prev => [newPost, ...prev]);
 
     try {
@@ -179,7 +176,6 @@ export const BlogProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to save post to backend:", error);
       // We don't revert the state, so the post remains locally
-      // It will have the tempId, which fetchPosts knows how to preserve
       return tempId;
     }
   };

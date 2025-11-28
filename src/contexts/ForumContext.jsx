@@ -60,7 +60,12 @@ export const ForumProvider = ({ children }) => {
         const localThreads = getLocalData('forum_threads');
         const serverIds = new Set(serverThreads.map(t => String(t.id)));
         const localOnly = localThreads.filter(t => !serverIds.has(String(t.id)));
-        setThreads([...localOnly, ...serverThreads]);
+        const mergedThreads = [...localOnly, ...serverThreads];
+        
+        // Sort threads by most recent update
+        mergedThreads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        
+        setThreads(mergedThreads);
       }
 
       // Smart Merge for Replies
