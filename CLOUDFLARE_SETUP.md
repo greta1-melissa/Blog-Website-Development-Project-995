@@ -4,7 +4,7 @@ For your blog posts to be saved and visible to everyone, you must configure the 
 
 ## 1. Get Your Secrets
 Ensure you have these values ready:
-- `VITE_NCB_URL`: (Usually `https://openapi.nocodebackend.com`)
+- `VITE_NCB_URL`: (Usually `https://api.nocodebackend.com`)
 - `VITE_NCB_INSTANCE`: Your specific Instance ID
 - `VITE_NCB_API_KEY`: Your private API Key
 - `DROPBOX_ACCESS_TOKEN`: (Optional) If using Dropbox for images
@@ -21,7 +21,7 @@ Click **Add variable** for each of the following. Ensure they are added to the *
 
 | Variable Name | Value |
 |---------------|-------|
-| `VITE_NCB_URL` | `https://openapi.nocodebackend.com` |
+| `VITE_NCB_URL` | `https://api.nocodebackend.com` |
 | `VITE_NCB_INSTANCE` | *Your Instance ID* |
 | `VITE_NCB_API_KEY` | *Your API Key* |
 | `DROPBOX_ACCESS_TOKEN` | *Your Dropbox Token* (Optional) |

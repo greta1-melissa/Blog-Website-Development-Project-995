@@ -4,7 +4,7 @@
  */
 
 // Ensure URL doesn't have a trailing slash to prevent double slashes
-const rawUrl = import.meta.env.VITE_NCB_URL || 'https://openapi.nocodebackend.com';
+const rawUrl = import.meta.env.VITE_NCB_URL || 'https://api.nocodebackend.com';
 const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 
 const NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE;
