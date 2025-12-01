@@ -1,18 +1,20 @@
 /**
  * NoCodeBackend (NCB) Client
  * Handles all REST API interactions with the NoCodeBackend service.
- * Updated to match Swagger: openapi.nocodebackend.com
+ * Updated to match Swagger: api.nocodebackend.com
+ * Ensures Instance is passed as a query parameter (capital I).
  */
 
 // 1. Base URL and Instance Configuration
-const rawUrl = import.meta.env.VITE_NCB_URL || 'https://openapi.nocodebackend.com';
+const rawUrl = import.meta.env.VITE_NCB_URL || 'https://api.nocodebackend.com';
 // Ensure no trailing slash
 const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 
 const NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE || '54230_bangtan_mom_blog_site';
 const NCB_API_KEY = import.meta.env.VITE_NCB_API_KEY;
 
-// Headers - API Key is Bearer token, Instance goes in Query Params
+// Headers - API Key is Bearer token.
+// CRITICAL: Instance is NOT sent in headers, only in query params.
 const headers = {
   'Content-Type': 'application/json',
 };
@@ -30,7 +32,7 @@ function withInstanceParam(path, extraParams = {}) {
   const url = new URL(`${NCB_URL}${path}`);
 
   if (NCB_INSTANCE) {
-    // Match Swagger: ?Instance=54230_bangtan_mom_blog_site
+    // Match Swagger: ?Instance=54230_bangtan_mom_blog_site (Capital 'I')
     url.searchParams.set('Instance', NCB_INSTANCE);
   }
 
@@ -74,7 +76,8 @@ export async function ncbReadAll(table, queryParams = {}) {
     });
 
     if (!res.ok) {
-      console.error(`NCB: Read all ${cleanTable} failed:`, res.status, await res.text());
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Read all ${cleanTable} failed:`, res.status, text);
       return null;
     }
 
@@ -103,7 +106,8 @@ export async function ncbReadOne(table, id) {
       if (res.status === 404) {
         return null;
       }
-      console.error(`NCB: Read ${cleanTable} by id failed:`, res.status, await res.text());
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Read ${cleanTable} by id failed:`, res.status, text);
       return null;
     }
 
@@ -130,9 +134,9 @@ export async function ncbCreate(table, payload) {
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`NCB: Create ${cleanTable} failed:`, res.status, errorText);
-      throw new Error(`Server Error (${res.status}): ${errorText}`);
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Create ${cleanTable} failed:`, res.status, text);
+      throw new Error(`Server Error (${res.status}): ${text}`);
     }
 
     const json = await res.json();
@@ -158,9 +162,9 @@ export async function ncbUpdate(table, id, payload) {
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`NCB: Update ${cleanTable} failed:`, res.status, errorText);
-      throw new Error(`NCB Update Error: ${res.status}`);
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Update ${cleanTable} failed:`, res.status, text);
+      throw new Error(`NCB Update Error: ${res.status} - ${text}`);
     }
 
     const json = await res.json().catch(() => ({}));
@@ -184,7 +188,8 @@ export async function ncbDelete(table, id) {
     });
 
     if (!res.ok) {
-      console.error(`NCB: Delete ${cleanTable} failed:`, res.status, await res.text());
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Delete ${cleanTable} failed:`, res.status, text);
       return false;
     }
 
@@ -209,7 +214,8 @@ export async function ncbSearch(table, filters = {}) {
     });
 
     if (!res.ok) {
-      console.error(`NCB: Search ${cleanTable} failed:`, res.status, await res.text());
+      const text = await res.text().catch(() => '');
+      console.error(`NCB: Search ${cleanTable} failed:`, res.status, text);
       return [];
     }
 
