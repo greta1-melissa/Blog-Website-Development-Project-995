@@ -7,16 +7,7 @@ Ensure you have these values ready:
 - `VITE_NCB_URL`: (Usually `https://api.nocodebackend.com`)
 - `VITE_NCB_INSTANCE`: Your specific Instance ID
 - `VITE_NCB_API_KEY`: Your private API Key
-
-**Dropbox Configuration (Choose One Method):**
-
-*Method A: Short-lived Token (More Secure, recommended)*
-- `DROPBOX_APP_KEY`: Your Dropbox App Key
-- `DROPBOX_APP_SECRET`: Your Dropbox App Secret
-- `DROPBOX_REFRESH_TOKEN`: Your Dropbox Refresh Token
-
-*Method B: Long-lived Token (Legacy)*
-- `DROPBOX_ACCESS_TOKEN`: Your generated access token (must not expire)
+- `DROPBOX_ACCESS_TOKEN`: (Optional) If using Dropbox for images
 
 ## 2. Go to Cloudflare Dashboard
 1. Log in to Cloudflare.
@@ -33,11 +24,7 @@ Click **Add variable** for each of the following. Ensure they are added to the *
 | `VITE_NCB_URL` | `https://api.nocodebackend.com` |
 | `VITE_NCB_INSTANCE` | *Your Instance ID* |
 | `VITE_NCB_API_KEY` | *Your API Key* |
-| `DROPBOX_APP_KEY` | *Your App Key* |
-| `DROPBOX_APP_SECRET` | *Your App Secret* |
-| `DROPBOX_REFRESH_TOKEN` | *Your Refresh Token* |
-
-*(Or `DROPBOX_ACCESS_TOKEN` if using Method B)*
+| `DROPBOX_ACCESS_TOKEN` | *Your Dropbox Token* (Optional) |
 
 ## 4. Redeploy
 **Crucial Step:** After adding the variables, you must trigger a **new deployment** for them to take effect.
@@ -45,4 +32,4 @@ Click **Add variable** for each of the following. Ensure they are added to the *
 2. Click the three dots `...` next to your latest deployment.
 3. Select **Retry deployment**.
 
-Once redeployed, the application will be able to connect to NoCodeBackend and upload images to Dropbox!
+Once redeployed, the application will be able to connect to NoCodeBackend and your posts will be visible to everyone!
