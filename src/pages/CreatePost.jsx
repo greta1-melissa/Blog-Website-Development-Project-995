@@ -13,22 +13,23 @@ const CreatePost = () => {
   const navigate = useNavigate();
   const { addPost } = useBlog();
   const { user } = useAuth();
+  
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     category: '',
     image: ''
   });
+  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
 
-  // AUTOMATICALLY FIX DROPBOX LINKS
   const processImageUrl = (url) => {
     if (!url) return '';
-    // Convert Dropbox share links (dl=0) to direct raw images (raw=1)
     if (url.includes('dropbox.com') && url.includes('dl=0')) {
       return url.replace('dl=0', 'raw=1');
     }
@@ -40,7 +41,7 @@ const CreatePost = () => {
     if (name === 'image') {
       const processedUrl = processImageUrl(value);
       setFormData({ ...formData, [name]: processedUrl });
-      setImageError(false); // Reset error state on new input
+      setImageError(false);
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -55,23 +56,21 @@ const CreatePost = () => {
     setImageError(false);
 
     try {
-      // 1. Attempt Server-Side Upload (Dropbox)
       const data = new FormData();
       data.append('file', file);
-
+      
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      // Note: This endpoint works on Cloudflare Pages but might 404 in local dev without wrangler
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
         signal: controller.signal
       }).catch((err) => {
-        console.warn("Fetch failed (likely local dev or timeout):", err);
+        console.warn("Fetch failed:", err);
         return null;
       });
-
+      
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
@@ -84,25 +83,21 @@ const CreatePost = () => {
         }
       }
       throw new Error("Server upload unavailable or failed");
-
     } catch (error) {
-      console.warn("Server upload failed, falling back to local compression:", error);
-      
-      // 2. Fallback: Local File Reading (Base64)
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        setFormData(prev => ({ ...prev, image: base64 }));
-        setUploadStatus('Upload Complete! (Local)');
-      } catch (localError) {
-        console.error('Local read error:', localError);
-        setUploadStatus('Upload Failed');
-        alert("Could not process image. Please try a different file or use an image URL.");
-      }
+       console.warn("Server upload failed, falling back to local:", error);
+       try {
+         const base64 = await new Promise((resolve, reject) => {
+           const reader = new FileReader();
+           reader.onload = () => resolve(reader.result);
+           reader.onerror = reject;
+           reader.readAsDataURL(file);
+         });
+         setFormData(prev => ({ ...prev, image: base64 }));
+         setUploadStatus('Upload Complete! (Local)');
+       } catch (localError) {
+         setUploadStatus('Upload Failed');
+         alert("Could not process image.");
+       }
     } finally {
       setIsUploading(false);
     }
@@ -115,23 +110,31 @@ const CreatePost = () => {
       return;
     }
 
+    setIsSaving(true);
+
     const postData = {
       ...formData,
       image: formData.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop',
       author: user?.name || 'Anonymous Author'
     };
 
-    const postId = await addPost(postData);
-    if (postId) {
-      navigate(`/post/${postId}`);
-    } else {
-      alert('Failed to create post. Please try again.');
+    try {
+        const postId = await addPost(postData);
+        // addPost throws if it fails, so if we get here, it succeeded or at least optimistically updated
+        navigate(`/post/${postId}`);
+    } catch (error) {
+        console.error("Save failed:", error);
+        alert(`Failed to save post to server: ${error.message}. The post is saved locally but may not be visible to others.`);
+        // Note: addPost optimistically updates, so we still navigate, but user is warned
+        navigate(`/`); 
+    } finally {
+        setIsSaving(false);
     }
   };
 
   return (
     <ProtectedRoute requiredRole="author">
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -144,12 +147,6 @@ const CreatePost = () => {
           <p className="text-lg text-gray-600">
             What's on your heart today? Let's share it with our community 💜
           </p>
-          <div className="mt-4 inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-            Writing as: <strong className="ml-1">{user?.name}</strong>
-            <span className="ml-2 text-xs bg-purple-200 px-2 py-1 rounded-full">
-              {user?.role}
-            </span>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-8 border border-purple-50">
@@ -196,7 +193,6 @@ const CreatePost = () => {
               Featured Image
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* URL Input */}
               <div className="relative">
                 <SafeIcon icon={FiImage} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -210,7 +206,6 @@ const CreatePost = () => {
                 />
               </div>
               
-              {/* File Upload */}
               <div className="relative">
                 <input
                   type="file"
@@ -219,12 +214,10 @@ const CreatePost = () => {
                   className="hidden"
                   accept="image/*"
                 />
-                <label
+                <label 
                   htmlFor="file-upload"
                   className={`flex items-center justify-center w-full px-4 py-3 border border-dashed rounded-lg cursor-pointer transition-colors font-medium ${
-                    uploadStatus === 'Upload Failed' 
-                      ? 'border-red-300 text-red-600 bg-red-50' 
-                      : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                    uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                   }`}
                 >
                   {isUploading ? (
@@ -240,28 +233,21 @@ const CreatePost = () => {
               </div>
             </div>
 
-            {/* Image Preview Area - FIXED RENDERING */}
             {formData.image && (
               <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200 bg-gray-50">
-                <img
-                  src={formData.image}
-                  alt="Preview"
-                  className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                  onError={() => setImageError(true)}
-                  onLoad={() => setImageError(false)}
-                />
-                {imageError && (
+                 <img 
+                   src={formData.image} 
+                   alt="Preview" 
+                   className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                   onError={() => setImageError(true)}
+                   onLoad={() => setImageError(false)}
+                 />
+                 {imageError && (
                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                      <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
                      <span className="text-xs">Preview unavailable</span>
-                     <span className="text-[10px] text-gray-400 mt-1 px-2 text-center">Link might be broken</span>
                    </div>
-                )}
-                {!imageError && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate px-2">
-                    Image Preview
-                  </div>
-                )}
+                 )}
               </div>
             )}
           </div>
@@ -287,10 +273,20 @@ const CreatePost = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200"
+              disabled={isSaving}
+              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <SafeIcon icon={FiSave} className="mr-2" />
-              Publish Post
+              {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Saving...
+                  </>
+              ) : (
+                  <>
+                    <SafeIcon icon={FiSave} className="mr-2" />
+                    Publish Post
+                  </>
+              )}
             </motion.button>
           </div>
         </form>

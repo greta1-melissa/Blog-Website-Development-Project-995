@@ -1,165 +1,195 @@
 /**
  * NoCodeBackend (NCB) Client
  * Handles all REST API interactions with the NoCodeBackend service.
+ * Updated to use openapi.nocodebackend.com endpoints.
  */
 
-// Ensure URL doesn't have a trailing slash to prevent double slashes
-const rawUrl = import.meta.env.VITE_NCB_URL || 'https://api.nocodebackend.com';
+// 1. Update Base URL and instance handling
+const rawUrl = import.meta.env.VITE_NCB_URL || 'https://openapi.nocodebackend.com';
 const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 
-const NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE;
+const NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE || '54230_bangtan_mom_blog_site';
 const NCB_API_KEY = import.meta.env.VITE_NCB_API_KEY;
 
-const getHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (NCB_API_KEY) {
-    headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
-  } else {
-    // Only warn in development to avoid console noise in prod
+// Headers are constant, can be defined once
+const headers = {
+  'Content-Type': 'application/json',
+};
+if (NCB_API_KEY) {
+  headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
+} else {
     if (import.meta.env.DEV) {
       console.warn("NCB: VITE_NCB_API_KEY is missing! API calls will likely fail.");
     }
-  }
-  
-  if (NCB_INSTANCE) {
-    headers['Instance'] = NCB_INSTANCE;
-  }
-  
-  return headers;
-};
+}
 
-const buildUrl = (tableName, queryParams = {}) => {
-  const url = new URL(`${NCB_URL}/api/v1/${tableName}`);
-  
+// Helper to attach the Instance query parameter
+function withInstanceParam(path, extraParams = {}) {
+  const url = new URL(`${NCB_URL}${path}`);
+
   if (NCB_INSTANCE) {
-    url.searchParams.append('instance_id', NCB_INSTANCE);
+    url.searchParams.set('Instance', NCB_INSTANCE);
   }
-  
-  Object.keys(queryParams).forEach((key) => {
-    url.searchParams.append(key, queryParams[key]);
+
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
   });
-  
+
   return url.toString();
-};
+}
+
+function normalizeTableName(table) {
+  return String(table).trim().toLowerCase();
+}
 
 // --- Debugging Helper ---
 export const getNcbConfig = () => {
   return {
     url: NCB_URL,
+    instance: NCB_INSTANCE, // Expose for debugging
     hasInstance: !!NCB_INSTANCE,
     hasApiKey: !!NCB_API_KEY,
-    // Mask sensitive data for display
     maskedInstance: NCB_INSTANCE ? `${NCB_INSTANCE.substring(0, 4)}...${NCB_INSTANCE.slice(-4)}` : 'Missing',
     maskedKey: NCB_API_KEY ? `${NCB_API_KEY.substring(0, 4)}...${NCB_API_KEY.slice(-4)}` : 'Missing'
   };
 };
 
-// --- API Methods ---
+// --- New API Methods ---
 
-export const ncbGet = async (tableName, queryParams = {}) => {
+export async function ncbReadAll(table, queryParams = {}) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/read/${cleanTable}`, queryParams);
+
   try {
-    const url = buildUrl(tableName, queryParams);
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getHeaders(),
-    });
-
-    if (!response.ok) {
-      console.error(`NCB: Get ${tableName} failed: ${response.status}`);
-      return [];
+    const res = await fetch(url, { method: 'GET', headers });
+    if (!res.ok) {
+      console.error(`NCB: Read all ${cleanTable} failed:`, res.status, await res.text());
+      return null;
     }
-
-    const json = await response.json();
-    if (Array.isArray(json)) {
-      return json;
-    } else if (json && Array.isArray(json.data)) {
-      return json.data;
-    } else {
-      return [];
-    }
+    const json = await res.json();
+    return Array.isArray(json.data) ? json.data : [];
   } catch (error) {
-    console.error(`NCB: Network error ${tableName}`, error);
+    console.error(`NCB: Network error during read all for ${cleanTable}`, error);
+    return null;
+  }
+}
+
+export async function ncbReadOne(table, id) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/read/${cleanTable}/${id}`);
+  
+  try {
+    const res = await fetch(url, { method: 'GET', headers });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      console.error(`NCB: Read ${cleanTable} by id failed:`, res.status, await res.text());
+      return null;
+    }
+    const json = await res.json();
+    return json.data || null;
+  } catch (error) {
+    console.error(`NCB: Network error during read one for ${cleanTable}`, error);
+    return null;
+  }
+}
+
+export async function ncbCreate(table, payload) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/create/${cleanTable}`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`NCB: Create ${cleanTable} failed: ${res.status}`, errorText);
+      throw new Error(`Server Error (${res.status}): ${errorText}`);
+    }
+    const json = await res.json();
+    // Swagger: { status, message, id }
+    return json;
+  } catch (error) {
+    console.error(`NCB: Create error ${cleanTable}`, error);
+    throw error;
+  }
+}
+
+export async function ncbUpdate(table, id, payload) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/update/${cleanTable}/${id}`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`NCB: Update ${cleanTable} failed:`, res.status, errorText);
+      throw new Error(`NCB Update Error: ${res.status}`);
+    }
+    const json = await res.json().catch(() => ({}));
+    return json || { status: 'success' };
+  } catch (error) {
+    console.error(`NCB: Update error ${cleanTable}`, error);
+    throw error;
+  }
+}
+
+export async function ncbDelete(table, id) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/delete/${cleanTable}/${id}`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) {
+      console.error(`NCB: Delete ${cleanTable} failed:`, res.status, await res.text());
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`NCB: Delete error ${cleanTable}`, error);
+    return false;
+  }
+}
+
+export async function ncbSearch(table, filters = {}) {
+  const cleanTable = normalizeTableName(table);
+  const url = withInstanceParam(`/search/${cleanTable}`);
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(filters),
+    });
+    if (!res.ok) {
+      console.error(`NCB: Search ${cleanTable} failed:`, res.status, await res.text());
+      return [];
+    }
+    const json = await res.json();
+    return Array.isArray(json.data) ? json.data : [];
+  } catch (error) {
+    console.error(`NCB: Network error during search for ${cleanTable}`, error);
     return [];
   }
-};
+}
 
-export const ncbCreate = async (tableName, payload) => {
-  try {
-    const url = buildUrl(tableName);
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    });
+// --- Backwards Compatibility ---
+export async function ncbGet(table, queryParams) {
+  return ncbReadAll(table, queryParams);
+}
 
-    if (!response.ok) {
-      console.error(`NCB: Create ${tableName} failed: ${response.status}`);
-      throw new Error(`NCB Error: ${response.status}`);
-    }
-
-    const json = await response.json();
-    if (json && json.data) {
-      return json.data;
-    }
-    return json;
-  } catch (error) {
-    console.error(`NCB: Create error ${tableName}`, error);
-    throw error;
-  }
-};
-
-export const ncbUpdate = async (tableName, id, payload) => {
-  try {
-    const url = `${buildUrl(tableName)}/${id}`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`NCB: Update ${tableName} failed: ${response.status}`);
-      throw new Error(`NCB Update Error: ${response.status}`);
-    }
-
-    const json = await response.json();
-    if (json && json.data) {
-      return json.data;
-    }
-    return json;
-  } catch (error) {
-    console.error(`NCB: Update error ${tableName}`, error);
-    throw error;
-  }
-};
-
-export const ncbDelete = async (tableName, id) => {
-  try {
-    const url = `${buildUrl(tableName)}/${id}`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: getHeaders(),
-    });
-
-    if (!response.ok) {
-      console.error(`NCB: Delete ${tableName} failed: ${response.status}`);
-      throw new Error(`NCB Delete Error: ${response.status}`);
-    }
-
-    const json = await response.json();
-    if (json && json.data) {
-      return json.data;
-    }
-    return json;
-  } catch (error) {
-    console.error(`NCB: Delete error ${tableName}`, error);
-    throw error;
-  }
-};
-
+// --- Status Check ---
 export const getNcbStatus = async () => {
   const config = getNcbConfig();
   const checks = {
@@ -170,11 +200,15 @@ export const getNcbStatus = async () => {
   };
 
   try {
-    // Try to fetch posts to verify connection
-    const posts = await ncbGet('posts');
-    checks.canReadPosts = true;
-    checks.postCount = Array.isArray(posts) ? posts.length : 0;
-    checks.message = 'Connection successful';
+    const posts = await ncbReadAll('posts');
+    if (posts === null) {
+        checks.canReadPosts = false;
+        checks.message = 'Connection failed (Network or Auth Error)';
+    } else {
+        checks.canReadPosts = true;
+        checks.postCount = Array.isArray(posts) ? posts.length : 0;
+        checks.message = 'Connection successful';
+    }
   } catch (e) {
     checks.message = `Connection failed: ${e.message}`;
   }
