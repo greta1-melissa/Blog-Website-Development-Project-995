@@ -14,13 +14,14 @@ const CreatePost = () => {
   const { addPost } = useBlog();
   const { user } = useAuth();
   
+  // Using 'image' field as the primary storage for the Dropbox URL
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     category: '',
     image: ''
   });
-  
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
@@ -58,46 +59,30 @@ const CreatePost = () => {
     try {
       const data = new FormData();
       data.append('file', file);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const response = await fetch('/api/upload-to-dropbox', {
+      // Using the new API route for post images
+      const response = await fetch('/api/dropbox/upload-post-image', {
         method: 'POST',
-        body: data,
-        signal: controller.signal
-      }).catch((err) => {
-        console.warn("Fetch failed:", err);
-        return null;
+        body: data
       });
-      
-      clearTimeout(timeoutId);
 
-      const contentType = response?.headers?.get("content-type");
-      if (response?.ok && contentType && contentType.includes("application/json")) {
-        const result = await response.json();
-        if (result.success) {
-          setFormData(prev => ({ ...prev, image: result.url }));
-          setUploadStatus('Upload Complete!');
-          return;
-        }
+      if (!response.ok) {
+        throw new Error('Upload request failed');
       }
-      throw new Error("Server upload unavailable or failed");
+
+      const result = await response.json();
+
+      if (result.ok && result.url) {
+        setFormData(prev => ({ ...prev, image: result.url }));
+        setUploadStatus('Upload Complete!');
+      } else {
+        throw new Error(result.error || 'Failed to get image URL');
+      }
+
     } catch (error) {
-       console.warn("Server upload failed, falling back to local:", error);
-       try {
-         const base64 = await new Promise((resolve, reject) => {
-           const reader = new FileReader();
-           reader.onload = () => resolve(reader.result);
-           reader.onerror = reject;
-           reader.readAsDataURL(file);
-         });
-         setFormData(prev => ({ ...prev, image: base64 }));
-         setUploadStatus('Upload Complete! (Local)');
-       } catch (localError) {
-         setUploadStatus('Upload Failed');
-         alert("Could not process image.");
-       }
+      console.error('[Dropbox upload] Failed to upload post image', error);
+      setUploadStatus('Upload Failed');
+      alert("Could not upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -114,21 +99,21 @@ const CreatePost = () => {
 
     const postData = {
       ...formData,
+      // Ensure we have a fallback if no image is provided, 
+      // but prioritize the successfully uploaded Dropbox URL (formData.image)
       image: formData.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop',
       author: user?.name || 'Anonymous Author'
     };
 
     try {
-        const postId = await addPost(postData);
-        // addPost throws if it fails, so if we get here, it succeeded or at least optimistically updated
-        navigate(`/post/${postId}`);
+      const postId = await addPost(postData);
+      navigate(`/post/${postId}`);
     } catch (error) {
-        console.error("Save failed:", error);
-        alert(`Failed to save post to server: ${error.message}. The post is saved locally but may not be visible to others.`);
-        // Note: addPost optimistically updates, so we still navigate, but user is warned
-        navigate(`/`); 
+      console.error("Save failed:", error);
+      alert(`Failed to save post to server: ${error.message}.`);
+      navigate(`/`);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
@@ -205,19 +190,20 @@ const CreatePost = () => {
                   placeholder="Paste Dropbox link here..."
                 />
               </div>
-              
               <div className="relative">
-                <input
-                  type="file"
-                  id="file-upload"
+                <input 
+                  type="file" 
+                  id="file-upload" 
                   onChange={handleFileUpload}
-                  className="hidden"
+                  className="hidden" 
                   accept="image/*"
                 />
                 <label 
-                  htmlFor="file-upload"
+                  htmlFor="file-upload" 
                   className={`flex items-center justify-center w-full px-4 py-3 border border-dashed rounded-lg cursor-pointer transition-colors font-medium ${
-                    uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                    uploadStatus === 'Upload Failed' 
+                      ? 'border-red-300 text-red-600 bg-red-50' 
+                      : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                   }`}
                 >
                   {isUploading ? (
@@ -232,22 +218,21 @@ const CreatePost = () => {
                 </label>
               </div>
             </div>
-
             {formData.image && (
               <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200 bg-gray-50">
-                 <img 
-                   src={formData.image} 
-                   alt="Preview" 
-                   className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                   onError={() => setImageError(true)}
-                   onLoad={() => setImageError(false)}
-                 />
-                 {imageError && (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                     <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
-                     <span className="text-xs">Preview unavailable</span>
-                   </div>
-                 )}
+                <img 
+                  src={formData.image} 
+                  alt="Preview" 
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                  onError={() => setImageError(true)}
+                  onLoad={() => setImageError(false)}
+                />
+                {imageError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                    <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
+                    <span className="text-xs">Preview unavailable</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -277,15 +262,15 @@ const CreatePost = () => {
               className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                    Saving...
-                  </>
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Saving...
+                </>
               ) : (
-                  <>
-                    <SafeIcon icon={FiSave} className="mr-2" />
-                    Publish Post
-                  </>
+                <>
+                  <SafeIcon icon={FiSave} className="mr-2" />
+                  Publish Post
+                </>
               )}
             </motion.button>
           </div>
