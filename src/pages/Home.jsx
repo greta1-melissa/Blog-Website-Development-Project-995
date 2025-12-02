@@ -5,9 +5,9 @@ import { useBlog } from '../contexts/BlogContext';
 import BlogCard from '../components/BlogCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { stripHtml } from '../utils/textUtils';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
-// Removed FiPlay and FiMusic as they were specific to the static Spotify card
 const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 
 const Home = () => {
@@ -43,9 +43,6 @@ const Home = () => {
   }, [posts]);
 
   // Safely access the most recent post for the Hero/Bento section
-  // We keep this as "Latest Post" regardless of featured selection, 
-  // or we could use featuredPosts[0] if we wanted the Hero to be curated too.
-  // For now, "Latest Story" usually means strictly the newest one.
   const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
 
   const currentKDrama = {
@@ -126,7 +123,7 @@ const Home = () => {
                   </h2>
                 </Link>
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
-                  {mostRecentPost.content}
+                  {stripHtml(mostRecentPost.content)}
                 </p>
                 <Link
                   to={`/post/${mostRecentPost.id}`}

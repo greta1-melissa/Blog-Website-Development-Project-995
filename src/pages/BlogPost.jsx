@@ -26,7 +26,8 @@ const BlogPost = () => {
             to="/"
             className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
           >
-            <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
+            <SafeIcon icon={FiArrowLeft} className="mr-2" />
+            Back to Home
           </Link>
         </div>
       </div>
@@ -55,6 +56,9 @@ const BlogPost = () => {
   };
 
   const fallbackImage = "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop";
+  
+  // Basic check to see if content is likely HTML (from rich text editor)
+  const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
@@ -68,12 +72,13 @@ const BlogPost = () => {
           to="/"
           className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 border border-purple-200 transition-colors mb-8 shadow-sm"
         >
-          <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
+          <SafeIcon icon={FiArrowLeft} className="mr-2" />
+          Back to Home
         </Link>
-
+        
         {/* Image Section with Error Handling */}
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
-           {!imgError ? (
+          {!imgError ? (
             <img
               src={post.image || fallbackImage}
               alt={post.title}
@@ -82,19 +87,17 @@ const BlogPost = () => {
             />
           ) : (
             <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center text-gray-400">
-               <SafeIcon icon={FiImage} className="text-6xl mb-3 opacity-50" />
-               <span className="text-sm font-medium">Image unavailable</span>
+              <SafeIcon icon={FiImage} className="text-6xl mb-3 opacity-50" />
+              <span className="text-sm font-medium">Image unavailable</span>
             </div>
           )}
-          
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
-          
           <div className="absolute top-6 left-6">
             <span className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${getCategoryStyle(post.category)}`}>
-              <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
+              <SafeIcon icon={FiTag} className="inline mr-1" />
+              {post.category}
             </span>
           </div>
-          
           <button
             onClick={handleShare}
             className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
@@ -118,13 +121,13 @@ const BlogPost = () => {
               <span className="text-purple-800">{post.readTime}</span>
             </div>
           </div>
-
+          
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
             <span className="bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
               {post.title}
             </span>
           </h1>
-
+          
           <div className="w-full bg-purple-100 rounded-full h-2 mb-6">
             <div
               className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300"
@@ -134,23 +137,32 @@ const BlogPost = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
-          <div className="prose prose-lg max-w-none prose-headings:text-purple-900 prose-a:text-purple-600">
-            {post.content.split('\n').map((paragraph, index) => (
-              <motion.p
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="mb-6 text-gray-700 leading-relaxed text-lg"
-                style={{
-                  textIndent: index === 0 ? '2rem' : '0',
-                  fontSize: index === 0 ? '1.25rem' : '1.125rem',
-                  fontWeight: index === 0 ? '500' : '400'
-                }}
-              >
-                {paragraph}
-              </motion.p>
-            ))}
+          <div className="prose prose-lg max-w-none prose-headings:text-purple-900 prose-a:text-purple-600 prose-p:text-gray-700 prose-li:text-gray-700">
+            {isHtml ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8 }}
+                dangerouslySetInnerHTML={{ __html: post.content }} 
+              />
+            ) : (
+              post.content.split('\n').map((paragraph, index) => (
+                <motion.p
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="mb-6 leading-relaxed text-lg"
+                  style={{
+                    textIndent: index === 0 ? '2rem' : '0',
+                    fontSize: index === 0 ? '1.25rem' : '1.125rem',
+                    fontWeight: index === 0 ? '500' : '400'
+                  }}
+                >
+                  {paragraph}
+                </motion.p>
+              ))
+            )}
           </div>
         </div>
 
@@ -172,13 +184,10 @@ const BlogPost = () => {
           <p className="text-purple-100 leading-relaxed">
             Hi! I'm Melissa, a mom who loves sharing authentic stories about family life, wellness, and my passion for K-culture. Thank you for reading and being part of this amazing community! 💜
           </p>
-
           <div className="flex items-center mt-6 space-x-4">
             <button
               onClick={toggleFollow}
-              className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
-                isFollowing ? 'bg-white text-purple-600 font-bold' : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white'
-              }`}
+              className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${isFollowing ? 'bg-white text-purple-600 font-bold' : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white'}`}
             >
               <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} />
               {isFollowing ? 'Following' : 'Follow'}
@@ -187,7 +196,8 @@ const BlogPost = () => {
               onClick={handleShare}
               className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
             >
-              <SafeIcon icon={FiShare2} className="mr-2" /> Share
+              <SafeIcon icon={FiShare2} className="mr-2" />
+              Share
             </button>
           </div>
         </motion.div>
@@ -211,26 +221,26 @@ const BlogPost = () => {
               to="/"
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to All Posts
+              <SafeIcon icon={FiArrowLeft} className="mr-2" />
+              Back to All Posts
             </Link>
           </div>
         </motion.div>
       </motion.article>
-      
+
       <script dangerouslySetInnerHTML={{
         __html: `
-          window.addEventListener('scroll', function() {
-            const article = document.querySelector('article');
-            const progressBar = document.getElementById('reading-progress');
-            if (article && progressBar) {
-              const articleHeight = article.offsetHeight;
-              const scrolled = window.scrollY;
-              const progress = (scrolled / (articleHeight - window.innerHeight)) * 100;
-              progressBar.style.width = Math.min(progress, 100) + '%';
-            }
-          });
-        `
-      }} />
+        window.addEventListener('scroll', function() {
+          const article = document.querySelector('article');
+          const progressBar = document.getElementById('reading-progress');
+          if (article && progressBar) {
+            const articleHeight = article.offsetHeight;
+            const scrolled = window.scrollY;
+            const progress = (scrolled / (articleHeight - window.innerHeight)) * 100;
+            progressBar.style.width = Math.min(progress, 100) + '%';
+          }
+        });
+      `}} />
     </div>
   );
 };

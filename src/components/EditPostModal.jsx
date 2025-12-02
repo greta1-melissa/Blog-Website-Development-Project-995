@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -49,6 +51,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     }
   };
 
+  // ReactQuill handler
+  const handleContentChange = (content) => {
+    setFormData(prev => ({ ...prev, content: content }));
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -60,7 +67,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     try {
       const data = new FormData();
       data.append('file', file);
-
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -72,7 +79,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         console.warn("Fetch failed:", err);
         return null;
       });
-
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
@@ -116,6 +122,15 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{'list': 'ordered'}, {'list': 'bullet'}],
+      ['link', 'clean']
+    ],
   };
 
   if (!isOpen) return null;
@@ -202,7 +217,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     <label
                       htmlFor="edit-file-upload"
                       className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap ${
-                        uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                        uploadStatus === 'Upload Failed' 
+                          ? 'border-red-300 text-red-600 bg-red-50' 
+                          : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                       }`}
                     >
                       {isUploading ? (
@@ -236,14 +253,15 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-              <textarea
-                name="content"
-                value={formData.content}
-                onChange={handleChange}
-                rows="8"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-vertical"
-                required
-              />
+              <div className="rounded-lg overflow-hidden border border-gray-300">
+                <ReactQuill 
+                  theme="snow"
+                  value={formData.content}
+                  onChange={handleContentChange}
+                  modules={quillModules}
+                  className="bg-white"
+                />
+              </div>
             </div>
           </form>
 

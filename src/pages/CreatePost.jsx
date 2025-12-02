@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useBlog } from '../contexts/BlogContext';
 import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -13,14 +15,12 @@ const CreatePost = () => {
   const navigate = useNavigate();
   const { addPost } = useBlog();
   const { user } = useAuth();
-  
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     category: '',
     image: ''
   });
-  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
@@ -47,6 +47,11 @@ const CreatePost = () => {
     }
   };
 
+  // Handler specifically for ReactQuill
+  const handleContentChange = (content) => {
+    setFormData(prev => ({ ...prev, content: content }));
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -70,7 +75,6 @@ const CreatePost = () => {
         console.warn("Fetch failed:", err);
         return null;
       });
-      
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
@@ -84,20 +88,20 @@ const CreatePost = () => {
       }
       throw new Error("Server upload unavailable or failed");
     } catch (error) {
-       console.warn("Server upload failed, falling back to local:", error);
-       try {
-         const base64 = await new Promise((resolve, reject) => {
-           const reader = new FileReader();
-           reader.onload = () => resolve(reader.result);
-           reader.onerror = reject;
-           reader.readAsDataURL(file);
-         });
-         setFormData(prev => ({ ...prev, image: base64 }));
-         setUploadStatus('Upload Complete! (Local)');
-       } catch (localError) {
-         setUploadStatus('Upload Failed');
-         alert("Could not process image.");
-       }
+      console.warn("Server upload failed, falling back to local:", error);
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        setFormData(prev => ({ ...prev, image: base64 }));
+        setUploadStatus('Upload Complete! (Local)');
+      } catch (localError) {
+        setUploadStatus('Upload Failed');
+        alert("Could not process image.");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -111,7 +115,6 @@ const CreatePost = () => {
     }
 
     setIsSaving(true);
-
     const postData = {
       ...formData,
       image: formData.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop',
@@ -119,22 +122,36 @@ const CreatePost = () => {
     };
 
     try {
-        const postId = await addPost(postData);
-        // addPost throws if it fails, so if we get here, it succeeded or at least optimistically updated
-        navigate(`/post/${postId}`);
+      const postId = await addPost(postData);
+      navigate(`/post/${postId}`);
     } catch (error) {
-        console.error("Save failed:", error);
-        alert(`Failed to save post to server: ${error.message}. The post is saved locally but may not be visible to others.`);
-        // Note: addPost optimistically updates, so we still navigate, but user is warned
-        navigate(`/`); 
+      console.error("Save failed:", error);
+      alert(`Failed to save post to server: ${error.message}. The post is saved locally but may not be visible to others.`);
+      navigate(`/`);
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   };
 
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+      [{'list': 'ordered'}, {'list': 'bullet'}],
+      ['link', 'clean']
+    ],
+  };
+
+  const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike', 'blockquote',
+    'list', 'bullet',
+    'link'
+  ];
+
   return (
     <ProtectedRoute requiredRole="author">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -205,7 +222,6 @@ const CreatePost = () => {
                   placeholder="Paste Dropbox link here..."
                 />
               </div>
-              
               <div className="relative">
                 <input
                   type="file"
@@ -214,10 +230,12 @@ const CreatePost = () => {
                   className="hidden"
                   accept="image/*"
                 />
-                <label 
+                <label
                   htmlFor="file-upload"
                   className={`flex items-center justify-center w-full px-4 py-3 border border-dashed rounded-lg cursor-pointer transition-colors font-medium ${
-                    uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                    uploadStatus === 'Upload Failed' 
+                      ? 'border-red-300 text-red-600 bg-red-50' 
+                      : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                   }`}
                 >
                   {isUploading ? (
@@ -232,22 +250,21 @@ const CreatePost = () => {
                 </label>
               </div>
             </div>
-
             {formData.image && (
               <div className="mt-3 relative rounded-lg overflow-hidden h-40 w-full md:w-64 border border-gray-200 bg-gray-50">
-                 <img 
-                   src={formData.image} 
-                   alt="Preview" 
-                   className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                   onError={() => setImageError(true)}
-                   onLoad={() => setImageError(false)}
-                 />
-                 {imageError && (
-                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                     <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
-                     <span className="text-xs">Preview unavailable</span>
-                   </div>
-                 )}
+                <img
+                  src={formData.image}
+                  alt="Preview"
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                  onError={() => setImageError(true)}
+                  onLoad={() => setImageError(false)}
+                />
+                {imageError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                    <SafeIcon icon={FiImage} className="text-3xl mb-1 text-gray-300" />
+                    <span className="text-xs">Preview unavailable</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -256,16 +273,17 @@ const CreatePost = () => {
             <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
               Your Story *
             </label>
-            <textarea
-              id="content"
-              name="content"
-              value={formData.content}
-              onChange={handleChange}
-              rows="12"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"
-              placeholder="Share your thoughts, experiences, or insights..."
-              required
-            />
+            <div className="rounded-lg overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-transparent transition-all">
+              <ReactQuill 
+                theme="snow"
+                value={formData.content}
+                onChange={handleContentChange}
+                modules={quillModules}
+                formats={quillFormats}
+                className="bg-white min-h-[300px]"
+                placeholder="Share your thoughts, experiences, or insights..."
+              />
+            </div>
           </div>
 
           <div className="flex justify-end">
@@ -277,15 +295,15 @@ const CreatePost = () => {
               className="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors shadow-lg shadow-purple-200 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                    Saving...
-                  </>
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Saving...
+                </>
               ) : (
-                  <>
-                    <SafeIcon icon={FiSave} className="mr-2" />
-                    Publish Post
-                  </>
+                <>
+                  <SafeIcon icon={FiSave} className="mr-2" />
+                  Publish Post
+                </>
               )}
             </motion.button>
           </div>
