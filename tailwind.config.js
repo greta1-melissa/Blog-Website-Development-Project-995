@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        'sans': ['Lato', 'system-ui', 'sans-serif'], // Updated to Lato
         'serif': ['Playfair Display', 'Georgia', 'serif'],
       },
       colors: {
@@ -26,17 +26,17 @@ export default {
           950: '#0B0410', // Darker Inked Eggplant
         },
         purple: {
-          50: '#F4ECFF', 
-          100: '#E2D4FF', 
-          200: '#D5C2FF', 
-          300: '#C8AFFF', 
-          400: '#B696FF', 
-          500: '#A377FF', 
-          600: '#7B3FE4', 
-          700: '#522099', 
-          800: '#2E1247', 
-          900: '#16091F', 
-          950: '#0B0410', 
+          50: '#F4ECFF',
+          100: '#E2D4FF',
+          200: '#D5C2FF',
+          300: '#C8AFFF',
+          400: '#B696FF',
+          500: '#A377FF',
+          600: '#7B3FE4',
+          700: '#522099',
+          800: '#2E1247',
+          900: '#16091F',
+          950: '#0B0410',
         },
         indigo: {
           50: '#F4ECFF',
@@ -80,10 +80,18 @@ export default {
           '50%': { transform: 'translateY(-10px)' },
         },
         blob: {
-          "0%": { transform: "translate(0px, 0px) scale(1)" },
-          "33%": { transform: "translate(30px, -50px) scale(1.1)" },
-          "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
-          "100%": { transform: "translate(0px, 0px) scale(1)" },
+          "0%": {
+            transform: "translate(0px, 0px) scale(1)"
+          },
+          "33%": {
+            transform: "translate(30px, -50px) scale(1.1)"
+          },
+          "66%": {
+            transform: "translate(-20px, 20px) scale(0.9)"
+          },
+          "100%": {
+            transform: "translate(0px, 0px) scale(1)"
+          },
         },
       },
       backdropBlur: {
