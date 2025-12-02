@@ -11,20 +11,52 @@ export const useBlog = () => {
   return context;
 };
 
-// Fallback data
+// Fallback data - Standardized for initial view
 const initialPosts = [
   {
     id: 1,
     title: "Why 'Our Beloved Summer' is the Comfort Watch We All Need",
-    content: "I recently re-watched 'Our Beloved Summer'...",
+    content: "I recently re-watched 'Our Beloved Summer' and it hit differently this time. The way it portrays the messy, non-linear nature of growth and relationships is just... *chef's kiss*. It’s a reminder that it’s okay to not have everything figured out.",
     author: "Melissa",
     date: "2024-02-28",
     category: "K-Drama",
     readTime: "6 min read",
     image: "https://images.unsplash.com/photo-1517604931442-71053e6e2306?w=800&h=400&fit=crop",
+    isHandPicked: true
+  },
+  {
+    id: 2,
+    title: "Surviving the Toddler Sleep Regression (Again)",
+    content: "Just when I thought we were in the clear, the 2-year sleep regression hit us like a truck. Here are the 3 things keeping me sane (and caffeinated) this week.",
+    author: "Melissa",
+    date: "2024-02-25",
+    category: "Fam Bam",
+    readTime: "4 min read",
+    image: "https://images.unsplash.com/photo-1522771753062-5887739e6583?w=800&h=400&fit=crop",
+    isHandPicked: true
+  },
+  {
+    id: 3,
+    title: "Top 5 Skincare Finds from Olive Young Global",
+    content: "My latest haul just arrived! I'm breaking down which viral products are actually worth the hype and which ones you can skip.",
+    author: "Melissa",
+    date: "2024-02-20",
+    category: "Product Recommendations",
+    readTime: "5 min read",
+    image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=400&fit=crop",
     isHandPicked: false
   },
-  // ... (keeping other initial posts abbreviated for clarity)
+  {
+    id: 4,
+    title: "BTS 'Golden' Album Review: A Mom's Perspective",
+    content: "Jungkook's solo album is finally here, and I have thoughts. Let's talk about how the golden maknae has grown up.",
+    author: "Melissa",
+    date: "2024-02-15",
+    category: "BTS",
+    readTime: "8 min read",
+    image: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=800&h=400&fit=crop",
+    isHandPicked: false
+  }
 ];
 
 // Helper to get local data safely
@@ -55,6 +87,7 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const serverData = await ncbGet('posts');
+      
       let mergedPosts = [];
 
       if (serverData !== null) {
@@ -62,19 +95,18 @@ export const BlogProvider = ({ children }) => {
         // Even if serverData is [], it means we have 0 posts on server.
         
         const localData = getLocalPosts() || [];
+        
         // Detect local drafts: Items in local storage that aren't on server
         // We assume server items have string UUIDs or distinct IDs compared to Date.now()
-        // Simple check: If ID is in serverData, it's synced.
-        
         const serverIds = new Set(serverData.map(p => String(p.id)));
         const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
         
         mergedPosts = [...localDrafts, ...serverData];
-        
+
+        // If both server and local are empty, use initialPosts to populate the UI
         if (mergedPosts.length === 0 && serverData.length === 0) {
-             console.log("No posts on server or local. Starting fresh.");
-             // Optional: Uncomment next line if you WANT dummy data when everything is empty
-             // mergedPosts = initialPosts; 
+          console.log("No posts on server or local. Using initial content.");
+          mergedPosts = initialPosts;
         }
       } else {
         // FAILURE: Network error or bad config.
@@ -110,7 +142,7 @@ export const BlogProvider = ({ children }) => {
     const tempId = Date.now();
     const wordCount = post.content ? post.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
-
+    
     const newPost = {
       ...post,
       id: tempId, // Temporary ID for UI only
@@ -126,7 +158,6 @@ export const BlogProvider = ({ children }) => {
     try {
       // Remove 'id' before sending to backend to avoid conflicts
       const { id, ...postPayload } = newPost;
-      
       const result = await ncbCreate('posts', postPayload);
       
       if (result && result.id) {
