@@ -9,7 +9,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
 // Use FiBarChart2 as it is the standard Feather icon name
-const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut, FiActivity, FiServer } = FiIcons;
+const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut, FiActivity, FiServer, FiStar } = FiIcons;
 
 // Component to display when access is denied
 const AccessDenied = () => (
@@ -101,6 +101,12 @@ const Admin = () => {
 
   const handleSavePost = async (id, updatedData) => {
     await updatePost(id, updatedData);
+  };
+
+  const handleToggleFeatured = async (post) => {
+    const newValue = !post.isHandPicked;
+    // We don't block if more than 3, we just rely on Home.jsx to pick the top 3
+    await updatePost(post.id, { isHandPicked: newValue });
   };
 
   const tabs = [
@@ -344,11 +350,11 @@ const Admin = () => {
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Date
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Featured
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Time
+                      Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Actions
@@ -378,11 +384,20 @@ const Admin = () => {
                           {post.category}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {post.date}
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleToggleFeatured(post)}
+                          className={`focus:outline-none transition-transform active:scale-95 ${post.isHandPicked ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}
+                          title={post.isHandPicked ? "Remove from Featured" : "Add to Featured"}
+                        >
+                          <SafeIcon 
+                            icon={FiStar} 
+                            className={`text-lg ${post.isHandPicked ? 'fill-current' : ''}`} 
+                          />
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {post.readTime}
+                        {post.date}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-3">

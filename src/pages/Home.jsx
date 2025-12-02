@@ -17,22 +17,35 @@ const Home = () => {
   const footerVideoRef = useRef(null);
   const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
 
-  // Logic for Featured Section: 1 Most Recent + 2 Hand Picked
+  // Logic for Featured Section: Prioritize Hand Picked, fallback to Recent
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
 
-    const mostRecent = posts[0];
+    // 1. Get all manually featured posts
+    let selection = posts.filter(p => p.isHandPicked);
     
-    // Find up to 2 other posts that are flagged as hand-picked and not the most recent one
-    const handPicked = posts
-      .filter(p => p.id !== mostRecent.id && p.isHandPicked)
-      .slice(0, 2);
+    // 2. Sort them by date (newest first)
+    selection.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // 3. If fewer than 3, fill with most recent posts that aren't already selected
+    if (selection.length < 3) {
+      const selectedIds = new Set(selection.map(p => p.id));
+      const fillers = posts
+        .filter(p => !selectedIds.has(p.id))
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 3 - selection.length);
+      
+      selection = [...selection, ...fillers];
+    }
 
-    // Combine them
-    return [mostRecent, ...handPicked];
+    // 4. Return exactly 3 (or fewer if total posts < 3)
+    return selection.slice(0, 3);
   }, [posts]);
 
-  // Safely access the most recent post
+  // Safely access the most recent post for the Hero/Bento section
+  // We keep this as "Latest Post" regardless of featured selection, 
+  // or we could use featuredPosts[0] if we wanted the Hero to be curated too.
+  // For now, "Latest Story" usually means strictly the newest one.
   const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
 
   const currentKDrama = {
@@ -205,7 +218,6 @@ const Home = () => {
             <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
             <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
-          {/* Removed the Link to /blogs here */}
         </div>
 
         {/* Featured Grid */}
