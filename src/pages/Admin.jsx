@@ -4,15 +4,12 @@ import { motion } from 'framer-motion';
 import { useBlog } from '../contexts/BlogContext';
 import { useAuth } from '../contexts/AuthContext';
 import UserManagement from './UserManagement';
+import EditPostModal from '../components/EditPostModal';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
 // Use FiBarChart2 as it is the standard Feather icon name
-const { 
-  FiBarChart2, FiUsers, FiFileText, FiTrendingUp, 
-  FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, 
-  FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut 
-} = FiIcons;
+const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut, FiActivity, FiServer } = FiIcons;
 
 // Component to display when access is denied
 const AccessDenied = () => (
@@ -42,11 +39,15 @@ const AccessDenied = () => (
 );
 
 const Admin = () => {
-  const { posts = [], categories = [], deletePost } = useBlog();
+  const { posts = [], categories = [], deletePost, updatePost } = useBlog();
   const { user, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  
+  // State for Edit Modal
+  const [editingPost, setEditingPost] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Calculate stats - moved outside of conditional rendering
   const stats = useMemo(() => {
@@ -54,17 +55,16 @@ const Admin = () => {
     const safePosts = Array.isArray(posts) ? posts : [];
     const totalPosts = safePosts.length;
     const totalCategories = Array.isArray(categories) ? categories.length : 0;
-    
-    const avgWordsPerPost = totalPosts > 0 
+    const avgWordsPerPost = totalPosts > 0
       ? Math.round(
           safePosts.reduce((sum, post) => sum + (post.content ? post.content.split(' ').length : 0), 0) / totalPosts
-        ) 
+        )
       : 0;
 
     const categoryStats = (Array.isArray(categories) ? categories : []).map(cat => ({
       name: cat,
       count: safePosts.filter(post => post.category === cat).length,
-      percentage: totalPosts > 0 
+      percentage: totalPosts > 0
         ? Math.round((safePosts.filter(post => post.category === cat).length / totalPosts) * 100)
         : 0
     }));
@@ -94,6 +94,15 @@ const Admin = () => {
     }
   };
 
+  const handleEditClick = (post) => {
+    setEditingPost(post);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSavePost = async (id, updatedData) => {
+    await updatePost(id, updatedData);
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiBarChart2 },
     { id: 'posts', label: 'Manage Posts', icon: FiFileText },
@@ -118,7 +127,14 @@ const Admin = () => {
             Welcome back, <strong>{user?.name}</strong>! Complete control over your Bangtan Mom blog
           </p>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="mt-4 md:mt-0 flex items-center space-x-3">
+          <Link
+            to="/debug/ncb"
+            className="inline-flex items-center px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200 font-medium"
+          >
+            <SafeIcon icon={FiActivity} className="mr-2" />
+            System Status
+          </Link>
           <button
             onClick={logout}
             className="inline-flex items-center px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm font-medium"
@@ -239,7 +255,8 @@ const Admin = () => {
                   to="/create"
                   className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium text-sm"
                 >
-                  <SafeIcon icon={FiPlus} className="mr-1" /> New Post
+                  <SafeIcon icon={FiPlus} className="mr-1" />
+                  New Post
                 </Link>
               </div>
               <div className="space-y-4">
@@ -309,7 +326,8 @@ const Admin = () => {
                 to="/create"
                 className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium"
               >
-                <SafeIcon icon={FiPlus} className="mr-2" /> New Post
+                <SafeIcon icon={FiPlus} className="mr-2" />
+                New Post
               </Link>
             </div>
           </div>
@@ -371,10 +389,18 @@ const Admin = () => {
                           <Link to={`/post/${post.id}`} className="text-indigo-600 hover:text-indigo-900 transition-colors" title="View">
                             <SafeIcon icon={FiEye} className="w-4 h-4" />
                           </Link>
-                          <button onClick={() => alert('Edit functionality would be implemented here')} className="text-fuchsia-600 hover:text-fuchsia-900 transition-colors" title="Edit">
+                          <button 
+                            onClick={() => handleEditClick(post)} 
+                            className="text-fuchsia-600 hover:text-fuchsia-900 transition-colors" 
+                            title="Edit"
+                          >
                             <SafeIcon icon={FiEdit} className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDeletePost(post.id)} className="text-red-500 hover:text-red-700 transition-colors" title="Delete">
+                          <button 
+                            onClick={() => handleDeletePost(post.id)} 
+                            className="text-red-500 hover:text-red-700 transition-colors" 
+                            title="Delete"
+                          >
                             <SafeIcon icon={FiTrash2} className="w-4 h-4" />
                           </button>
                         </div>
@@ -485,6 +511,15 @@ const Admin = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Edit Modal */}
+      <EditPostModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        post={editingPost}
+        onSave={handleSavePost}
+        categories={['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations']}
+      />
     </div>
   );
 };

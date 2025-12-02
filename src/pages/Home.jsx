@@ -20,14 +20,14 @@ const Home = () => {
   // Logic for Featured Section: 1 Most Recent + 2 Hand Picked
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
-    
+
     const mostRecent = posts[0];
     
     // Find up to 2 other posts that are flagged as hand-picked and not the most recent one
     const handPicked = posts
       .filter(p => p.id !== mostRecent.id && p.isHandPicked)
       .slice(0, 2);
-      
+
     // Combine them
     return [mostRecent, ...handPicked];
   }, [posts]);
@@ -77,22 +77,21 @@ const Home = () => {
       {/* Bento Grid Featured Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
-          
           {/* Main Feature: Latest Post */}
           {mostRecentPost ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
               {/* Video Background - Priority Load */}
-              <video 
-                src={FEATURED_STORY_VIDEO_URL} 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
+              <video
+                src={FEATURED_STORY_VIDEO_URL}
+                autoPlay
+                loop
+                muted
+                playsInline
                 preload="auto"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -104,22 +103,20 @@ const Home = () => {
                     Latest Story
                   </span>
                   <span className="text-purple-100 text-sm flex items-center font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                    <SafeIcon icon={FiCalendar} className="mr-2" /> {mostRecentPost.date}
+                    <SafeIcon icon={FiCalendar} className="mr-2" />
+                    {mostRecentPost.date}
                   </span>
                 </div>
-                
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
                   <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight group-hover:text-purple-200 transition-colors drop-shadow-sm">
                     {mostRecentPost.title}
                   </h2>
                 </Link>
-                
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {mostRecentPost.content}
                 </p>
-                
-                <Link 
-                  to={`/post/${mostRecentPost.id}`} 
+                <Link
+                  to={`/post/${mostRecentPost.id}`}
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
                 >
                   Read Full Story <SafeIcon icon={FiArrowRight} className="ml-2" />
@@ -139,16 +136,16 @@ const Home = () => {
           {/* Right Column */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
             {/* Top Right: Currently Watching */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group border border-purple-800 min-h-[240px]"
             >
-              <img 
-                src={currentKDrama.image} 
-                alt="K-Drama" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
+              <img
+                src={currentKDrama.image}
+                alt="K-Drama"
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
               
@@ -174,20 +171,20 @@ const Home = () => {
             </motion.div>
 
             {/* Bottom Right: Spotify Embed */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
             >
-              <iframe 
-                style={{ borderRadius: '0px' }} 
-                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0" 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                allowFullScreen="" 
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+              <iframe
+                style={{ borderRadius: '0px' }}
+                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                allowFullScreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy"
                 title="Spotify Playlist"
                 className="absolute inset-0 w-full h-full"
@@ -208,14 +205,7 @@ const Home = () => {
             <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
             <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
-          <div className="mt-4 md:mt-0">
-            <Link 
-              to="/blogs" 
-              className="inline-flex items-center px-6 py-3 bg-white text-purple-600 border border-purple-200 rounded-full font-medium hover:bg-purple-50 transition-colors shadow-sm"
-            >
-              View All Stories <SafeIcon icon={FiArrowRight} className="ml-2" />
-            </Link>
-          </div>
+          {/* Removed the Link to /blogs here */}
         </div>
 
         {/* Featured Grid */}
@@ -226,7 +216,7 @@ const Home = () => {
         </div>
 
         {/* Newsletter / CTA Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -236,17 +226,17 @@ const Home = () => {
           
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
-               {/* Lazy load the footer video only when in view */}
-               {isFooterInView && (
-                 <video 
-                   src={ANIMATED_LOGO_VIDEO_URL} 
-                   autoPlay 
-                   loop 
-                   muted 
-                   playsInline 
-                   className="w-full h-full object-cover transform scale-110" 
-                 />
-               )}
+              {/* Lazy load the footer video only when in view */}
+              {isFooterInView && (
+                <video
+                  src={ANIMATED_LOGO_VIDEO_URL}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover transform scale-110"
+                />
+              )}
             </div>
             
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
@@ -257,9 +247,9 @@ const Home = () => {
             </p>
             
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Your email address" 
+              <input
+                type="email"
+                placeholder="Your email address"
                 className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
               />
               <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">

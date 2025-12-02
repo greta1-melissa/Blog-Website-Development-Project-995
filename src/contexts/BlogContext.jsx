@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ncbGet, ncbCreate, ncbDelete } from '../services/nocodebackendClient';
+import { ncbGet, ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
 
 const BlogContext = createContext();
 
@@ -87,13 +87,11 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const serverData = await ncbGet('posts');
-      
       let mergedPosts = [];
 
       if (serverData !== null) {
         // SUCCESS: We connected to the server!
         // Even if serverData is [], it means we have 0 posts on server.
-        
         const localData = getLocalPosts() || [];
         
         // Detect local drafts: Items in local storage that aren't on server
@@ -109,12 +107,12 @@ export const BlogProvider = ({ children }) => {
           mergedPosts = initialPosts;
         }
       } else {
-        // FAILURE: Network error or bad config.
+        // FAILURE: Network error or bad config. 
         console.warn("Using offline/fallback mode due to API error.");
         const localData = getLocalPosts();
         mergedPosts = (localData && localData.length > 0) ? localData : initialPosts;
       }
-
+      
       // Sort: Newest First
       mergedPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
       setPosts(mergedPosts);
@@ -142,7 +140,7 @@ export const BlogProvider = ({ children }) => {
     const tempId = Date.now();
     const wordCount = post.content ? post.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
-    
+
     const newPost = {
       ...post,
       id: tempId, // Temporary ID for UI only
@@ -173,6 +171,28 @@ export const BlogProvider = ({ children }) => {
     }
   };
 
+  const updatePost = async (id, updatedFields) => {
+    // Recalculate readTime if content changed
+    let updates = { ...updatedFields };
+    if (updates.content) {
+      const wordCount = updates.content.split(' ').length;
+      updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
+    }
+
+    // Optimistic update
+    setPosts(prev => prev.map(post => 
+      String(post.id) === String(id) ? { ...post, ...updates } : post
+    ));
+
+    try {
+      await ncbUpdate('posts', id, updates);
+    } catch (error) {
+      console.error("Failed to update post on server:", error);
+      // Ideally we would revert state here, but for now we keep the optimistic update locally
+      throw error;
+    }
+  };
+
   const deletePost = async (id) => {
     setPosts(prev => prev.filter(post => post.id !== id));
     try {
@@ -195,6 +215,7 @@ export const BlogProvider = ({ children }) => {
     categories,
     isLoading,
     addPost,
+    updatePost,
     deletePost,
     getPost,
     getPostsByCategory

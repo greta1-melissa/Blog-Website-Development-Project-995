@@ -9,7 +9,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import AllBlogs from './pages/AllBlogs';
+// Removed AllBlogs import
 import BlogPost from './pages/BlogPost';
 import CreatePost from './pages/CreatePost';
 import About from './pages/About';
@@ -27,7 +27,11 @@ import NcbDebug from './pages/NcbDebug';
 
 function App() {
   return (
-    <QuestProvider apiKey={questConfig.APIKEY} entityId={questConfig.ENTITYID} apiType="PRODUCTION">
+    <QuestProvider
+      apiKey={questConfig.APIKEY}
+      entityId={questConfig.ENTITYID}
+      apiType="PRODUCTION"
+    >
       <Router>
         <AuthProvider>
           <BlogProvider>
@@ -40,27 +44,36 @@ function App() {
                     <Route path="/admin-login" element={<AdminLogin />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     <Route path="/" element={<Home />} />
-                    <Route path="/blogs" element={<AllBlogs />} />
+                    {/* Removed /blogs route */}
                     <Route path="/post/:id" element={<BlogPost />} />
                     <Route path="/create" element={<CreatePost />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/products" element={<ProductRecommendations />} />
-                    <Route path="/admin" element={
-                      <ProtectedRoute adminOnly={true}>
-                        <Admin />
-                      </ProtectedRoute>
-                    } />
+                    
+                    <Route
+                      path="/admin"
+                      element={
+                        <ProtectedRoute adminOnly={true}>
+                          <Admin />
+                        </ProtectedRoute>
+                      }
+                    />
+
                     <Route path="/forums" element={<Forums />} />
                     <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
                     <Route path="/forums/thread/:threadId" element={<ForumThread />} />
                     <Route path="/forums/new-thread" element={<NewThread />} />
+                    
                     {/* Admin Debug Route */}
-                    <Route path="/debug/ncb" element={
-                      <ProtectedRoute adminOnly={true}>
-                        <NcbDebug />
-                      </ProtectedRoute>
-                    } />
+                    <Route
+                      path="/debug/ncb"
+                      element={
+                        <ProtectedRoute adminOnly={true}>
+                          <NcbDebug />
+                        </ProtectedRoute>
+                      }
+                    />
                   </Routes>
                 </main>
                 <Footer />

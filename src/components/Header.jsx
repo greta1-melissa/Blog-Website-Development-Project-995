@@ -6,7 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiMenu, FiX, FiLogOut, FiUser, FiSettings, FiChevronDown, FiEdit, FiGrid, FiBook } = FiIcons;
+const { FiMenu, FiX, FiLogOut, FiUser, FiSettings, FiChevronDown, FiEdit, FiGrid } = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,11 +28,11 @@ const Header = () => {
       { path: '/', label: 'Home' },
       { path: '/about', label: 'About' },
       { path: '/products', label: 'Picks' },
-      { path: '/blogs', label: 'Blogs', icon: FiBook },
+      // Blogs link removed here
       { path: '/forums', label: 'Community' },
       { path: '/contact', label: 'Contact' }
     ];
-    
+
     // Safely check for author permission to avoid crashes if context isn't fully ready
     const hasAuthorPermission = isAuthor && typeof isAuthor === 'function' ? isAuthor() : false;
 
@@ -40,24 +40,25 @@ const Header = () => {
       baseItems.push({ path: '/admin', label: 'My Stories', icon: FiGrid });
       baseItems.push({ path: '/create', label: 'New Post', icon: FiEdit });
     }
-    
+
     return baseItems;
   };
 
   const navItems = getNavItems();
+
   const isActive = (path) => location.pathname === path;
 
   const getUserInitials = () => {
     if (!user?.name) return 'U';
     try {
-        return user.name
-          .split(' ')
-          .map((n) => n[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2);
+      return user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
     } catch (e) {
-        return 'U';
+      return 'U';
     }
   };
 
@@ -79,7 +80,7 @@ const Header = () => {
     setIsMenuOpen(false);
     logout();
   };
-  
+
   // Safely check admin permission
   const hasAdminPermission = isAdmin && typeof isAdmin === 'function' ? isAdmin() : false;
 
@@ -95,10 +96,10 @@ const Header = () => {
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
-            <img 
-              src={logo} 
-              alt="BangtanMom Logo" 
-              className="w-10 h-10 rounded-xl shadow-lg shadow-purple-200 group-hover:shadow-purple-300 transition-all duration-300 transform group-hover:-rotate-6 object-cover" 
+            <img
+              src={logo}
+              alt="BangtanMom Logo"
+              className="w-10 h-10 rounded-xl shadow-lg shadow-purple-200 group-hover:shadow-purple-300 transition-all duration-300 transform group-hover:-rotate-6 object-cover"
             />
             <span className="text-2xl font-serif font-bold text-purple-900 tracking-tight group-hover:text-purple-600 transition-colors">
               Bangtan<span className="text-purple-500">Mom</span>
@@ -139,14 +140,25 @@ const Header = () => {
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center space-x-3 px-2 py-1 rounded-full hover:bg-purple-50 transition-colors outline-none focus:ring-2 focus:ring-purple-200"
                   >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md ${getRoleColor()}`}>
+                    <div
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md ${getRoleColor()}`}
+                    >
                       {getUserInitials()}
                     </div>
                     <div className="hidden lg:block text-left">
-                      <span className="block text-sm font-semibold text-gray-800 leading-none">{user?.name?.split(' ')[0] || 'User'}</span>
-                      <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase">{user?.role}</span>
+                      <span className="block text-sm font-semibold text-gray-800 leading-none">
+                        {user?.name?.split(' ')[0] || 'User'}
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-medium tracking-wide uppercase">
+                        {user?.role}
+                      </span>
                     </div>
-                    <SafeIcon icon={FiChevronDown} className={`text-gray-400 text-sm transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                    <SafeIcon
+                      icon={FiChevronDown}
+                      className={`text-gray-400 text-sm transition-transform duration-200 ${
+                        isUserMenuOpen ? 'rotate-180' : ''
+                      }`}
+                    />
                   </button>
 
                   <AnimatePresence>
@@ -159,13 +171,15 @@ const Header = () => {
                         className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl ring-1 ring-purple-100 ring-opacity-50 py-2 z-50 overflow-hidden"
                       >
                         <div className="px-4 py-3 border-b border-purple-50 bg-purple-50/30">
-                          <p className="text-sm font-bold text-gray-900 truncate">{user?.name || 'User'}</p>
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {user?.name || 'User'}
+                          </p>
                           <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                         </div>
                         <div className="p-2">
                           {hasAdminPermission && (
-                            <Link 
-                              to="/admin" 
+                            <Link
+                              to="/admin"
                               onClick={() => setIsUserMenuOpen(false)}
                               className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-colors"
                             >
@@ -242,7 +256,9 @@ const Header = () => {
               {isAuthenticated ? (
                 <>
                   <div className="flex items-center px-4 py-3 mb-2 bg-purple-50 rounded-xl">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 ${getRoleColor()}`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold mr-3 ${getRoleColor()}`}
+                    >
                       {getUserInitials()}
                     </div>
                     <div>
@@ -292,7 +308,10 @@ const Header = () => {
       </AnimatePresence>
 
       {isUserMenuOpen && (
-        <div className="fixed inset-0 z-40 cursor-default" onClick={() => setIsUserMenuOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 cursor-default"
+          onClick={() => setIsUserMenuOpen(false)}
+        />
       )}
     </header>
   );
