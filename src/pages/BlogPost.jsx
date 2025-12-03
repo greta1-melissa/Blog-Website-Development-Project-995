@@ -57,8 +57,15 @@ const BlogPost = () => {
 
   const fallbackImage = "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop";
   
-  // Basic check to see if content is likely HTML (from rich text editor)
+  // Check for HTML content
   const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
+
+  // Clean HTML content: Remove empty paragraphs meant as spacers to fix double gaps
+  const cleanHtmlContent = isHtml 
+    ? post.content
+        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '') // Remove <p><br></p>
+        .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')     // Remove <p>&nbsp;</p>
+    : post.content;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
@@ -76,7 +83,7 @@ const BlogPost = () => {
           Back to Home
         </Link>
         
-        {/* Image Section with Error Handling */}
+        {/* Image Section */}
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
           {!imgError ? (
             <img
@@ -106,6 +113,7 @@ const BlogPost = () => {
           </button>
         </div>
 
+        {/* Title & Metadata */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-600 mb-6">
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
@@ -136,35 +144,37 @@ const BlogPost = () => {
           </div>
         </div>
 
-        {/* Article Content Container */}
+        {/* Article Content */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
-          {/* Removed prose classes to allow full control via .article-content */}
           <div className="w-full">
             {isHtml ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
-                className="article-content" // Using new class
-                dangerouslySetInnerHTML={{ __html: post.content }} 
+                className="article-content"
+                dangerouslySetInnerHTML={{ __html: cleanHtmlContent }} 
               />
             ) : (
               <div className="article-content">
-                {post.content.split('\n').map((paragraph, index) => (
-                  <motion.p
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                  >
-                    {paragraph}
-                  </motion.p>
+                {post.content.split('\n')
+                  .filter(p => p.trim() !== '') // Filter out empty lines for plain text to prevent double gaps
+                  .map((paragraph, index) => (
+                    <motion.p
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                    >
+                      {paragraph}
+                    </motion.p>
                 ))}
               </div>
             )}
           </div>
         </div>
 
+        {/* Author Bio */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -201,6 +211,7 @@ const BlogPost = () => {
           </div>
         </motion.div>
 
+        {/* Read More Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

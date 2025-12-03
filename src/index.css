@@ -21,27 +21,31 @@ body {
 
 /* 
   Article Content Styling 
-  Optimized for readability with tighter spacing as requested
+  Refined for tighter, smoother reading experience
 */
 .article-content {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1rem 0; /* Vertical padding only, let container handle horizontal */
-  line-height: 1.7;
+  padding: 1rem 0;
+  line-height: 1.7; /* Good readability */
   font-size: 1.125rem; /* ~18px */
   color: #374151; /* gray-700 */
 }
 
 .article-content p {
   margin-top: 0;
-  margin-bottom: 1.1rem; /* Reduced from 1.5rem */
+  margin-bottom: 1rem; /* Tightened from 1.1rem to 1rem */
+}
+
+.article-content p:last-child {
+  margin-bottom: 0;
 }
 
 /* Lists */
 .article-content ul,
 .article-content ol {
   margin-top: 0.5rem;
-  margin-bottom: 1.1rem;
+  margin-bottom: 1rem;
   padding-left: 1.5rem;
 }
 
@@ -56,10 +60,11 @@ body {
 .article-content li {
   margin-bottom: 0;
   color: #374151;
+  padding-left: 0.25rem; /* Slight indent for text from bullet */
 }
 
 .article-content li + li {
-  margin-top: 0.3rem; /* Small gap between items */
+  margin-top: 0.25rem; /* Very small gap between list items */
 }
 
 /* Nested lists */
@@ -67,25 +72,25 @@ body {
 .article-content ol ul,
 .article-content ul ol,
 .article-content ol ol {
-  margin-top: 0.3rem;
-  margin-bottom: 0.3rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-/* Headings */
+/* Headings within content */
 .article-content h1, 
 .article-content h2, 
 .article-content h3,
 .article-content h4 {
   font-weight: 700;
-  color: #111827; /* gray-900 */
+  color: #111827;
   line-height: 1.3;
 }
 
 .article-content h2 { 
-  margin-top: 2rem;
-  margin-bottom: 0.7rem;
+  margin-top: 1.75rem; /* Distinct section break */
+  margin-bottom: 0.75rem; /* Close to content */
   font-size: 1.75rem; 
-  color: #581c87; /* purple-900 */ 
+  color: #581c87; 
 }
 
 .article-content h3 { 
@@ -100,32 +105,12 @@ body {
   font-size: 1.25rem; 
 }
 
-/* Other Elements */
-.article-content a {
-  color: #9333ea; /* purple-600 */
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-weight: 500;
+/* Handle empty paragraphs from editors */
+.article-content p:empty {
+  display: none;
 }
 
-.article-content a:hover {
-  color: #7e22ce; /* purple-700 */
-}
-
-.article-content blockquote {
-  border-left-width: 4px;
-  border-color: #d8b4fe; /* purple-300 */
-  padding-left: 1.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  font-style: italic;
-  color: #4b5563; /* gray-600 */
-  background-color: #fcfaff; /* very light purple */
-  border-radius: 0 0.5rem 0.5rem 0;
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
+/* Images */
 .article-content img {
   border-radius: 0.75rem;
   margin-top: 1.5rem;
@@ -138,15 +123,23 @@ body {
   margin-right: auto;
 }
 
-/* Utilities for alignment */
-.ql-align-center { text-align: center; }
-.ql-align-right { text-align: right; }
-.ql-align-justify { text-align: justify; }
+/* Blockquotes */
+.article-content blockquote {
+  border-left-width: 4px;
+  border-color: #d8b4fe;
+  padding: 1rem 1.5rem;
+  font-style: italic;
+  color: #4b5563;
+  background-color: #fcfaff;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin: 1.5rem 0;
+}
 
 /* Mobile optimization */
 @media (max-width: 640px) {
   .article-content {
     font-size: 1rem;
     line-height: 1.6;
+    padding: 0.5rem 0;
   }
 }
