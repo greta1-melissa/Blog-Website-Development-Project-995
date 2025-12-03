@@ -23,8 +23,9 @@ import ForumThread from './pages/ForumThread';
 import NewThread from './pages/NewThread';
 import ProductRecommendations from './pages/ProductRecommendations';
 import NcbDebug from './pages/NcbDebug';
+import KdramaRecommendations from './pages/KdramaRecommendations';
 
-// New Legal Pages
+// Legal Pages
 import SafeSpacePromise from './pages/SafeSpacePromise';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/products" element={<ProductRecommendations />} />
+                    <Route path="/kdrama-recommendations" element={<KdramaRecommendations />} />
                     
                     {/* Legal Routes */}
                     <Route path="/safe-space-promise" element={<SafeSpacePromise />} />

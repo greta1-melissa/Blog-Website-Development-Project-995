@@ -39,6 +39,7 @@ const Footer = () => {
               <li><Link to="/about" className="hover:text-purple-600 transition-colors">Our Story</Link></li>
               <li><Link to="/forums" className="hover:text-purple-600 transition-colors">Community Forums</Link></li>
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Shop Favorites</Link></li>
+              <li><Link to="/kdrama-recommendations" className="hover:text-purple-600 transition-colors">K-Drama Recommendations</Link></li>
             </ul>
           </div>
 

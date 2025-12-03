@@ -3,13 +3,14 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import BlogCard from '../components/BlogCard';
+import KdramaGrid from '../components/KdramaGrid';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
+const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
 
 const Home = () => {
   // Use publishedPosts instead of raw posts to hide drafts/scheduled
@@ -197,6 +198,38 @@ const Home = () => {
               ></iframe>
             </motion.div>
           </div>
+        </div>
+      </div>
+
+      {/* NEW: K-Drama Recommendations Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center space-x-2 bg-purple-100 text-purple-800 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-4">
+            <SafeIcon icon={FiHeart} />
+            <span>Curated with Love</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-6">
+            K-Drama Recommendations <span className="text-purple-600">to Date</span>
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            As a K-drama-loving ARMY mom, these are the shows I recommend to anyone looking for their next emotional rollercoaster. This list will keep growing and changing over time, but here are some of my favourites so far.
+          </p>
+        </motion.div>
+        
+        <KdramaGrid />
+        
+        <div className="text-center mt-12">
+          <Link 
+            to="/kdrama-recommendations"
+            className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all"
+          >
+            View All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
+          </Link>
         </div>
       </div>
 
