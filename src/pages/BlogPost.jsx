@@ -107,7 +107,8 @@ const BlogPost = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6">
+          {/* Added justify-center to center the metadata tags */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-600 mb-6">
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
               <SafeIcon icon={FiUser} className="mr-1 text-purple-600" />
               <span className="font-medium text-purple-800">{post.author}</span>
@@ -122,7 +123,8 @@ const BlogPost = () => {
             </div>
           </div>
           
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+          {/* Added text-center to center the title */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight text-center">
             <span className="bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
               {post.title}
             </span>
@@ -143,6 +145,7 @@ const BlogPost = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
+                className="rich-text-content" 
                 dangerouslySetInnerHTML={{ __html: post.content }} 
               />
             ) : (
