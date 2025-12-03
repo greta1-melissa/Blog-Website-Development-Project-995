@@ -7,6 +7,7 @@ import UserManagement from './UserManagement';
 import EditPostModal from '../components/EditPostModal';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { formatDate } from '../utils/dateUtils';
 
 const { FiBarChart2, FiUsers, FiFileText, FiTrendingUp, FiEdit, FiTrash2, FiEye, FiCalendar, FiClock, FiTag, FiPlus, FiSearch, FiFilter, FiShield, FiLogOut, FiActivity, FiServer, FiStar, FiCheckCircle } = FiIcons;
 
@@ -276,7 +277,7 @@ const Admin = () => {
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {post.date}
+                        {formatDate(post.date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-3">

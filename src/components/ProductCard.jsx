@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
+import { formatDate } from '../utils/dateUtils';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
 
@@ -12,11 +13,7 @@ const ProductCard = ({ product, index }) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <SafeIcon
-          key={i}
-          icon={FiStar}
-          className={`${i < rating ? 'text-purple-400' : 'text-gray-300'} text-sm`}
-        />
+        <SafeIcon key={i} icon={FiStar} className={`${i < rating ? 'text-purple-400' : 'text-gray-300'} text-sm`} />
       );
     }
     return stars;
@@ -41,11 +38,7 @@ const ProductCard = ({ product, index }) => {
     >
       <Link to={`/post/${product.id}`}>
         <div className="relative overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.title}
-            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          <img src={product.image} alt={product.title} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute top-4 left-4">
             <span className="bg-white/90 backdrop-blur-sm text-purple-800 px-3 py-1 rounded-full text-sm font-medium shadow-sm">
@@ -81,7 +74,7 @@ const ProductCard = ({ product, index }) => {
         </p>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-            {product.date}
+            {formatDate(product.date)}
           </span>
           <div className="flex space-x-2">
             <Link

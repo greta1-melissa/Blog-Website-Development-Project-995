@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
+import { formatDate } from '../utils/dateUtils';
 
 const { FiClock, FiUser, FiArrowRight, FiImage } = FiIcons;
 
@@ -71,7 +72,7 @@ const BlogCard = ({ post, index }) => {
           {stripHtml(post.content).substring(0, 120)}...
         </p>
         <div className="pt-4 border-t border-purple-50 flex items-center justify-between mt-auto">
-          <span className="text-xs text-gray-400 font-medium">{post.date}</span>
+          <span className="text-xs text-gray-400 font-medium">{formatDate(post.date)}</span>
           <Link
             to={`/post/${post.id}`}
             className="inline-flex items-center text-sm font-semibold text-purple-600 group-hover:translate-x-1 transition-transform duration-300"

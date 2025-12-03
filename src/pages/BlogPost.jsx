@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { formatDate } from '../utils/dateUtils';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck, FiImage } = FiIcons;
 
@@ -142,7 +143,7 @@ const BlogPost = () => {
             </div>
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
               <SafeIcon icon={FiCalendar} className="mr-1 text-purple-600" />
-              <span className="text-purple-800">{post.date}</span>
+              <span className="text-purple-800">{formatDate(post.date)}</span>
             </div>
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
               <SafeIcon icon={FiClock} className="mr-1 text-purple-600" />

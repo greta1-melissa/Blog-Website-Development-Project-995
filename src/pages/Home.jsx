@@ -6,6 +6,7 @@ import BlogCard from '../components/BlogCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
+import { formatDate } from '../utils/dateUtils';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
@@ -115,7 +116,7 @@ const Home = () => {
                   </span>
                   <span className="text-purple-100 text-sm flex items-center font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
                     <SafeIcon icon={FiCalendar} className="mr-2" />
-                    {mostRecentPost.date}
+                    {formatDate(mostRecentPost.date)}
                   </span>
                 </div>
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
