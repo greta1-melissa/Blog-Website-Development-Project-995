@@ -9,7 +9,6 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-// Removed AllBlogs import
 import BlogPost from './pages/BlogPost';
 import CreatePost from './pages/CreatePost';
 import About from './pages/About';
@@ -24,6 +23,11 @@ import ForumThread from './pages/ForumThread';
 import NewThread from './pages/NewThread';
 import ProductRecommendations from './pages/ProductRecommendations';
 import NcbDebug from './pages/NcbDebug';
+
+// New Legal Pages
+import SafeSpacePromise from './pages/SafeSpacePromise';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 
 function App() {
   return (
@@ -43,36 +47,41 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/admin-login" element={<AdminLogin />} />
                     <Route path="/onboarding" element={<Onboarding />} />
+                    
                     <Route path="/" element={<Home />} />
-                    {/* Removed /blogs route */}
                     <Route path="/post/:id" element={<BlogPost />} />
                     <Route path="/create" element={<CreatePost />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/products" element={<ProductRecommendations />} />
                     
-                    <Route
-                      path="/admin"
+                    {/* Legal Routes */}
+                    <Route path="/safe-space-promise" element={<SafeSpacePromise />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/terms-and-conditions" element={<TermsConditions />} />
+
+                    <Route 
+                      path="/admin" 
                       element={
                         <ProtectedRoute adminOnly={true}>
                           <Admin />
                         </ProtectedRoute>
-                      }
+                      } 
                     />
-
+                    
                     <Route path="/forums" element={<Forums />} />
                     <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
                     <Route path="/forums/thread/:threadId" element={<ForumThread />} />
                     <Route path="/forums/new-thread" element={<NewThread />} />
-                    
+
                     {/* Admin Debug Route */}
-                    <Route
-                      path="/debug/ncb"
+                    <Route 
+                      path="/debug/ncb" 
                       element={
                         <ProtectedRoute adminOnly={true}>
                           <NcbDebug />
                         </ProtectedRoute>
-                      }
+                      } 
                     />
                   </Routes>
                 </main>
