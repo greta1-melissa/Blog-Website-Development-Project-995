@@ -19,68 +19,100 @@ body {
   height: 100%;
 }
 
-/* Rich Text Content Styling for Blog Posts */
-.rich-text-content ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.rich-text-content ol {
-  list-style-type: decimal;
-  padding-left: 1.5rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.rich-text-content li {
-  margin-bottom: 0.5rem;
+/* 
+  Article Content Styling 
+  Optimized for readability with tighter spacing as requested
+*/
+.article-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem 0; /* Vertical padding only, let container handle horizontal */
+  line-height: 1.7;
+  font-size: 1.125rem; /* ~18px */
   color: #374151; /* gray-700 */
 }
 
-/* Ensure nested lists look right */
-.rich-text-content ul ul,
-.rich-text-content ol ul,
-.rich-text-content ul ol,
-.rich-text-content ol ol {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
+.article-content p {
+  margin-top: 0;
+  margin-bottom: 1.1rem; /* Reduced from 1.5rem */
 }
 
-.rich-text-content h1, 
-.rich-text-content h2, 
-.rich-text-content h3,
-.rich-text-content h4 {
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+/* Lists */
+.article-content ul,
+.article-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1.1rem;
+  padding-left: 1.5rem;
+}
+
+.article-content ul {
+  list-style-type: disc;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+}
+
+.article-content li {
+  margin-bottom: 0;
+  color: #374151;
+}
+
+.article-content li + li {
+  margin-top: 0.3rem; /* Small gap between items */
+}
+
+/* Nested lists */
+.article-content ul ul,
+.article-content ol ul,
+.article-content ul ol,
+.article-content ol ol {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+/* Headings */
+.article-content h1, 
+.article-content h2, 
+.article-content h3,
+.article-content h4 {
   font-weight: 700;
   color: #111827; /* gray-900 */
   line-height: 1.3;
 }
 
-.rich-text-content h1 { font-size: 2rem; }
-.rich-text-content h2 { font-size: 1.75rem; color: #581c87; /* purple-900 */ }
-.rich-text-content h3 { font-size: 1.5rem; }
-.rich-text-content h4 { font-size: 1.25rem; }
-
-.rich-text-content p {
-  margin-bottom: 1.5rem;
-  line-height: 1.8;
-  color: #374151; /* gray-700 */
+.article-content h2 { 
+  margin-top: 2rem;
+  margin-bottom: 0.7rem;
+  font-size: 1.75rem; 
+  color: #581c87; /* purple-900 */ 
 }
 
-.rich-text-content a {
+.article-content h3 { 
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem; 
+}
+
+.article-content h4 { 
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem; 
+}
+
+/* Other Elements */
+.article-content a {
   color: #9333ea; /* purple-600 */
   text-decoration: underline;
   text-underline-offset: 2px;
   font-weight: 500;
 }
-.rich-text-content a:hover {
+
+.article-content a:hover {
   color: #7e22ce; /* purple-700 */
 }
 
-.rich-text-content blockquote {
+.article-content blockquote {
   border-left-width: 4px;
   border-color: #d8b4fe; /* purple-300 */
   padding-left: 1.5rem;
@@ -90,20 +122,31 @@ body {
   color: #4b5563; /* gray-600 */
   background-color: #fcfaff; /* very light purple */
   border-radius: 0 0.5rem 0.5rem 0;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.rich-text-content img {
+.article-content img {
   border-radius: 0.75rem;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
   max-width: 100%;
   height: auto;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* Fix for Quill alignment classes if used */
+/* Utilities for alignment */
 .ql-align-center { text-align: center; }
 .ql-align-right { text-align: right; }
 .ql-align-justify { text-align: justify; }
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .article-content {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+}
