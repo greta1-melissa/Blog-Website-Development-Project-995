@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBlog } from '../contexts/BlogContext';
@@ -14,6 +14,30 @@ const BlogPost = () => {
   const [imgError, setImgError] = useState(false);
 
   const post = getPost(id);
+
+  // SEO: Update Document Title and Meta Tags
+  useEffect(() => {
+    if (post) {
+      // Update Title
+      document.title = post.seoTitle || post.title + " | Bangtan Mom";
+      
+      // Update Meta Description
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', post.metaDescription || post.content.substring(0, 150));
+      } else {
+        const newMeta = document.createElement('meta');
+        newMeta.name = "description";
+        newMeta.content = post.metaDescription || post.content.substring(0, 150);
+        document.head.appendChild(newMeta);
+      }
+    }
+    
+    // Cleanup function to reset title when leaving
+    return () => {
+      document.title = "Bangtan Mom - BTS, K-Pop, Family & Lifestyle";
+    };
+  }, [post]);
 
   if (!post) {
     return (
@@ -57,14 +81,12 @@ const BlogPost = () => {
 
   const fallbackImage = "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop";
   
-  // Check for HTML content
   const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
 
-  // Clean HTML content: Remove empty paragraphs meant as spacers to fix double gaps
   const cleanHtmlContent = isHtml 
     ? post.content
-        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '') // Remove <p><br></p>
-        .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')     // Remove <p>&nbsp;</p>
+        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '') 
+        .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')
     : post.content;
 
   return (
@@ -83,7 +105,6 @@ const BlogPost = () => {
           Back to Home
         </Link>
         
-        {/* Image Section */}
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
           {!imgError ? (
             <img
@@ -113,7 +134,6 @@ const BlogPost = () => {
           </button>
         </div>
 
-        {/* Title & Metadata */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-600 mb-6">
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
@@ -144,7 +164,6 @@ const BlogPost = () => {
           </div>
         </div>
 
-        {/* Article Content */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
           <div className="w-full">
             {isHtml ? (
@@ -158,7 +177,7 @@ const BlogPost = () => {
             ) : (
               <div className="article-content">
                 {post.content.split('\n')
-                  .filter(p => p.trim() !== '') // Filter out empty lines for plain text to prevent double gaps
+                  .filter(p => p.trim() !== '') 
                   .map((paragraph, index) => (
                     <motion.p
                       key={index}
@@ -174,7 +193,6 @@ const BlogPost = () => {
           </div>
         </div>
 
-        {/* Author Bio */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -211,7 +229,6 @@ const BlogPost = () => {
           </div>
         </motion.div>
 
-        {/* Read More Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

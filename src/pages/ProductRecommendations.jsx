@@ -9,15 +9,16 @@ import ProductCard from '../components/ProductCard';
 const { FiStar, FiShoppingBag, FiFilter, FiHeart, FiTag } = FiIcons;
 
 const ProductRecommendations = () => {
-  const { posts } = useBlog();
+  // Use publishedPosts to ensure drafts/scheduled are filtered
+  const { publishedPosts: posts } = useBlog();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  
+
   // Filter posts that are only in the 'Product Recommendations' category
   const productPosts = useMemo(() => {
     return posts.filter(post => post.category === 'Product Recommendations');
   }, [posts]);
-  
+
   // Extract product subcategories from the posts
   const productSubcategories = useMemo(() => {
     const categories = productPosts.reduce((acc, post) => {
@@ -29,10 +30,9 @@ const ProductRecommendations = () => {
       }
       return acc;
     }, []);
-    
     return categories;
   }, [productPosts]);
-  
+
   // Filter posts based on search and category
   const filteredProducts = useMemo(() => {
     return productPosts.filter(post => {
@@ -42,15 +42,15 @@ const ProductRecommendations = () => {
       
       const matchesCategory = selectedCategory === '' || 
         (post.subcategory && post.subcategory === selectedCategory);
-      
+
       return matchesSearch && matchesCategory;
     });
   }, [productPosts, searchTerm, selectedCategory]);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
     >
@@ -60,16 +60,15 @@ const ProductRecommendations = () => {
           Product <span className="text-purple-600">Recommendations</span>
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Discover my favorite products for moms, kids, and K-culture enthusiasts. 
-          I only recommend items I've personally tried and loved!
+          Discover my favorite products for moms, kids, and K-culture enthusiasts. I only recommend items I've personally tried and loved!
         </p>
       </div>
-      
+
       {/* Featured Product Section */}
       {productPosts.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-16"
         >
@@ -92,22 +91,18 @@ const ProductRecommendations = () => {
                 </a>
               </div>
               <div className="relative">
-                <img 
-                  src={productPosts[0].image} 
-                  alt={productPosts[0].title} 
-                  className="w-full h-full object-cover"
-                />
+                <img src={productPosts[0].image} alt={productPosts[0].title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-transparent opacity-50 lg:opacity-0"></div>
               </div>
             </div>
           </div>
         </motion.div>
       )}
-      
+
       {/* Search and Filter Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
         className="mb-12"
       >
@@ -126,7 +121,6 @@ const ProductRecommendations = () => {
           >
             All Products
           </motion.button>
-          
           {productSubcategories.map(category => (
             <motion.button
               key={category}
@@ -134,8 +128,8 @@ const ProductRecommendations = () => {
               whileTap={{ scale: 0.95 }}
               onClick={() => setSelectedCategory(category)}
               className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ${
-                selectedCategory === category 
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' 
+                selectedCategory === category
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-purple-50 border border-purple-200 hover:border-purple-300'
               }`}
             >
@@ -144,12 +138,12 @@ const ProductRecommendations = () => {
           ))}
         </div>
       </motion.div>
-      
+
       {/* Product Grid */}
       {filteredProducts.length === 0 ? (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-center py-16"
         >
@@ -168,11 +162,11 @@ const ProductRecommendations = () => {
           ))}
         </div>
       )}
-      
+
       {/* Call to Action */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5 }}
         className="mt-16 bg-purple-50 rounded-xl p-8 text-center"
       >
@@ -181,8 +175,7 @@ const ProductRecommendations = () => {
         </div>
         <h3 className="text-2xl font-bold text-gray-900 mb-2">Have a product suggestion?</h3>
         <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-          Is there a product you'd like me to review? Or maybe you have a favorite item that other moms might love?
-          I'm always looking for new recommendations to try and share!
+          Is there a product you'd like me to review? Or maybe you have a favorite item that other moms might love? I'm always looking for new recommendations to try and share!
         </p>
         <a 
           href="/contact"

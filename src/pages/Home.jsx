@@ -11,7 +11,8 @@ import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/ass
 const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 
 const Home = () => {
-  const { posts } = useBlog();
+  // Use publishedPosts instead of raw posts to hide drafts/scheduled
+  const { publishedPosts: posts } = useBlog();
   
   // Lazy load ref for footer video
   const footerVideoRef = useRef(null);
@@ -23,10 +24,10 @@ const Home = () => {
 
     // 1. Get all manually featured posts
     let selection = posts.filter(p => p.isHandPicked);
-    
+
     // 2. Sort them by date (newest first)
     selection.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     // 3. If fewer than 3, fill with most recent posts that aren't already selected
     if (selection.length < 3) {
       const selectedIds = new Set(selection.map(p => p.id));
@@ -96,12 +97,12 @@ const Home = () => {
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
               {/* Video Background - Priority Load */}
-              <video
+              <video 
                 src={FEATURED_STORY_VIDEO_URL}
-                autoPlay
-                loop
-                muted
-                playsInline
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
                 preload="auto"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
@@ -125,7 +126,7 @@ const Home = () => {
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {stripHtml(mostRecentPost.content)}
                 </p>
-                <Link
+                <Link 
                   to={`/post/${mostRecentPost.id}`}
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
                 >
@@ -152,13 +153,8 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group border border-purple-800 min-h-[240px]"
             >
-              <img
-                src={currentKDrama.image}
-                alt="K-Drama"
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
-              />
+              <img src={currentKDrama.image} alt="K-Drama" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
-              
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
@@ -171,7 +167,6 @@ const Home = () => {
                     {currentKDrama.status}
                   </span>
                 </div>
-                
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
                   <p className="text-sm text-purple-200 mb-3">{currentKDrama.episode}</p>
@@ -187,15 +182,15 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
             >
-              <iframe
-                style={{ borderRadius: '0px' }}
-                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                allowFullScreen=""
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
+              <iframe 
+                style={{borderRadius: '0px'}} 
+                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0" 
+                width="100%" 
+                height="100%" 
+                frameBorder="0" 
+                allowFullScreen="" 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy" 
                 title="Spotify Playlist"
                 className="absolute inset-0 w-full h-full"
               ></iframe>
@@ -225,40 +220,37 @@ const Home = () => {
         </div>
 
         {/* Newsletter / CTA Section */}
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
               {/* Lazy load the footer video only when in view */}
               {isFooterInView && (
-                <video
+                <video 
                   src={ANIMATED_LOGO_VIDEO_URL}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
                   className="w-full h-full object-cover transform scale-110"
                 />
               )}
             </div>
-            
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
             <p className="text-purple-200 mb-8 text-lg">
               Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.
             </p>
-            
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="Your email address"
+              <input 
+                type="email" 
+                placeholder="Your email address" 
                 className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
               />
               <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">
