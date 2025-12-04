@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiHeart } = FiIcons;
 
 const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const [formData, setFormData] = useState({
@@ -32,7 +32,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         tags: Array.isArray(drama.tags) ? drama.tags.join(', ') : (drama.tags || ''),
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
-        my_two_cents: drama.my_two_cents || '', // Load new field
+        my_two_cents: drama.my_two_cents || '', // Load field
+        // CRITICAL: Prioritize image_url, check image as fallback
         image_url: drama.image_url || drama.image || '',
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
@@ -76,7 +77,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     if (name === 'image_url') setImageError(false);
   };
 
-  // Improved file upload logic to match EditPostModal
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -107,7 +107,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
-          // CRITICAL FIX: Ensure state updates correctly
+          // CRITICAL: Set image_url explicitly from result
           setFormData(prev => ({ ...prev, image_url: result.url }));
           setUploadStatus('Upload Complete!');
           return;
@@ -131,7 +131,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       }
     } finally {
       setIsUploading(false);
-      // Reset input so same file can be selected again if needed
       e.target.value = null;
     }
   };
@@ -340,7 +339,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                 </div>
                 <div>
                      <label className="block text-sm font-medium text-purple-800 mb-1 flex items-center">
-                        <SafeIcon icon={FiIcons.FiHeart} className="mr-1 text-purple-500" /> My 2 Cents (Personal Opinion)
+                        <SafeIcon icon={FiHeart} className="mr-1 text-purple-500" /> My 2 Cents (Personal Opinion)
                      </label>
                     <textarea
                     name="my_two_cents"

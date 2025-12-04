@@ -31,22 +31,28 @@ export const KdramaProvider = ({ children }) => {
 
   // Normalize data to ensure all fields exist
   const normalizeData = (data) => {
-    return data.map((item, index) => ({
-      ...item,
-      id: item.id, // Keep original ID
-      title: item.title || 'Untitled Drama',
-      slug: item.slug || item.id || `drama-${index}`,
-      tags: Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map(t => t.trim()) : []),
-      synopsis_short: item.synopsis_short || item.synopsis || '',
-      synopsis_long: item.synopsis_long || item.synopsis || '',
-      my_two_cents: item.my_two_cents || '', // Added new field
-      image_url: item.image_url || item.image || '', // Ensure we catch both keys if backend drifts
-      image_alt: item.image_alt || item.title || 'Drama poster',
-      is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
-      display_order: parseInt(item.display_order) || (index + 1),
-      created_at: item.created_at || new Date().toISOString(),
-      updated_at: item.updated_at || new Date().toISOString()
-    }));
+    return data.map((item, index) => {
+      // CRITICAL: Prioritize image_url, fall back to image, then empty string
+      const finalImageUrl = item.image_url || item.image || '';
+      
+      return {
+        ...item,
+        id: item.id, 
+        title: item.title || 'Untitled Drama',
+        slug: item.slug || item.id || `drama-${index}`,
+        tags: Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map(t => t.trim()) : []),
+        synopsis_short: item.synopsis_short || item.synopsis || '',
+        synopsis_long: item.synopsis_long || item.synopsis || '',
+        my_two_cents: item.my_two_cents || '', // Ensure this field exists
+        image_url: finalImageUrl, // Normalized field name
+        image: finalImageUrl, // Keep legacy field in sync just in case
+        image_alt: item.image_alt || item.title || 'Drama poster',
+        is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
+        display_order: parseInt(item.display_order) || (index + 1),
+        created_at: item.created_at || new Date().toISOString(),
+        updated_at: item.updated_at || new Date().toISOString()
+      };
+    });
   };
 
   useEffect(() => {
@@ -62,20 +68,18 @@ export const KdramaProvider = ({ children }) => {
       
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         let normalized = normalizeData(serverData);
-        // Sort by display_order ascending
         normalized.sort((a, b) => a.display_order - b.display_order);
         setKdramas(normalized);
       } else {
-        // Fallback to local or seed if server is empty
+        // Fallback logic
         const localData = getLocalData();
         if (localData && localData.length > 0) {
           setKdramas(localData);
         } else {
-          // Initial seed
           console.log("Seeding initial K-drama data...");
           const seeded = normalizeData(initialSeedData);
           setKdramas(seeded);
-          // Optional: Attempt to seed server (fire and forget)
+          // Attempt to seed server
           seeded.forEach(async (drama) => {
              const { id, ...payload } = drama;
              await ncbCreate(TABLE_NAME, payload).catch(e => console.warn("Seed failed for", drama.title));
@@ -98,26 +102,25 @@ export const KdramaProvider = ({ children }) => {
 
   const addKdrama = async (dramaData) => {
     const tempId = Date.now().toString();
-    const newDrama = {
+    // Ensure image_url is set in the payload
+    const payload = {
       ...dramaData,
-      id: tempId,
+      image_url: dramaData.image_url || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
-    // Optimistic update
+    const newDrama = { ...payload, id: tempId };
+
+    // Optimistic update with normalization
     setKdramas(prev => {
       const updated = [...prev, newDrama];
-      return updated.sort((a, b) => a.display_order - b.display_order);
+      return normalizeData(updated).sort((a, b) => a.display_order - b.display_order);
     });
 
     try {
-      // Remove temp ID before sending to backend
-      const { id, ...payload } = newDrama; 
       const savedDrama = await ncbCreate(TABLE_NAME, payload);
-      
       if (savedDrama) {
-        // Update the temp ID with real ID from server
         const realId = savedDrama.id || savedDrama._id;
         setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...savedDrama, id: realId } : d));
         return realId;
@@ -130,11 +133,15 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const updateKdrama = async (id, updates) => {
-    const updatedData = { ...updates, updated_at: new Date().toISOString() };
+    const updatedData = { 
+      ...updates, 
+      updated_at: new Date().toISOString() 
+    };
     
+    // Optimistic update
     setKdramas(prev => {
         const updatedList = prev.map(d => d.id === id ? { ...d, ...updatedData } : d);
-        return updatedList.sort((a, b) => a.display_order - b.display_order);
+        return normalizeData(updatedList).sort((a, b) => a.display_order - b.display_order);
     });
 
     try {

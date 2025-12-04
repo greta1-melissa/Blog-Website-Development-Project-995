@@ -55,7 +55,7 @@ const KdramaGrid = () => {
             <div className="absolute top-3 left-3 flex flex-wrap gap-2">
               {drama.tags && drama.tags.slice(0, 2).map((tag, idx) => (
                 <span 
-                  key={idx}
+                  key={idx} 
                   className="px-2 py-1 bg-white/90 backdrop-blur-sm text-purple-800 text-xs font-bold rounded-md shadow-sm"
                 >
                   {tag}
@@ -63,7 +63,6 @@ const KdramaGrid = () => {
               ))}
             </div>
           </Link>
-
           <div className="p-6 flex flex-col flex-grow">
             <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`}>
               <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight hover:text-purple-600 transition-colors">
@@ -71,17 +70,20 @@ const KdramaGrid = () => {
               </h3>
             </Link>
             
+            {/* DEBUG INFO */}
+            <div className="mb-2 p-1 bg-red-50 text-red-600 border border-red-200 text-[10px] font-mono break-all rounded">
+                <strong>DEBUG image_url:</strong> {drama.image_url || "EMPTY"}
+            </div>
+
             <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-grow line-clamp-3">
               {drama.synopsis_short}
             </p>
-
             <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-4">
-              <Link
+              <Link 
                 to={`/kdrama-recommendations/${drama.slug || drama.id}`}
                 className="inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors group/link"
               >
-                Read & Discuss 
-                <SafeIcon icon={FiArrowRight} className="ml-1 group-hover/link:translate-x-1 transition-transform" />
+                Read & Discuss <SafeIcon icon={FiArrowRight} className="ml-1 group-hover/link:translate-x-1 transition-transform" />
               </Link>
               <div className="flex items-center text-gray-400 text-xs font-medium">
                 <SafeIcon icon={FiMessageCircle} className="mr-1" />

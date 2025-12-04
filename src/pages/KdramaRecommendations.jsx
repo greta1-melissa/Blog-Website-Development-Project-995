@@ -5,7 +5,6 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
 
-// Added FiHeart to the destructuring assignment
 const { FiArrowLeft, FiTv, FiStar, FiFilm, FiImage, FiMessageCircle, FiHeart, FiEdit3 } = FiIcons;
 
 const KdramaRecommendations = () => {
@@ -90,6 +89,12 @@ const KdramaRecommendations = () => {
                       </span>
                     ))}
                   </div>
+                </div>
+
+                {/* DEBUG INFO */}
+                <div className="mb-4 p-2 bg-red-50 text-red-600 border border-red-200 text-xs font-mono break-all rounded">
+                    <strong className="block">DEBUG image_url:</strong>
+                    {drama.image_url || "EMPTY"}
                 </div>
 
                 <div className="prose prose-purple max-w-none text-gray-700 leading-relaxed mb-8">

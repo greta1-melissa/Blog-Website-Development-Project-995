@@ -18,10 +18,16 @@ const AccessDenied = () => (
     <div className="bg-red-50 rounded-xl p-8">
       <SafeIcon icon={FiShield} className="text-red-500 text-6xl mb-4 mx-auto" />
       <h1 className="text-2xl font-bold text-red-900 mb-4">Access Denied</h1>
-      <p className="text-red-700 mb-6"> This area is restricted to administrators only. </p>
+      <p className="text-red-700 mb-6">
+        This area is restricted to administrators only.
+      </p>
       <div className="space-x-4">
-        <Link to="/" className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"> Go Home </Link>
-        <Link to="/admin-login" className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"> Admin Login </Link>
+        <Link to="/" className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+          Go Home
+        </Link>
+        <Link to="/admin-login" className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+          Admin Login
+        </Link>
       </div>
     </div>
   </div>
@@ -32,7 +38,7 @@ const Admin = () => {
   const { kdramas = [], addKdrama, updateKdrama, deleteKdrama } = useKdrama();
   const { user, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  
+
   // Blog Post State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -47,10 +53,10 @@ const Admin = () => {
   const stats = useMemo(() => {
     const safePosts = Array.isArray(posts) ? posts : [];
     const totalPosts = safePosts.length;
-    return { 
-        totalPosts, 
-        totalKdramas: kdramas.length,
-        totalUsers: 0 // Placeholder
+    return {
+      totalPosts,
+      totalKdramas: kdramas.length,
+      totalUsers: 0 
     };
   }, [posts, kdramas]);
 
@@ -65,10 +71,10 @@ const Admin = () => {
   }, [posts, searchTerm, filterCategory]);
 
   const filteredKdramas = useMemo(() => {
-      return kdramas.filter(drama => 
-        drama.title.toLowerCase().includes(kdramaSearch.toLowerCase()) || 
-        (drama.tags && drama.tags.some(t => t.toLowerCase().includes(kdramaSearch.toLowerCase())))
-      );
+    return kdramas.filter(drama => 
+      drama.title.toLowerCase().includes(kdramaSearch.toLowerCase()) || 
+      (drama.tags && drama.tags.some(t => t.toLowerCase().includes(kdramaSearch.toLowerCase())))
+    );
   }, [kdramas, kdramaSearch]);
 
   // Handlers for Blog Posts
@@ -77,13 +83,16 @@ const Admin = () => {
       await deletePost(postId);
     }
   };
+
   const handleEditClick = (post) => {
     setEditingPost(post);
     setIsEditModalOpen(true);
   };
+
   const handleSavePost = async (id, updatedData) => {
     await updatePost(id, updatedData);
   };
+
   const handleToggleFeatured = async (post) => {
     await updatePost(post.id, { isHandPicked: !post.isHandPicked });
   };
@@ -94,22 +103,24 @@ const Admin = () => {
       await deleteKdrama(id);
     }
   };
+
   const handleEditKdrama = (drama) => {
     setEditingKdrama(drama);
     setIsKdramaModalOpen(true);
   };
+
   const handleAddKdrama = () => {
     setEditingKdrama(null);
     setIsKdramaModalOpen(true);
   };
+
   const handleSaveKdrama = async (id, data) => {
     if (id) {
-        await updateKdrama(id, data);
+      await updateKdrama(id, data);
     } else {
-        await addKdrama(data);
+      await addKdrama(data);
     }
   };
-
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiBarChart2 },
@@ -130,7 +141,9 @@ const Admin = () => {
             <SafeIcon icon={FiShield} className="text-purple-600 text-2xl" />
             <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           </div>
-          <p className="text-gray-600"> Welcome back, <strong>{user?.name}</strong>! </p>
+          <p className="text-gray-600">
+            Welcome back, <strong>{user?.name}</strong>!
+          </p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center space-x-3">
           <Link to="/debug/ncb" className="inline-flex items-center px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200 font-medium">
@@ -148,7 +161,11 @@ const Admin = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === tab.id ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
             >
               <SafeIcon icon={tab.icon} className="text-lg" />
               <span>{tab.label}</span>
@@ -193,11 +210,21 @@ const Admin = () => {
               <div className="flex-1">
                 <div className="relative">
                   <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input type="text" placeholder="Search posts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                  <input
+                    type="text"
+                    placeholder="Search posts..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
                 </div>
               </div>
               <div className="md:w-48">
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
                   <option value="">All Categories</option>
                   {categories.map((category) => (
                     <option key={category} value={category}>{category}</option>
@@ -209,8 +236,8 @@ const Admin = () => {
               </Link>
             </div>
           </div>
-          {/* Post Table ... (Same as before, abbreviated here for brevity if unchanged, but including for completeness) */}
-           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
+
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -259,90 +286,83 @@ const Admin = () => {
 
       {/* NEW K-Drama Tab */}
       {activeTab === 'kdramas' && (
-         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex-1 w-full">
-                        <div className="relative">
-                            <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                            <input 
-                                type="text" 
-                                placeholder="Search dramas..." 
-                                value={kdramaSearch} 
-                                onChange={(e) => setKdramaSearch(e.target.value)} 
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all" 
-                            />
-                        </div>
-                    </div>
-                    <button 
-                        onClick={handleAddKdrama}
-                        className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium whitespace-nowrap"
-                    >
-                        <SafeIcon icon={FiPlus} className="mr-2" /> Add K-Drama
-                    </button>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex-1 w-full">
+                <div className="relative">
+                  <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search dramas..."
+                    value={kdramaSearch}
+                    onChange={(e) => setKdramaSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
                 </div>
+              </div>
+              <button
+                onClick={handleAddKdrama}
+                className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium whitespace-nowrap"
+              >
+                <SafeIcon icon={FiPlus} className="mr-2" /> Add K-Drama
+              </button>
             </div>
+          </div>
 
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Drama</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Home Featured</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredKdramas.map((drama) => (
-                                <tr key={drama.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <img src={drama.image_url || 'https://via.placeholder.com/150'} alt={drama.title} className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm bg-gray-100" />
-                                            <div>
-                                                <div className="text-sm font-semibold text-gray-900 max-w-xs truncate">{drama.title}</div>
-                                                <div className="text-xs text-gray-500 font-mono">{drama.slug}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-wrap gap-1 max-w-xs">
-                                            {drama.tags && drama.tags.length > 0 ? drama.tags.slice(0, 2).map((tag, i) => (
-                                                <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-md">{tag}</span>
-                                            )) : <span className="text-gray-400 text-xs">-</span>}
-                                            {drama.tags && drama.tags.length > 2 && <span className="text-xs text-gray-400">+{drama.tags.length - 2}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {drama.is_featured_on_home ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Featured
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                -
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-center text-sm text-gray-600">
-                                        {drama.display_order}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <div className="flex space-x-3">
-                                            <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="text-indigo-600 hover:text-indigo-900"><SafeIcon icon={FiEye} className="w-4 h-4" /></Link>
-                                            <button onClick={() => handleEditKdrama(drama)} className="text-fuchsia-600 hover:text-fuchsia-900"><SafeIcon icon={FiEdit} className="w-4 h-4" /></button>
-                                            <button onClick={() => handleDeleteKdrama(drama.id)} className="text-red-500 hover:text-red-700"><SafeIcon icon={FiTrash2} className="w-4 h-4" /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Drama</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-red-500 uppercase tracking-wider">DEBUG: RAW IMAGE URL</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredKdramas.map((drama) => (
+                    <tr key={drama.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <img src={drama.image_url || 'https://via.placeholder.com/150'} alt={drama.title} className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm bg-gray-100" />
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900 max-w-xs truncate">{drama.title}</div>
+                            <div className="text-xs text-gray-500 font-mono">{drama.slug}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {drama.tags && drama.tags.length > 0 ? drama.tags.slice(0, 2).map((tag, i) => (
+                            <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-md">{tag}</span>
+                          )) : <span className="text-gray-400 text-xs">-</span>}
+                          {drama.tags && drama.tags.length > 2 && <span className="text-xs text-gray-400">+{drama.tags.length - 2}</span>}
+                        </div>
+                      </td>
+                      {/* DEBUG COLUMN */}
+                      <td className="px-6 py-4 text-xs font-mono text-red-600 max-w-xs truncate">
+                         {drama.image_url || "EMPTY"}
+                      </td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-600">
+                        {drama.display_order}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-3">
+                          <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="text-indigo-600 hover:text-indigo-900"><SafeIcon icon={FiEye} className="w-4 h-4" /></Link>
+                          <button onClick={() => handleEditKdrama(drama)} className="text-fuchsia-600 hover:text-fuchsia-900"><SafeIcon icon={FiEdit} className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteKdrama(drama.id)} className="text-red-500 hover:text-red-700"><SafeIcon icon={FiTrash2} className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-         </motion.div>
+          </div>
+        </motion.div>
       )}
 
       {activeTab === 'users' && <UserManagement />}
