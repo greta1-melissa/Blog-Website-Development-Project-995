@@ -24,6 +24,7 @@ import NewThread from './pages/NewThread';
 import ProductRecommendations from './pages/ProductRecommendations';
 import NcbDebug from './pages/NcbDebug';
 import KdramaRecommendations from './pages/KdramaRecommendations';
+import KdramaDetail from './pages/KdramaDetail'; // New Import
 
 // Legal Pages
 import SafeSpacePromise from './pages/SafeSpacePromise';
@@ -56,7 +57,8 @@ function App() {
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/products" element={<ProductRecommendations />} />
                     <Route path="/kdrama-recommendations" element={<KdramaRecommendations />} />
-                    
+                    <Route path="/kdrama-recommendations/:id" element={<KdramaDetail />} />
+
                     {/* Legal Routes */}
                     <Route path="/safe-space-promise" element={<SafeSpacePromise />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicy />} />

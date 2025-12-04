@@ -51,7 +51,7 @@ export const ForumProvider = ({ children }) => {
         ncbGet('threads'),
         ncbGet('replies')
       ]);
-      
+
       if (Array.isArray(serverThreads) && serverThreads.length > 0) {
         const localThreads = getLocalData('forum_threads');
         const serverIds = new Set(serverThreads.map(t => String(t.id)));
@@ -95,7 +95,6 @@ export const ForumProvider = ({ children }) => {
     setThreads(prev => [{ ...newThread, id: tempId }, ...prev]);
 
     try {
-      // CRITICAL FIX: Send payload without ID
       const savedThread = await ncbCreate('threads', newThread);
       if (savedThread) {
         setThreads(prev => prev.map(t => t.id === tempId ? { ...t, id: savedThread.id } : t));
@@ -121,17 +120,14 @@ export const ForumProvider = ({ children }) => {
 
     // Optimistic update
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
-    
-    setThreads(prev => prev.map(thread => 
-      String(thread.id) === String(threadId) 
-        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
+    setThreads(prev => prev.map(thread =>
+      String(thread.id) === String(threadId)
+        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() }
         : thread
     ));
 
     try {
-      // CRITICAL FIX: Send payload without ID
       await ncbCreate('replies', newReply);
-      
       const thread = threads.find(t => String(t.id) === String(threadId));
       if (thread) {
         await ncbUpdate('threads', threadId, { replies: (thread.replies || 0) + 1 });
@@ -149,30 +145,34 @@ export const ForumProvider = ({ children }) => {
     return threads.find(thread => String(thread.id) === String(threadId));
   };
 
+  // NEW: Find existing thread by title (fuzzy match or exact)
+  const getThreadByTitle = (title) => {
+    if (!title) return null;
+    return threads.find(t => t.title.toLowerCase().trim() === title.toLowerCase().trim());
+  };
+
   const getRepliesByThread = (threadId) => {
     return replies.filter(reply => String(reply.threadId) === String(threadId));
   };
 
   const incrementViews = (threadId) => {
-    setThreads(prev => prev.map(thread => 
-      String(thread.id) === String(threadId) 
-        ? { ...thread, views: (thread.views || 0) + 1 } 
+    setThreads(prev => prev.map(thread =>
+      String(thread.id) === String(threadId)
+        ? { ...thread, views: (thread.views || 0) + 1 }
         : thread
     ));
     const thread = threads.find(t => String(t.id) === String(threadId));
-    if(thread) {
-       ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 }).catch(e => console.error(e));
+    if (thread) {
+      ncbUpdate('threads', threadId, { views: (thread.views || 0) + 1 }).catch(e => console.error(e));
     }
   };
 
   const likeReply = async (replyId) => {
     const reply = replies.find(r => String(r.id) === String(replyId));
     const newLikes = (reply?.likes || 0) + 1;
-
-    setReplies(prev => prev.map(r => 
+    setReplies(prev => prev.map(r =>
       String(r.id) === String(replyId) ? { ...r, likes: newLikes } : r
     ));
-
     try {
       await ncbUpdate('replies', replyId, { likes: newLikes });
     } catch (e) {
@@ -188,6 +188,7 @@ export const ForumProvider = ({ children }) => {
     createReply,
     getThreadsByCategory,
     getThread,
+    getThreadByTitle, // Export new function
     getRepliesByThread,
     incrementViews,
     likeReply
