@@ -47,5 +47,53 @@ export const kdramas = [
     synopsis_long: "After losing his father and his future because of a powerful chaebol family, Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon and turn it into something big enough to fight back. Along the way, he gathers a group of misfits who become his team, his family, and his reason to keep going. It’s a story about dignity, second chances, and building your own path.",
     is_featured_on_home: false,
     display_order: 4
+  },
+  {
+    id: 'hometown-cha-cha-cha',
+    title: 'Hometown Cha-Cha-Cha',
+    slug: 'hometown-cha-cha-cha',
+    image_url: 'https://images.unsplash.com/photo-1505238680356-667803448bb1?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'Hometown Cha-Cha-Cha Poster',
+    tags: ['Romance', 'Slice of Life', 'Healing'],
+    synopsis_short: "A dentist moves to a seaside village and meets a handyman who helps everyone.",
+    synopsis_long: "A big-city dentist moves to the seaside village of Gongjin and meets Chief Hong, a jack-of-all-trades who helps everyone in town. As they clash and eventually connect, the stories of the villagers unfold around them. It's a warm, healing drama about community, forgiveness, and finding happiness in simple things.",
+    is_featured_on_home: true,
+    display_order: 5
+  },
+  {
+    id: 'goblin-guardian',
+    title: 'Goblin: The Lonely and Great God',
+    slug: 'goblin-guardian',
+    image_url: 'https://images.unsplash.com/photo-1518558997970-4ddc236affcd?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'Goblin Drama Poster',
+    tags: ['Fantasy', 'Romance', 'Epic'],
+    synopsis_short: "An immortal goblin searches for his human bride to end his accursed life.",
+    synopsis_long: "Kim Shin, an immortal goblin, has spent centuries searching for his human bride, the only one who can remove the invisible sword from his chest and end his life. He meets a high school student who claims to be her, and a grim reaper who becomes his roommate. It's a visually stunning, emotionally sweeping tale of life, death, and destiny.",
+    is_featured_on_home: false,
+    display_order: 6
+  },
+  {
+    id: 'reply-1988',
+    title: 'Reply 1988',
+    slug: 'reply-1988',
+    image_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'Reply 1988 Poster',
+    tags: ['Family', 'Nostalgia', 'Friendship'],
+    synopsis_short: "Five childhood friends and their families living in the same neighborhood in 1988.",
+    synopsis_long: "Set in the year 1988, this drama follows five families living on the same alleyway in Seoul. It centers on a group of five childhood friends as they go through their teenage years. It's a heartwarming, hilarious, and tear-jerking masterpiece about family, friendship, and the pure nostalgia of youth. A must-watch for anyone who loves character-driven stories.",
+    is_featured_on_home: false,
+    display_order: 7
+  },
+  {
+    id: 'lovely-runner',
+    title: 'Lovely Runner',
+    slug: 'lovely-runner',
+    image_url: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'Lovely Runner Poster',
+    tags: ['Romance', 'Time Travel', 'Fan Culture'],
+    synopsis_short: "An ardent fan travels back in time to save her ultimate bias from a tragic fate.",
+    synopsis_long: "Im Sol, a passionate fan of top star Ryu Sun-jae, is devastated by his sudden death. She miraculously travels back in time to high school, where she meets him before he became famous. Determined to change his tragic future, she tries everything to save him. It's a sweet, perfect romance for anyone who knows what it's like to be a fan.",
+    is_featured_on_home: true,
+    display_order: 8
   }
 ];
