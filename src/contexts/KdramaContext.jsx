@@ -12,10 +12,10 @@ export const useKdrama = () => {
   return context;
 };
 
-// Helper: Local Storage wrapper
+// Helper: Local Storage wrapper for fallback/caching
 const getLocalData = () => {
   try {
-    const data = localStorage.getItem('kdramas');
+    const data = localStorage.getItem('kdrama_recommendations');
     return data ? JSON.parse(data) : null;
   } catch (e) {
     return null;
@@ -26,57 +26,64 @@ export const KdramaProvider = ({ children }) => {
   const [kdramas, setKdramas] = useState(() => getLocalData() || []);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Map existing static data format to new schema if needed
-  // New Schema: id, title, slug, tags (array), synopsis_short, synopsis_long, image_url, image_alt, is_featured_on_home, display_order
+  // Table name as requested
+  const TABLE_NAME = 'kdrama_recommendations';
+
+  // Normalize data to ensure all fields exist
   const normalizeData = (data) => {
     return data.map((item, index) => ({
       ...item,
-      // Ensure fields exist
-      slug: item.slug || item.id, // Fallback to ID if slug missing
-      synopsis_short: item.synopsis_short || item.synopsis || '',
-      synopsis_long: item.synopsis_long || item.synopsis || '', // Default long to short if missing
-      image_url: item.image_url || item.image || '',
+      id: item.id, // Keep original ID
+      title: item.title || 'Untitled Drama',
+      slug: item.slug || item.id || `drama-${index}`,
       tags: Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map(t => t.trim()) : []),
-      is_featured_on_home: item.is_featured_on_home !== undefined ? item.is_featured_on_home : (item.category === 'current'),
-      display_order: item.display_order || (index + 1)
+      synopsis_short: item.synopsis_short || item.synopsis || '',
+      synopsis_long: item.synopsis_long || item.synopsis || '',
+      image_url: item.image_url || item.image || '',
+      image_alt: item.image_alt || item.title || 'Drama poster',
+      is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
+      display_order: parseInt(item.display_order) || (index + 1),
+      created_at: item.created_at || new Date().toISOString(),
+      updated_at: item.updated_at || new Date().toISOString()
     }));
   };
 
   useEffect(() => {
     if (kdramas.length > 0) {
-      localStorage.setItem('kdramas', JSON.stringify(kdramas));
+      localStorage.setItem('kdrama_recommendations', JSON.stringify(kdramas));
     }
   }, [kdramas]);
 
   const fetchKdramas = async () => {
     setIsLoading(true);
     try {
-      const serverData = await ncbGet('kdramas');
+      const serverData = await ncbGet(TABLE_NAME);
       
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        // Use server data
-        const normalized = normalizeData(serverData);
-        // Sort by display_order
+        let normalized = normalizeData(serverData);
+        // Sort by display_order ascending
         normalized.sort((a, b) => a.display_order - b.display_order);
         setKdramas(normalized);
       } else {
-        // Fallback to seed data if server is empty
-        // We only use local if we haven't successfully fetched before or if server is empty (first run)
+        // Fallback to local or seed if server is empty
         const localData = getLocalData();
         if (localData && localData.length > 0) {
           setKdramas(localData);
         } else {
           // Initial seed
+          console.log("Seeding initial K-drama data...");
           const seeded = normalizeData(initialSeedData);
           setKdramas(seeded);
-          // Optional: Auto-seed server? 
-          // For now, we prefer manual sync or just let user create new ones. 
-          // But to make "It just works" we can leave it in local state.
+          // Optional: Attempt to seed server (fire and forget)
+          seeded.forEach(async (drama) => {
+             // Removing ID to let backend generate it, or keeping it if backend supports upsert
+             const { id, ...payload } = drama;
+             await ncbCreate(TABLE_NAME, payload).catch(e => console.warn("Seed failed for", drama.title));
+          });
         }
       }
     } catch (error) {
       console.error("Failed to fetch kdramas", error);
-      // Fallback
       if (kdramas.length === 0) {
         setKdramas(normalizeData(initialSeedData));
       }
@@ -90,7 +97,7 @@ export const KdramaProvider = ({ children }) => {
   }, []);
 
   const addKdrama = async (dramaData) => {
-    const tempId = Date.now().toString(); // Temporary ID
+    const tempId = Date.now().toString();
     const newDrama = {
       ...dramaData,
       id: tempId,
@@ -105,14 +112,15 @@ export const KdramaProvider = ({ children }) => {
     });
 
     try {
-      // Exclude temp ID for creation if backend generates it, 
-      // but if we want to enforce slugs as IDs or keep simple, we rely on backend response
+      // Remove temp ID before sending to backend
       const { id, ...payload } = newDrama; 
-      const savedDrama = await ncbCreate('kdramas', payload);
+      const savedDrama = await ncbCreate(TABLE_NAME, payload);
       
       if (savedDrama) {
-        setKdramas(prev => prev.map(d => d.id === tempId ? { ...savedDrama, ...d, id: savedDrama.id || savedDrama._id || tempId } : d));
-        return savedDrama.id;
+        // Update the temp ID with real ID from server
+        const realId = savedDrama.id || savedDrama._id;
+        setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...savedDrama, id: realId } : d));
+        return realId;
       }
       return tempId;
     } catch (e) {
@@ -122,18 +130,25 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const updateKdrama = async (id, updates) => {
-    setKdramas(prev => prev.map(d => d.id === id ? { ...d, ...updates, updated_at: new Date().toISOString() } : d));
+    const updatedData = { ...updates, updated_at: new Date().toISOString() };
+    
+    setKdramas(prev => {
+        const updatedList = prev.map(d => d.id === id ? { ...d, ...updatedData } : d);
+        return updatedList.sort((a, b) => a.display_order - b.display_order);
+    });
+
     try {
-      await ncbUpdate('kdramas', id, updates);
+      await ncbUpdate(TABLE_NAME, id, updatedData);
     } catch (e) {
       console.error("Failed to update kdrama", e);
+      // Ideally revert optimistic update here on failure
     }
   };
 
   const deleteKdrama = async (id) => {
     setKdramas(prev => prev.filter(d => d.id !== id));
     try {
-      await ncbDelete('kdramas', id);
+      await ncbDelete(TABLE_NAME, id);
     } catch (e) {
       console.error("Failed to delete kdrama", e);
     }
@@ -155,7 +170,7 @@ export const KdramaProvider = ({ children }) => {
     updateKdrama,
     deleteKdrama,
     getKdramaBySlug,
-    fetchKdramas // Exposed if needed to force refresh
+    fetchKdramas
   };
 
   return (

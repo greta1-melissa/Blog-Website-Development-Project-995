@@ -1,7 +1,7 @@
-// Initial seed data with new structure
+// Initial seed data for the kdrama_recommendations table
 export const kdramas = [
   {
-    id: 'moon-lovers-scarlet-heart-ryeo', // Keeping original IDs for seeding to preserve links if possible, though backend will generate new ones
+    id: 'moon-lovers-scarlet-heart-ryeo',
     title: 'Moon Lovers: Scarlet Heart Ryeo',
     slug: 'moon-lovers-scarlet-heart-ryeo',
     image_url: 'https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?w=800&auto=format&fit=crop&q=60',
@@ -25,64 +25,16 @@ export const kdramas = [
     display_order: 2
   },
   {
-    id: 'moon-embracing-the-sun',
-    title: 'Moon Embracing the Sun',
-    slug: 'moon-embracing-the-sun',
-    image_url: 'https://images.unsplash.com/photo-1532767153582-b1a0e5145009?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Moon Embracing the Sun Poster',
-    tags: ['Historical', 'First love', 'Tragedy & healing'],
-    synopsis_short: "A crown prince falls deeply in love with a bright, kind girl chosen to be his future queen, but a deadly political scheme tears them apart.",
-    synopsis_long: "A crown prince falls deeply in love with a bright, kind girl chosen to be his future queen, but a deadly political scheme tears them apart. Years later, she returns as a mysterious shaman with no memory of her past, while he has become a lonely king still haunted by his “lost” first love. The drama mixes palace intrigue, destiny, and the kind of longing that stays with you.",
+    id: 'crash-landing-on-you',
+    title: 'Crash Landing on You',
+    slug: 'crash-landing-on-you',
+    image_url: 'https://images.unsplash.com/photo-1518181282240-721245c38981?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'Crash Landing on You Poster',
+    tags: ['Romance', 'Comedy', 'Melodrama'],
+    synopsis_short: "A South Korean heiress accidentally crash-lands in North Korea and meets a soldier.",
+    synopsis_long: "A South Korean heiress accidentally crash-lands in North Korea during a paragliding trip gone wrong and is discovered by a quiet, principled North Korean officer. While he hides her and searches for a way to send her home, the two slowly fall in love in the most impossible situation. It’s dramatic, funny, and deeply romantic, with a lot of heart.",
     is_featured_on_home: true,
     display_order: 3
-  },
-  {
-    id: 'love-in-the-moonlight',
-    title: 'Love in the Moonlight',
-    slug: 'love-in-the-moonlight',
-    image_url: 'https://images.unsplash.com/photo-1535189043414-47a3c49a0bed?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Love in the Moonlight Poster',
-    tags: ['Historical', 'Youth romance', 'Disguise'],
-    synopsis_short: "A street-smart girl who has lived her whole life disguised as a boy ends up working in the palace as a eunuch.",
-    synopsis_long: "A street-smart girl who has lived her whole life disguised as a boy ends up working in the palace as a eunuch. There, she clashes with the mischievous crown prince, and their bickering slowly turns into something softer and sweeter. It’s a warm, charming coming-of-age story about first love, identity, and stepping into who you really are.",
-    is_featured_on_home: true,
-    display_order: 4
-  },
-  {
-    id: 'rooftop-prince',
-    title: 'Rooftop Prince',
-    slug: 'rooftop-prince',
-    image_url: 'https://images.unsplash.com/photo-1617769431411-97b77053e163?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Rooftop Prince Poster',
-    tags: ['Time travel', 'Romance', 'Mystery'],
-    synopsis_short: "A Joseon crown prince and his three loyal followers suddenly time-travel to modern Seoul.",
-    synopsis_long: "A Joseon crown prince and his three loyal followers suddenly time-travel to modern Seoul while trying to solve the suspicious death of his princess. They crash-land on the rooftop home of an ordinary woman and become the strangest housemates ever. Between solving a centuries-old mystery and navigating smartphones and elevators, he finds a second chance at love.",
-    is_featured_on_home: true,
-    display_order: 5
-  },
-  {
-    id: 'under-the-queens-umbrella',
-    title: 'Under the Queen’s Umbrella',
-    slug: 'under-the-queens-umbrella',
-    image_url: 'https://images.unsplash.com/photo-1534237199039-011270b24d1a?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Under the Queens Umbrella Poster',
-    tags: ['Historical', 'Family', 'Strong queen'],
-    synopsis_short: "Queen Hwaryeong drops the royal act and becomes a fierce, hands-on mom to protect her chaotic princes.",
-    synopsis_long: "Queen Hwaryeong is supposed to be calm and elegant, but her sons are chaotic princes constantly getting into trouble. To protect them from cruel politics and deadly competition for the throne, she drops the royal act and becomes a fierce, hands-on mom. This drama feels like a love letter to mothers who will do anything to keep their children safe and help them grow.",
-    is_featured_on_home: true,
-    display_order: 6
-  },
-  {
-    id: 'its-okay-to-not-be-okay',
-    title: 'It’s Okay to Not Be Okay',
-    slug: 'its-okay-to-not-be-okay',
-    image_url: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Its Okay to Not Be Okay Poster',
-    tags: ['Healing', 'Mental health', 'Romance'],
-    synopsis_short: "A children’s book author with a dark personality crosses paths with a psychiatric ward caretaker.",
-    synopsis_long: "A children’s book author with a dark, prickly personality crosses paths with a psychiatric ward caretaker who has spent his whole life caring for his autistic older brother. Each of them carries deep emotional scars and survival stories that don’t look “pretty” from the outside. Together, they slowly learn how to face their trauma, set boundaries, and believe they’re worthy of love.",
-    is_featured_on_home: true,
-    display_order: 7
   },
   {
     id: 'itaewon-class',
@@ -93,91 +45,7 @@ export const kdramas = [
     tags: ['Revenge', 'Found family', 'Business'],
     synopsis_short: "Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon to fight back against a powerful family.",
     synopsis_long: "After losing his father and his future because of a powerful chaebol family, Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon and turn it into something big enough to fight back. Along the way, he gathers a group of misfits who become his team, his family, and his reason to keep going. It’s a story about dignity, second chances, and building your own path.",
-    is_featured_on_home: true,
-    display_order: 8
-  },
-  {
-    id: 'the-crowned-clown',
-    title: 'The Crowned Clown',
-    slug: 'the-crowned-clown',
-    image_url: 'https://images.unsplash.com/photo-1616091093744-c09579730419?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'The Crowned Clown Poster',
-    tags: ['Historical', 'Doppelganger', 'Power & justice'],
-    synopsis_short: "A tormented king secretly brings a lowly clown who looks just like him into the palace to take his place.",
-    synopsis_long: "To survive assassination attempts and endless political wars, a tormented king secretly brings a lowly clown who looks just like him into the palace and puts him on the throne. The clown, who has only ever performed for laughs, suddenly has to act like a ruler and protect the people around him. Watching him grow into a braver, kinder “king” makes this drama gripping and emotional.",
-    is_featured_on_home: true,
-    display_order: 9
-  },
-  {
-    id: '18-again',
-    title: '18 Again',
-    slug: '18-again',
-    image_url: 'https://images.unsplash.com/photo-1546519638-68e109498ad0?w=800&auto=format&fit=crop&q=60',
-    image_alt: '18 Again Poster',
-    tags: ['Family', 'Fantasy', 'Second chances'],
-    synopsis_short: "A worn-out husband finds himself back in his 18-year-old body just before his divorce.",
-    synopsis_long: "A worn-out husband and father on the brink of divorce suddenly finds himself back in his 18-year-old body while keeping his 37-year-old mind. Pretending to be a high school student, he gets to see his wife and kids’ lives from the outside and realises how much he misunderstood. It’s a heartfelt story about regret, parenting, and remembering why you fell in love in the first place.",
-    is_featured_on_home: true,
-    display_order: 10
-  },
-  {
-    id: 'crash-landing-on-you',
-    title: 'Crash Landing on You',
-    slug: 'crash-landing-on-you',
-    image_url: 'https://images.unsplash.com/photo-1518181282240-721245c38981?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Crash Landing on You Poster',
-    tags: ['Romance', 'Comedy', 'Melodrama'],
-    synopsis_short: "A South Korean heiress accidentally crash-lands in North Korea and meets a soldier.",
-    synopsis_long: "A South Korean heiress accidentally crash-lands in North Korea during a paragliding trip gone wrong and is discovered by a quiet, principled North Korean officer. While he hides her and searches for a way to send her home, the two slowly fall in love in the most impossible situation. It’s dramatic, funny, and deeply romantic, with a lot of heart.",
     is_featured_on_home: false,
-    display_order: 11
-  },
-  {
-    id: 'hwarang',
-    title: 'Hwarang: The Poet Warrior Youth',
-    slug: 'hwarang',
-    image_url: 'https://images.unsplash.com/photo-1620400030248-cb8c87c06eb6?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Hwarang Poster',
-    tags: ['Historical', 'Friendship', 'Romance'],
-    synopsis_short: "Elite young men in the Silla kingdom train to become warrior poets and leaders.",
-    synopsis_long: "In the Silla kingdom, a group of elite young men called Hwarang are gathered to become the future leaders and protectors of the crown. As they train, they clash, form friendships, fall in love, and discover dangerous secrets about who they really are. It’s a mix of bromance, royal politics, and flower-boy chaos in sageuk form.",
-    is_featured_on_home: false,
-    display_order: 12
-  },
-  {
-    id: 'ghost-doctor',
-    title: 'Ghost Doctor',
-    slug: 'ghost-doctor',
-    image_url: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Ghost Doctor Poster',
-    tags: ['Medical', 'Fantasy', 'Comedy'],
-    synopsis_short: "A genius surgeon's spirit possesses a clumsy resident after an accident.",
-    synopsis_long: "A genius but arrogant cardiothoracic surgeon gets into an accident, and his spirit ends up possessing the body of a clumsy but well-connected resident who hates doing real surgery. The two doctors, complete opposites in personality and skill, are forced to share one body and one career. The result is a funny, heartfelt story about humility, teamwork, and what it truly means to save lives.",
-    is_featured_on_home: false,
-    display_order: 13
-  },
-  {
-    id: 'alchemy-of-souls',
-    title: 'Alchemy of Souls',
-    slug: 'alchemy-of-souls',
-    image_url: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Alchemy of Souls Poster',
-    tags: ['Fantasy', 'Romance', 'Action'],
-    synopsis_short: "A powerful sorceress in a blind woman's body encounters a man from a prestigious family.",
-    synopsis_long: "In a fantasy kingdom where powerful mages can shift souls, a feared assassin’s soul becomes trapped inside the weak body of a blind young woman. She secretly trains a nobleman who can’t properly control his own power, while hiding who she really is from everyone around them. The show blends magic, romance, and destiny with some really memorable world-building.",
-    is_featured_on_home: false,
-    display_order: 14
-  },
-  {
-    id: 'a-korean-odyssey',
-    title: 'A Korean Odyssey (Hwayugi)',
-    slug: 'a-korean-odyssey',
-    image_url: 'https://images.unsplash.com/photo-1503756234508-e32369269deb?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'A Korean Odyssey Poster',
-    tags: ['Fantasy', 'Romance', 'Horror'],
-    synopsis_short: "A modern spin on Journey to the West involving a woman who sees ghosts.",
-    synopsis_long: "This modern fantasy is loosely based on Journey to the West and follows a woman who has seen ghosts since childhood and the mischievous immortal who once promised to protect her. Years later, their fates are tied together again by contracts, curses, and a love that is never simple. It’s spooky, funny, and unexpectedly romantic all at once.",
-    is_featured_on_home: false,
-    display_order: 15
+    display_order: 4
   }
 ];
