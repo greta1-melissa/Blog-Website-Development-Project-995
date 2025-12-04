@@ -4,6 +4,7 @@ import { QuestProvider } from '@questlabs/react-sdk';
 import { BlogProvider } from './contexts/BlogContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ForumProvider } from './contexts/ForumContext';
+import { KdramaProvider } from './contexts/KdramaContext';
 import questConfig from './config/questConfig';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -24,7 +25,7 @@ import NewThread from './pages/NewThread';
 import ProductRecommendations from './pages/ProductRecommendations';
 import NcbDebug from './pages/NcbDebug';
 import KdramaRecommendations from './pages/KdramaRecommendations';
-import KdramaDetail from './pages/KdramaDetail'; // New Import
+import KdramaDetail from './pages/KdramaDetail';
 
 // Legal Pages
 import SafeSpacePromise from './pages/SafeSpacePromise';
@@ -41,57 +42,59 @@ function App() {
       <Router>
         <AuthProvider>
           <BlogProvider>
-            <ForumProvider>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Header />
-                <main className="flex-grow">
-                  <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/admin-login" element={<AdminLogin />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    
-                    <Route path="/" element={<Home />} />
-                    <Route path="/post/:id" element={<BlogPost />} />
-                    <Route path="/create" element={<CreatePost />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/products" element={<ProductRecommendations />} />
-                    <Route path="/kdrama-recommendations" element={<KdramaRecommendations />} />
-                    <Route path="/kdrama-recommendations/:id" element={<KdramaDetail />} />
+            <KdramaProvider>
+              <ForumProvider>
+                <div className="min-h-screen bg-gray-50 flex flex-col">
+                  <Header />
+                  <main className="flex-grow">
+                    <Routes>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/admin-login" element={<AdminLogin />} />
+                      <Route path="/onboarding" element={<Onboarding />} />
+                      
+                      <Route path="/" element={<Home />} />
+                      <Route path="/post/:id" element={<BlogPost />} />
+                      <Route path="/create" element={<CreatePost />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/products" element={<ProductRecommendations />} />
+                      <Route path="/kdrama-recommendations" element={<KdramaRecommendations />} />
+                      <Route path="/kdrama-recommendations/:id" element={<KdramaDetail />} />
 
-                    {/* Legal Routes */}
-                    <Route path="/safe-space-promise" element={<SafeSpacePromise />} />
-                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                    <Route path="/terms-and-conditions" element={<TermsConditions />} />
+                      {/* Legal Routes */}
+                      <Route path="/safe-space-promise" element={<SafeSpacePromise />} />
+                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                      <Route path="/terms-and-conditions" element={<TermsConditions />} />
 
-                    <Route 
-                      path="/admin" 
-                      element={
-                        <ProtectedRoute adminOnly={true}>
-                          <Admin />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    
-                    <Route path="/forums" element={<Forums />} />
-                    <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
-                    <Route path="/forums/thread/:threadId" element={<ForumThread />} />
-                    <Route path="/forums/new-thread" element={<NewThread />} />
+                      <Route 
+                        path="/admin" 
+                        element={
+                          <ProtectedRoute adminOnly={true}>
+                            <Admin />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      
+                      <Route path="/forums" element={<Forums />} />
+                      <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
+                      <Route path="/forums/thread/:threadId" element={<ForumThread />} />
+                      <Route path="/forums/new-thread" element={<NewThread />} />
 
-                    {/* Admin Debug Route */}
-                    <Route 
-                      path="/debug/ncb" 
-                      element={
-                        <ProtectedRoute adminOnly={true}>
-                          <NcbDebug />
-                        </ProtectedRoute>
-                      } 
-                    />
-                  </Routes>
-                </main>
-                <Footer />
-              </div>
-            </ForumProvider>
+                      {/* Admin Debug Route */}
+                      <Route 
+                        path="/debug/ncb" 
+                        element={
+                          <ProtectedRoute adminOnly={true}>
+                            <NcbDebug />
+                          </ProtectedRoute>
+                        } 
+                      />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </div>
+              </ForumProvider>
+            </KdramaProvider>
           </BlogProvider>
         </AuthProvider>
       </Router>

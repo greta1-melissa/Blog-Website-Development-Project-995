@@ -3,23 +3,31 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useForum } from '../contexts/ForumContext';
-import { kdramas } from '../data/kdramaData';
+import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiArrowLeft, FiMessageCircle, FiHeart, FiShare2, FiSend, FiUser, FiClock, FiThumbsUp } = FiIcons;
+const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp } = FiIcons;
 
 const KdramaDetail = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // id here acts as slug or ID
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { getThreadByTitle, createThread, createReply, getRepliesByThread, likeReply } = useForum();
+  const { getKdramaBySlug, isLoading } = useKdrama();
   
-  const drama = kdramas.find(d => d.id === id);
+  const [drama, setDrama] = useState(null);
   const [activeThread, setActiveThread] = useState(null);
   const [replies, setReplies] = useState([]);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+        const found = getKdramaBySlug(id);
+        setDrama(found);
+    }
+  }, [id, isLoading, getKdramaBySlug]);
 
   useEffect(() => {
     if (drama) {
@@ -56,12 +64,9 @@ const KdramaDetail = () => {
         // Category 2 is 'K-Drama & Entertainment'
         threadId = await createThread(2, {
           title: drama.title,
-          content: `Discussion thread for ${drama.title}. ${drama.synopsis}`
+          content: `Discussion thread for ${drama.title}. ${drama.synopsis_short}`
         });
         
-        // Fetch the newly created thread to set as active
-        // Note: In a real app we might need to re-fetch from context, but createThread returns ID
-        // For simplicity, we construct a temp object or re-fetch in effect
         setActiveThread({ id: threadId, title: drama.title }); 
       }
 
@@ -69,8 +74,6 @@ const KdramaDetail = () => {
       await createReply(threadId, replyContent);
       setReplyContent('');
       
-      // If we just created the thread, the useEffect will eventually pick it up, 
-      // but let's ensure UI updates smoothly
       if (activeThread) {
          setReplies(getRepliesByThread(threadId));
       }
@@ -93,6 +96,14 @@ const KdramaDetail = () => {
     return date.toLocaleDateString();
   };
 
+  if (isLoading) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+        </div>
+    );
+  }
+
   if (!drama) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
@@ -107,7 +118,7 @@ const KdramaDetail = () => {
       {/* Hero Header */}
       <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
         <div className="absolute inset-0">
-          <img src={drama.image} alt={drama.title} className="w-full h-full object-cover" />
+          <img src={drama.image_url} alt={drama.image_alt || drama.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
         </div>
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 lg:p-20 text-white z-10">
@@ -125,7 +136,7 @@ const KdramaDetail = () => {
               </div>
               <h1 className="text-4xl md:text-6xl font-serif font-bold mb-6 leading-tight text-shadow-lg">{drama.title}</h1>
               <p className="text-lg md:text-xl text-gray-200 max-w-3xl leading-relaxed drop-shadow-md">
-                {drama.synopsis}
+                {drama.synopsis_long || drama.synopsis_short}
               </p>
             </motion.div>
           </div>

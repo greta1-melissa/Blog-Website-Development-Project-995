@@ -3,17 +3,33 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { kdramas } from '../data/kdramaData'; // Use centralized data
+import { useKdrama } from '../contexts/KdramaContext';
 
 const { FiArrowRight, FiImage, FiMessageCircle } = FiIcons;
 
 const KdramaGrid = () => {
-  // Use first 6 current favorites for the grid on home page
-  const recommendations = kdramas.filter(d => d.category === 'current').slice(0, 6);
+  const { featuredKdramas, isLoading } = useKdrama();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white rounded-xl h-96 shadow-sm animate-pulse border border-purple-50">
+            <div className="h-48 bg-purple-100/50"></div>
+            <div className="p-6 space-y-4">
+              <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-100 rounded"></div>
+              <div className="h-4 bg-gray-100 rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {recommendations.map((drama, index) => (
+      {featuredKdramas.map((drama, index) => (
         <motion.div
           key={drama.id}
           initial={{ opacity: 0, y: 20 }}
@@ -22,11 +38,11 @@ const KdramaGrid = () => {
           transition={{ duration: 0.5, delay: index * 0.1 }}
           className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-purple-50 flex flex-col h-full overflow-hidden"
         >
-          <Link to={`/kdrama-recommendations/${drama.id}`} className="block relative h-48 overflow-hidden bg-purple-100">
-            {drama.image ? (
+          <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block relative h-48 overflow-hidden bg-purple-100">
+            {drama.image_url ? (
               <img 
-                src={drama.image} 
-                alt={drama.title} 
+                src={drama.image_url} 
+                alt={drama.image_alt || drama.title} 
                 className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
                 loading="lazy"
               />
@@ -49,19 +65,19 @@ const KdramaGrid = () => {
           </Link>
 
           <div className="p-6 flex flex-col flex-grow">
-            <Link to={`/kdrama-recommendations/${drama.id}`}>
+            <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`}>
               <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight hover:text-purple-600 transition-colors">
                 {drama.title}
               </h3>
             </Link>
             
             <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-grow line-clamp-3">
-              {drama.synopsis}
+              {drama.synopsis_short}
             </p>
 
             <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-4">
               <Link
-                to={`/kdrama-recommendations/${drama.id}`}
+                to={`/kdrama-recommendations/${drama.slug || drama.id}`}
                 className="inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors group/link"
               >
                 Read & Discuss 
