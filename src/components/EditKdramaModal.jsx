@@ -9,9 +9,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
-    tags: '', // Managed as comma-separated string for input
+    tags: '',
     synopsis_short: '',
     synopsis_long: '',
+    my_two_cents: '', // Added new field
     image_url: '',
     image_alt: '',
     is_featured_on_home: false,
@@ -31,6 +32,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         tags: Array.isArray(drama.tags) ? drama.tags.join(', ') : (drama.tags || ''),
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
+        my_two_cents: drama.my_two_cents || '', // Load new field
         image_url: drama.image_url || drama.image || '',
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
@@ -39,13 +41,13 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       setUploadStatus('');
       setImageError(false);
     } else {
-      // Reset for new entry
       setFormData({
         title: '',
         slug: '',
         tags: '',
         synopsis_short: '',
         synopsis_long: '',
+        my_two_cents: '',
         image_url: '',
         image_alt: '',
         is_featured_on_home: false,
@@ -54,7 +56,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     }
   }, [drama, isOpen]);
 
-  // Auto-generate slug from title if slug is empty
+  // Auto-generate slug
   useEffect(() => {
     if (!drama && formData.title && !formData.slug) {
       const autoSlug = formData.title
@@ -74,6 +76,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     if (name === 'image_url') setImageError(false);
   };
 
+  // Improved file upload logic to match EditPostModal
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -86,21 +89,31 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       const data = new FormData();
       data.append('file', file);
       
-      // Reuse existing upload endpoint
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
-        body: data
+        body: data,
+        signal: controller.signal
+      }).catch((err) => {
+        console.warn("Fetch failed:", err);
+        return null;
       });
 
-      if (response.ok) {
+      clearTimeout(timeoutId);
+
+      const contentType = response?.headers?.get("content-type");
+      if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
+          // CRITICAL FIX: Ensure state updates correctly
           setFormData(prev => ({ ...prev, image_url: result.url }));
           setUploadStatus('Upload Complete!');
           return;
         }
       }
-      throw new Error("Upload failed");
+      throw new Error("Server upload unavailable or failed");
     } catch (error) {
       console.warn("Server upload failed, falling back to local base64:", error);
       try {
@@ -118,6 +131,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       }
     } finally {
       setIsUploading(false);
+      // Reset input so same file can be selected again if needed
+      e.target.value = null;
     }
   };
 
@@ -125,7 +140,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     e.preventDefault();
     setIsSaving(true);
 
-    // Process tags back to array
     const processedData = {
       ...formData,
       tags: formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0),
@@ -165,7 +179,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
             <h2 className="text-xl font-bold text-gray-900">
               {drama ? 'Edit K-Drama' : 'Add New K-Drama'}
             </h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full text-gray-500"
+            >
               <SafeIcon icon={FiX} className="text-xl" />
             </button>
           </div>
@@ -249,39 +266,54 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                       />
                     </div>
                     <div className="relative">
-                      <input type="file" id="kdrama-file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
-                      <label htmlFor="kdrama-file-upload" className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}>
-                        {isUploading ? <span className="animate-pulse">Uploading...</span> : uploadStatus.includes('Complete') ? <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload New File</>}
+                      <input
+                        type="file"
+                        id="kdrama-file-upload"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept="image/*"
+                      />
+                      <label 
+                        htmlFor="kdrama-file-upload" 
+                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
+                      >
+                        {isUploading ? 
+                          <span className="animate-pulse">Uploading...</span> : 
+                          uploadStatus.includes('Complete') ? 
+                          <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</> : 
+                          <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload New File</>
+                        }
                       </label>
                     </div>
+                    
                     {formData.image_url && (
                       <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
                         <img 
                           src={formData.image_url} 
                           alt="Preview" 
-                          className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`} 
-                          onError={() => setImageError(true)} 
-                          onLoad={() => setImageError(false)} 
+                          className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                          onError={() => setImageError(true)}
+                          onLoad={() => setImageError(false)}
                         />
                       </div>
                     )}
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Image Alt Text</label>
-                        <input
-                            type="text"
-                            name="image_alt"
-                            value={formData.image_alt}
-                            onChange={handleChange}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
-                            placeholder="Description for accessibility"
-                        />
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Image Alt Text</label>
+                      <input
+                        type="text"
+                        name="image_alt"
+                        value={formData.image_alt}
+                        onChange={handleChange}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
+                        placeholder="Description for accessibility"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Full Width Synopsis */}
+            {/* Synopsis and My 2 Cents */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Short Synopsis (Home Page)</label>
@@ -289,21 +321,36 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   name="synopsis_short"
                   value={formData.synopsis_short}
                   onChange={handleChange}
-                  rows="3"
+                  rows="2"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none"
                   placeholder="A brief teaser..."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Long Synopsis (Recommendations Page)</label>
-                <textarea
-                  name="synopsis_long"
-                  value={formData.synopsis_long}
-                  onChange={handleChange}
-                  rows="6"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                  placeholder="The full story details..."
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Long Synopsis (Recommendations Page)</label>
+                    <textarea
+                    name="synopsis_long"
+                    value={formData.synopsis_long}
+                    onChange={handleChange}
+                    rows="5"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                    placeholder="The full story details..."
+                    />
+                </div>
+                <div>
+                     <label className="block text-sm font-medium text-purple-800 mb-1 flex items-center">
+                        <SafeIcon icon={FiIcons.FiHeart} className="mr-1 text-purple-500" /> My 2 Cents (Personal Opinion)
+                     </label>
+                    <textarea
+                    name="my_two_cents"
+                    value={formData.my_two_cents}
+                    onChange={handleChange}
+                    rows="5"
+                    className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-purple-50/50"
+                    placeholder="Why you love this drama, favorite moments, etc..."
+                    />
+                </div>
               </div>
             </div>
 

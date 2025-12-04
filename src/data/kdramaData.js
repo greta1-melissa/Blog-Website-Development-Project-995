@@ -9,6 +9,7 @@ export const kdramas = [
     tags: ['Historical', 'Time travel', 'Angst'],
     synopsis_short: "A 21st-century woman is pulled back in time to the Goryeo dynasty and wakes up in the body of Hae Soo.",
     synopsis_long: "A 21st-century woman is pulled back in time to the Goryeo dynasty and wakes up in the body of Hae Soo, a noble lady surrounded by princes who are destined to fight for the throne. As she gets tangled in their politics and love stories, she realises that knowing history doesn’t mean she can save everyone. It’s a beautiful, heartbreaking ride about fate, loyalty, and choosing your own heart.",
+    my_two_cents: "This drama ruined me in the best way possible. I still listen to the OST when I need a good cry. Lee Joon-gi's acting is phenomenal.",
     is_featured_on_home: true,
     display_order: 1
   },
@@ -21,6 +22,7 @@ export const kdramas = [
     tags: ['Historical', 'Body swap', 'Comedy'],
     synopsis_short: "A modern-day male chef suddenly wakes up in the body of Queen Cheorin in the Joseon era.",
     synopsis_long: "A modern-day male chef suddenly wakes up in the body of Queen Cheorin in the Joseon era, with his loud personality trapped inside royal silk and strict palace rules. While he panics, plots, and swears his way through court life, he slowly discovers the truth behind the seemingly weak king and the power games around them. It’s chaotic, hilarious, and surprisingly emotional.",
+    my_two_cents: "Shin Hye-sun is an absolute genius. I have never laughed so hard at a historical drama. The kitchen scenes are chef's kiss!",
     is_featured_on_home: true,
     display_order: 2
   },
@@ -33,6 +35,7 @@ export const kdramas = [
     tags: ['Romance', 'Comedy', 'Melodrama'],
     synopsis_short: "A South Korean heiress accidentally crash-lands in North Korea and meets a soldier.",
     synopsis_long: "A South Korean heiress accidentally crash-lands in North Korea during a paragliding trip gone wrong and is discovered by a quiet, principled North Korean officer. While he hides her and searches for a way to send her home, the two slowly fall in love in the most impossible situation. It’s dramatic, funny, and deeply romantic, with a lot of heart.",
+    my_two_cents: "The ultimate gateway drug to K-dramas. Captain Ri sets the standard for romantic leads impossibly high. Prepare for the second lead syndrome too.",
     is_featured_on_home: true,
     display_order: 3
   },
@@ -44,7 +47,8 @@ export const kdramas = [
     image_alt: 'Itaewon Class Poster',
     tags: ['Revenge', 'Found family', 'Business'],
     synopsis_short: "Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon to fight back against a powerful family.",
-    synopsis_long: "After losing his father and his future because of a powerful chaebol family, Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon and turn it into something big enough to fight back. Along the way, he gathers a group of misfits who become his team, his family, and his reason to keep going. It’s a story about dignity, second chances, and building your own path.",
+    synopsis_long: "After losing his father and his future because of a powerful chaebol family, Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon and turn it into something big enough to fight back. Along the way, he gathers a group of misfits who become his team, his family, and and his reason to keep going. It’s a story about dignity, second chances, and building your own path.",
+    my_two_cents: "A powerful story about grit and integrity. The romance takes a backseat to the revenge and business building, which I actually loved.",
     is_featured_on_home: false,
     display_order: 4
   },
@@ -57,6 +61,7 @@ export const kdramas = [
     tags: ['Romance', 'Slice of Life', 'Healing'],
     synopsis_short: "A dentist moves to a seaside village and meets a handyman who helps everyone.",
     synopsis_long: "A big-city dentist moves to the seaside village of Gongjin and meets Chief Hong, a jack-of-all-trades who helps everyone in town. As they clash and eventually connect, the stories of the villagers unfold around them. It's a warm, healing drama about community, forgiveness, and finding happiness in simple things.",
+    my_two_cents: "Pure comfort TV. If you're feeling stressed, just watch this. The Dimple Couple is adorable, but the villagers steal the show.",
     is_featured_on_home: true,
     display_order: 5
   },
@@ -69,6 +74,7 @@ export const kdramas = [
     tags: ['Fantasy', 'Romance', 'Epic'],
     synopsis_short: "An immortal goblin searches for his human bride to end his accursed life.",
     synopsis_long: "Kim Shin, an immortal goblin, has spent centuries searching for his human bride, the only one who can remove the invisible sword from his chest and end his life. He meets a high school student who claims to be her, and a grim reaper who becomes his roommate. It's a visually stunning, emotionally sweeping tale of life, death, and destiny.",
+    my_two_cents: "Visually stunning with one of the best OSTs ever. The bromance between Goblin and Grim Reaper is arguably better than the main romance!",
     is_featured_on_home: false,
     display_order: 6
   },
@@ -81,6 +87,7 @@ export const kdramas = [
     tags: ['Family', 'Nostalgia', 'Friendship'],
     synopsis_short: "Five childhood friends and their families living in the same neighborhood in 1988.",
     synopsis_long: "Set in the year 1988, this drama follows five families living on the same alleyway in Seoul. It centers on a group of five childhood friends as they go through their teenage years. It's a heartwarming, hilarious, and tear-jerking masterpiece about family, friendship, and the pure nostalgia of youth. A must-watch for anyone who loves character-driven stories.",
+    my_two_cents: "The gold standard of slice-of-life dramas. You will feel like you grew up in that neighborhood. Prepare tissues for every episode.",
     is_featured_on_home: false,
     display_order: 7
   },
@@ -93,6 +100,7 @@ export const kdramas = [
     tags: ['Romance', 'Time Travel', 'Fan Culture'],
     synopsis_short: "An ardent fan travels back in time to save her ultimate bias from a tragic fate.",
     synopsis_long: "Im Sol, a passionate fan of top star Ryu Sun-jae, is devastated by his sudden death. She miraculously travels back in time to high school, where she meets him before he became famous. Determined to change his tragic future, she tries everything to save him. It's a sweet, perfect romance for anyone who knows what it's like to be a fan.",
+    my_two_cents: "Surprisingly deep and incredibly sweet. It captures the feeling of being a fan perfectly without being cringe. Byeon Woo-seok is a revelation.",
     is_featured_on_home: true,
     display_order: 8
   }

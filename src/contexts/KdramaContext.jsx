@@ -39,7 +39,8 @@ export const KdramaProvider = ({ children }) => {
       tags: Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map(t => t.trim()) : []),
       synopsis_short: item.synopsis_short || item.synopsis || '',
       synopsis_long: item.synopsis_long || item.synopsis || '',
-      image_url: item.image_url || item.image || '',
+      my_two_cents: item.my_two_cents || '', // Added new field
+      image_url: item.image_url || item.image || '', // Ensure we catch both keys if backend drifts
       image_alt: item.image_alt || item.title || 'Drama poster',
       is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
       display_order: parseInt(item.display_order) || (index + 1),
@@ -65,29 +66,25 @@ export const KdramaProvider = ({ children }) => {
         normalized.sort((a, b) => a.display_order - b.display_order);
         setKdramas(normalized);
       } else {
-        // Use seed data if server is empty
-        console.log("Server empty. Seeding initial K-drama data...");
-        const seeded = normalizeData(initialSeedData);
-        setKdramas(seeded);
-        
-        // Attempt to seed server (fire and forget)
-        // This ensures the data persists for the next time
-        seeded.forEach(async (drama) => {
-           const { id, ...payload } = drama;
-           // We don't send the ID so the backend generates a new UUID, 
-           // OR we send it if we want to enforce specific IDs (depends on backend config).
-           // Safest is to let backend handle ID but we lose the slug matching if not careful.
-           // For this specific 'restore' request, we'll try to keep data intact.
-           await ncbCreate(TABLE_NAME, payload).catch(e => console.warn("Seed failed for", drama.title));
-        });
+        // Fallback to local or seed if server is empty
+        const localData = getLocalData();
+        if (localData && localData.length > 0) {
+          setKdramas(localData);
+        } else {
+          // Initial seed
+          console.log("Seeding initial K-drama data...");
+          const seeded = normalizeData(initialSeedData);
+          setKdramas(seeded);
+          // Optional: Attempt to seed server (fire and forget)
+          seeded.forEach(async (drama) => {
+             const { id, ...payload } = drama;
+             await ncbCreate(TABLE_NAME, payload).catch(e => console.warn("Seed failed for", drama.title));
+          });
+        }
       }
     } catch (error) {
       console.error("Failed to fetch kdramas", error);
-      // Fallback to local or seed on error
-      const localData = getLocalData();
-      if (localData && localData.length > 0) {
-        setKdramas(localData);
-      } else {
+      if (kdramas.length === 0) {
         setKdramas(normalizeData(initialSeedData));
       }
     } finally {
