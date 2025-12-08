@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
 
-const { FiArrowLeft, FiTv, FiStar, FiFilm, FiImage, FiMessageCircle, FiHeart, FiEdit3 } = FiIcons;
+const { FiArrowLeft, FiTv, FiStar, FiImage, FiMessageCircle, FiEdit3 } = FiIcons;
 
 const KdramaRecommendations = () => {
   const { kdramas, isLoading } = useKdrama();
@@ -58,26 +58,31 @@ const KdramaRecommendations = () => {
             id={drama.slug} // Anchor for hash links
             className="group block bg-white rounded-2xl shadow-sm border border-purple-50 overflow-hidden hover:shadow-lg transition-all duration-300 scroll-mt-24"
           >
-            <div className="flex flex-col md:flex-row h-full">
-              <div className="md:w-1/3 min-h-[300px] relative bg-purple-100">
+            {/* Card Layout: Vertical Stack (Image on Top) */}
+            <div className="flex flex-col h-full">
+              {/* Image Section - Top Area */}
+              <div className="w-full h-80 md:h-96 relative bg-purple-100">
                 {drama.image_url ? (
                   <img 
                     src={drama.image_url} 
-                    alt={drama.image_alt || drama.title} 
-                    className="absolute inset-0 w-full h-full object-cover"
+                    alt={`${drama.title} Poster`}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-purple-300">
-                    <SafeIcon icon={FiImage} className="text-5xl" />
+                  // Fallback Gradient
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-indigo-200 flex items-center justify-center text-purple-400">
+                    <SafeIcon icon={FiImage} className="text-6xl opacity-50" />
                   </div>
                 )}
+                {/* Overlay for depth */}
                 <div className="absolute inset-0 bg-black/5" />
               </div>
               
-              <div className="flex-1 p-8 md:p-10 flex flex-col">
+              {/* Content Section */}
+              <div className="p-8 md:p-10 flex flex-col">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                   <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="hover:text-purple-600 transition-colors">
-                    <h3 className="text-2xl md:text-3xl font-serif font-bold text-gray-900">{drama.title}</h3>
+                    <h3 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">{drama.title}</h3>
                   </Link>
                   <div className="flex flex-wrap gap-2">
                     {drama.tags && drama.tags.map((tag, idx) => (
@@ -89,12 +94,6 @@ const KdramaRecommendations = () => {
                       </span>
                     ))}
                   </div>
-                </div>
-
-                {/* DEBUG INFO */}
-                <div className="mb-4 p-2 bg-red-50 text-red-600 border border-red-200 text-xs font-mono break-all rounded">
-                    <strong className="block">DEBUG image_url:</strong>
-                    {drama.image_url || "EMPTY"}
                 </div>
 
                 <div className="prose prose-purple max-w-none text-gray-700 leading-relaxed mb-8">

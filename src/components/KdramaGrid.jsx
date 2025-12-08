@@ -47,7 +47,7 @@ const KdramaGrid = () => {
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-purple-300">
+              <div className="w-full h-full flex items-center justify-center text-purple-300 bg-gradient-to-br from-purple-100 to-indigo-100">
                 <SafeIcon icon={FiImage} className="text-4xl" />
               </div>
             )}
@@ -70,11 +70,6 @@ const KdramaGrid = () => {
               </h3>
             </Link>
             
-            {/* DEBUG INFO */}
-            <div className="mb-2 p-1 bg-red-50 text-red-600 border border-red-200 text-[10px] font-mono break-all rounded">
-                <strong>DEBUG image_url:</strong> {drama.image_url || "EMPTY"}
-            </div>
-
             <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-grow line-clamp-3">
               {drama.synopsis_short}
             </p>

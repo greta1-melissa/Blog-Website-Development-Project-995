@@ -317,7 +317,6 @@ const Admin = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Drama</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-red-500 uppercase tracking-wider">DEBUG: RAW IMAGE URL</th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -341,10 +340,6 @@ const Admin = () => {
                           )) : <span className="text-gray-400 text-xs">-</span>}
                           {drama.tags && drama.tags.length > 2 && <span className="text-xs text-gray-400">+{drama.tags.length - 2}</span>}
                         </div>
-                      </td>
-                      {/* DEBUG COLUMN */}
-                      <td className="px-6 py-4 text-xs font-mono text-red-600 max-w-xs truncate">
-                         {drama.image_url || "EMPTY"}
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-gray-600">
                         {drama.display_order}
