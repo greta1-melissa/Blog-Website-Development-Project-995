@@ -12,7 +12,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     tags: '',
     synopsis_short: '',
     synopsis_long: '',
-    my_two_cents: '', // Added new field
+    my_two_cents: '', 
     image_url: '',
     image_alt: '',
     is_featured_on_home: false,
@@ -32,8 +32,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         tags: Array.isArray(drama.tags) ? drama.tags.join(', ') : (drama.tags || ''),
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
-        my_two_cents: drama.my_two_cents || '', // Load field
-        // CRITICAL: Prioritize image_url, check image as fallback
+        my_two_cents: drama.my_two_cents || '',
         image_url: drama.image_url || drama.image || '',
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
@@ -68,13 +67,44 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     }
   }, [formData.title, drama]);
 
+  // Helper to normalize Dropbox URLs
+  const processDropboxUrl = (url) => {
+    if (!url || !url.includes('dropbox.com')) return url;
+    
+    let newUrl = url;
+
+    // 1. Replace dl=0 with raw=1
+    if (newUrl.includes('dl=0')) {
+      newUrl = newUrl.replace('dl=0', 'raw=1');
+    }
+    // 2. Replace raw=0 with raw=1
+    else if (newUrl.includes('raw=0')) {
+      newUrl = newUrl.replace('raw=0', 'raw=1');
+    }
+    
+    // 3. If raw=1 is still missing, append it
+    if (!newUrl.includes('raw=1')) {
+      const separator = newUrl.includes('?') ? '&' : '?';
+      newUrl = `${newUrl}${separator}raw=1`;
+    }
+    
+    return newUrl;
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
+
+    // Automatically normalize image_url if it's a Dropbox link
+    if (name === 'image_url') {
+      finalValue = processDropboxUrl(finalValue);
+      setImageError(false);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: finalValue
     }));
-    if (name === 'image_url') setImageError(false);
   };
 
   const handleFileUpload = async (e) => {
@@ -107,7 +137,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
-          // CRITICAL: Set image_url explicitly from result
+          // Result.url is already processed by the API to be raw=1
           setFormData(prev => ({ ...prev, image_url: result.url }));
           setUploadStatus('Upload Complete!');
           return;

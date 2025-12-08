@@ -7,7 +7,7 @@ import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp } = FiIcons;
+const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp, FiImage } = FiIcons;
 
 const KdramaDetail = () => {
   const { id } = useParams(); // id here acts as slug or ID
@@ -24,8 +24,8 @@ const KdramaDetail = () => {
 
   useEffect(() => {
     if (!isLoading) {
-        const found = getKdramaBySlug(id);
-        setDrama(found);
+      const found = getKdramaBySlug(id);
+      setDrama(found);
     }
   }, [id, isLoading, getKdramaBySlug]);
 
@@ -50,6 +50,7 @@ const KdramaDetail = () => {
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
+    
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -66,8 +67,7 @@ const KdramaDetail = () => {
           title: drama.title,
           content: `Discussion thread for ${drama.title}. ${drama.synopsis_short}`
         });
-        
-        setActiveThread({ id: threadId, title: drama.title }); 
+        setActiveThread({ id: threadId, title: drama.title });
       }
 
       // Now create the reply
@@ -75,9 +75,8 @@ const KdramaDetail = () => {
       setReplyContent('');
       
       if (activeThread) {
-         setReplies(getRepliesByThread(threadId));
+        setReplies(getRepliesByThread(threadId));
       }
-
     } catch (error) {
       console.error('Error posting comment:', error);
     } finally {
@@ -98,9 +97,9 @@ const KdramaDetail = () => {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full"></div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+      </div>
     );
   }
 
@@ -116,11 +115,22 @@ const KdramaDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Hero Header */}
-      <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
+      <div className="relative h-[400px] lg:h-[500px] overflow-hidden bg-purple-900">
         <div className="absolute inset-0">
-          <img src={drama.image_url} alt={drama.image_alt || drama.title} className="w-full h-full object-cover" />
+          {drama.image_url ? (
+            <img 
+              src={drama.image_url} 
+              alt={drama.image_alt || drama.title} 
+              className="w-full h-full object-cover" 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900">
+              <SafeIcon icon={FiImage} className="text-7xl text-white/20" />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
         </div>
+        
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 lg:p-20 text-white z-10">
           <div className="max-w-7xl mx-auto">
             <Link to="/kdrama-recommendations" className="inline-flex items-center text-purple-200 hover:text-white mb-6 transition-colors font-medium">
@@ -186,8 +196,7 @@ const KdramaDetail = () => {
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold text-gray-900">{reply.author}</span>
                         <span className="text-xs text-gray-400 flex items-center">
-                          <SafeIcon icon={FiClock} className="mr-1" />
-                          {formatDate(reply.createdAt)}
+                          <SafeIcon icon={FiClock} className="mr-1" /> {formatDate(reply.createdAt)}
                         </span>
                       </div>
                       <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
@@ -198,8 +207,7 @@ const KdramaDetail = () => {
                         disabled={!isAuthenticated}
                         className={`text-xs font-medium flex items-center transition-colors ${isAuthenticated ? 'text-gray-500 hover:text-purple-600' : 'text-gray-400 cursor-default'}`}
                       >
-                        <SafeIcon icon={FiThumbsUp} className="mr-1" /> 
-                        {reply.likes || 0} Likes
+                        <SafeIcon icon={FiThumbsUp} className="mr-1" /> {reply.likes || 0} Likes
                       </button>
                       <button className="text-xs font-medium text-gray-500 hover:text-purple-600 transition-colors">Reply</button>
                     </div>
@@ -233,7 +241,7 @@ const KdramaDetail = () => {
                       className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
                     >
                       {isSubmitting ? (
-                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <SafeIcon icon={FiSend} className="text-lg" />
                       )}
