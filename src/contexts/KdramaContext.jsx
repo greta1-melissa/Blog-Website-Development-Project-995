@@ -33,9 +33,17 @@ export const KdramaProvider = ({ children }) => {
   // Normalize data to ensure all fields exist
   const normalizeData = (data) => {
     if (!Array.isArray(data)) return [];
+
+    const processDropboxUrl = (url) => {
+      if (url && typeof url === 'string' && url.includes('dropbox.com') && url.includes('dl=0')) {
+        return url.replace('dl=0', 'raw=1');
+      }
+      return url;
+    };
     
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
-      const finalImageUrl = item.image_url || item.image || '';
+      const initialImageUrl = item.image_url || item.image || '';
+      const finalImageUrl = processDropboxUrl(initialImageUrl);
       
       return {
         ...item,
