@@ -1,30 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { getNcbStatus, ncbCreate, ncbDelete } from '../services/nocodebackendClient';
+import { getNcbStatus, ncbCreate, ncbDelete, ncbReadAll } from '../services/nocodebackendClient';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { 
-  FiCheckCircle, 
-  FiXCircle, 
-  FiRefreshCw, 
-  FiServer, 
-  FiGlobe, 
-  FiKey, 
-  FiDatabase, 
-  FiEdit3, 
-  FiAlertTriangle 
-} = FiIcons;
+const { FiCheckCircle, FiXCircle, FiRefreshCw, FiServer, FiGlobe, FiKey, FiDatabase, FiEdit3, FiAlertTriangle, FiTv } = FiIcons;
 
 const NcbDebug = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [writeTestStatus, setWriteTestStatus] = useState(null); // 'testing', 'success', 'error'
   const [writeError, setWriteError] = useState('');
+  
+  // Specific check for K-Drama table
+  const [kdramaStatus, setKdramaStatus] = useState({ checked: false, exists: false, count: 0, error: '' });
 
   const checkStatus = async () => {
     setLoading(true);
     const result = await getNcbStatus();
     setStatus(result);
+
+    // Check K-Drama Table specifically
+    try {
+        const dramas = await ncbReadAll('kdrama_recommendations', { page: 1, limit: 1 });
+        if (Array.isArray(dramas)) {
+            setKdramaStatus({ checked: true, exists: true, count: dramas.length, error: '' });
+        } else {
+            setKdramaStatus({ checked: true, exists: false, count: 0, error: 'Table not found or invalid response' });
+        }
+    } catch (e) {
+        setKdramaStatus({ checked: true, exists: false, count: 0, error: e.message });
+    }
+
     setLoading(false);
   };
 
@@ -44,35 +50,25 @@ const NcbDebug = () => {
         author: "Admin Debugger",
         date: new Date().toISOString().split('T')[0]
       };
-
-      // Uses existing configured client (URL/Key from env)
+      
       const result = await ncbCreate('posts', testPayload);
       
       // 2. Flexible ID extraction
       let createdId = null;
       if (result) {
-        // Try standard locations
-        if (result.id) {
-          createdId = result.id;
-        } else if (result.data && result.data.id) {
-          createdId = result.data.id;
-        } else if (Array.isArray(result.data) && result.data.length > 0 && result.data[0]?.id) {
-          createdId = result.data[0].id;
-        } else if (result._id) {
-          // Fallback for some other DB types
-          createdId = result._id;
-        }
+         if (result.id) createdId = result.id;
+         else if (result.data && result.data.id) createdId = result.data.id;
+         else if (Array.isArray(result.data) && result.data.length > 0 && result.data[0]?.id) createdId = result.data[0].id;
+         else if (result._id) createdId = result._id;
       }
 
       if (!createdId) {
-        // Extract a snippet of the response for debugging
         const responseSnippet = JSON.stringify(result || {}).substring(0, 200);
         throw new Error(`Write Failed: Could not read ID from NCB response. Response start: ${responseSnippet}...`);
       }
 
-      // 3. Delete it immediately using the found ID
+      // 3. Delete it immediately
       await ncbDelete('posts', createdId);
-
       setWriteTestStatus('success');
     } catch (err) {
       console.error("Write Test Failed:", err);
@@ -91,13 +87,11 @@ const NcbDebug = () => {
         {isBool ? (
           value ? (
             <span className="flex items-center text-green-600 font-bold text-sm bg-green-50 px-2 py-1 rounded-full">
-              <SafeIcon icon={FiCheckCircle} className="mr-1" />
-              Configured
+              <SafeIcon icon={FiCheckCircle} className="mr-1" /> Configured
             </span>
           ) : (
             <span className="flex items-center text-red-500 font-bold text-sm bg-red-50 px-2 py-1 rounded-full">
-              <SafeIcon icon={FiXCircle} className="mr-1" />
-              Missing
+              <SafeIcon icon={FiXCircle} className="mr-1" /> Missing
             </span>
           )
         ) : (
@@ -120,8 +114,8 @@ const NcbDebug = () => {
               <p className="text-purple-100 text-xs">Environment & Connectivity Check</p>
             </div>
           </div>
-          <button
-            onClick={checkStatus}
+          <button 
+            onClick={checkStatus} 
             disabled={loading}
             className="p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors disabled:opacity-50"
           >
@@ -147,32 +141,54 @@ const NcbDebug = () => {
                 </div>
               </div>
 
+              {/* K-Drama Table Check - NEW */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Table Status: K-Dramas</h3>
+                <div className={`border rounded-lg px-4 py-3 ${kdramaStatus.exists ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="flex items-center font-bold text-gray-700">
+                            <SafeIcon icon={FiTv} className="mr-2" /> kdrama_recommendations
+                        </span>
+                        {kdramaStatus.exists ? (
+                            <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-xs font-bold flex items-center">
+                                <SafeIcon icon={FiCheckCircle} className="mr-1" /> Active
+                            </span>
+                        ) : (
+                            <span className="bg-red-200 text-red-800 px-3 py-1 rounded-full text-xs font-bold flex items-center">
+                                <SafeIcon icon={FiXCircle} className="mr-1" /> Missing
+                            </span>
+                        )}
+                    </div>
+                    {kdramaStatus.exists ? (
+                        <p className="text-sm text-green-700">Table found with <strong>{kdramaStatus.count}</strong> records.</p>
+                    ) : (
+                        <p className="text-sm text-red-700">
+                            Table not found. Please create 'kdrama_recommendations' in NCB.
+                            {kdramaStatus.error && <span className="block mt-1 text-xs opacity-75">Error: {kdramaStatus.error}</span>}
+                        </p>
+                    )}
+                </div>
+              </div>
+
               {/* Read Connectivity Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Read Connectivity</h3>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Read Connectivity (Posts)</h3>
                 <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600 font-medium">Read Permission (Posts)</span>
+                    <span className="text-gray-600 font-medium">Read Permission</span>
                     {status.canReadPosts ? (
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <SafeIcon icon={FiCheckCircle} className="mr-1" />
-                        Working
+                        <SafeIcon icon={FiCheckCircle} className="mr-1" /> Working
                       </span>
                     ) : (
                       <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <SafeIcon icon={FiXCircle} className="mr-1" />
-                        Failed
+                        <SafeIcon icon={FiXCircle} className="mr-1" /> Failed
                       </span>
                     )}
                   </div>
                   <div className="text-sm text-gray-500">
                     Found <strong>{status.postCount}</strong> posts.
                   </div>
-                  {status.message && status.message !== 'Connection successful' && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 font-mono break-all">
-                      {status.message}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -184,56 +200,47 @@ const NcbDebug = () => {
                     <span className="text-gray-600 font-medium">Write Permission (Posts)</span>
                     {writeTestStatus === 'success' ? (
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <SafeIcon icon={FiCheckCircle} className="mr-1" />
-                        Working
+                        <SafeIcon icon={FiCheckCircle} className="mr-1" /> Working
                       </span>
                     ) : writeTestStatus === 'error' ? (
                       <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <SafeIcon icon={FiXCircle} className="mr-1" />
-                        Failed
+                        <SafeIcon icon={FiXCircle} className="mr-1" /> Failed
                       </span>
                     ) : (
                       <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                        <SafeIcon icon={FiAlertTriangle} className="mr-1" />
-                        Not Tested
+                        <SafeIcon icon={FiAlertTriangle} className="mr-1" /> Not Tested
                       </span>
                     )}
                   </div>
-
-                  <p className="text-sm text-gray-600 mb-4">
-                    Click below to attempt creating and deleting a test post. This verifies your API Key has write permissions.
-                  </p>
-
+                  
                   {writeTestStatus === 'error' && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex flex-col items-start">
-                      <div className="flex items-center mb-1">
-                        <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2" />
-                        <strong className="text-red-700 text-sm">Write Failed</strong>
-                      </div>
-                      <div className="text-xs text-red-600 font-mono break-all w-full bg-white/50 p-2 rounded mt-1">
-                        {writeError}
-                      </div>
+                        <div className="flex items-center mb-1">
+                            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2" /> 
+                            <strong className="text-red-700 text-sm">Write Failed</strong>
+                        </div>
+                        <div className="text-xs text-red-600 font-mono break-all w-full bg-white/50 p-2 rounded mt-1">
+                            {writeError}
+                        </div>
                     </div>
                   )}
 
-                  <button
-                    onClick={runWriteTest}
+                  <button 
+                    onClick={runWriteTest} 
                     disabled={writeTestStatus === 'testing'}
                     className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-colors ${
-                      writeTestStatus === 'testing'
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      writeTestStatus === 'testing' 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                         : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
                     }`}
                   >
                     {writeTestStatus === 'testing' ? (
                       <>
-                        <SafeIcon icon={FiRefreshCw} className="animate-spin mr-2" />
-                        Testing Write Permissions...
+                        <SafeIcon icon={FiRefreshCw} className="animate-spin mr-2" /> Testing Write Permissions...
                       </>
                     ) : (
                       <>
-                        <SafeIcon icon={FiEdit3} className="mr-2" />
-                        Test Write Permission
+                        <SafeIcon icon={FiEdit3} className="mr-2" /> Test Write Permission
                       </>
                     )}
                   </button>
@@ -245,8 +252,8 @@ const NcbDebug = () => {
           )}
         </div>
         <div className="bg-gray-50 px-6 py-4 text-xs text-gray-500 flex items-center justify-between border-t border-gray-100">
-          <span>Admin Diagnostics Tool</span>
-          <span className="text-purple-600 font-medium">Bangtan Mom Blog</span>
+            <span>Admin Diagnostics Tool</span>
+            <span className="text-purple-600 font-medium">Bangtan Mom Blog</span>
         </div>
       </div>
     </div>

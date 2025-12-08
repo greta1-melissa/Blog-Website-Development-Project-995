@@ -59,7 +59,7 @@ const KdramaDetail = () => {
     setIsSubmitting(true);
     try {
       let threadId = activeThread?.id;
-
+      
       // If no thread exists yet, create one first
       if (!threadId) {
         // Category 2 is 'K-Drama & Entertainment'
@@ -73,7 +73,6 @@ const KdramaDetail = () => {
       // Now create the reply
       await createReply(threadId, replyContent);
       setReplyContent('');
-      
       if (activeThread) {
         setReplies(getRepliesByThread(threadId));
       }
@@ -91,8 +90,18 @@ const KdramaDetail = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    } catch (e) {
+        return 'Recently';
+    }
+  };
+
+  // Helper to safely get user initial
+  const getUserInitial = (name) => {
+    if (!name) return 'U';
+    return name.charAt(0).toUpperCase();
   };
 
   if (isLoading) {
@@ -118,11 +127,7 @@ const KdramaDetail = () => {
       <div className="relative h-[400px] lg:h-[500px] overflow-hidden bg-purple-900">
         <div className="absolute inset-0">
           {drama.image_url ? (
-            <img 
-              src={drama.image_url} 
-              alt={drama.image_alt || drama.title} 
-              className="w-full h-full object-cover" 
-            />
+            <img src={drama.image_url} alt={drama.image_alt || drama.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900">
               <SafeIcon icon={FiImage} className="text-7xl text-white/20" />
@@ -138,7 +143,7 @@ const KdramaDetail = () => {
             </Link>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <div className="flex flex-wrap gap-2 mb-4">
-                {drama.tags?.map((tag, idx) => (
+                {drama.tags && Array.isArray(drama.tags) && drama.tags.map((tag, idx) => (
                   <span key={idx} className="px-3 py-1 bg-purple-600/80 backdrop-blur-sm rounded-full text-xs font-bold uppercase tracking-wide border border-purple-400/30">
                     {tag}
                   </span>
@@ -180,21 +185,16 @@ const KdramaDetail = () => {
               </div>
             ) : (
               replies.map((reply) => (
-                <motion.div 
-                  key={reply.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-4"
-                >
+                <motion.div key={reply.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-                      {reply.author[0].toUpperCase()}
+                      {getUserInitial(reply.author)}
                     </div>
                   </div>
                   <div className="flex-grow">
                     <div className="bg-gray-50 rounded-2xl rounded-tl-none p-4 border border-gray-100">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-gray-900">{reply.author}</span>
+                        <span className="font-bold text-gray-900">{reply.author || 'Anonymous'}</span>
                         <span className="text-xs text-gray-400 flex items-center">
                           <SafeIcon icon={FiClock} className="mr-1" /> {formatDate(reply.createdAt)}
                         </span>
@@ -203,7 +203,7 @@ const KdramaDetail = () => {
                     </div>
                     <div className="flex items-center gap-4 mt-2 ml-2">
                       <button 
-                        onClick={() => handleLikeReply(reply.id)}
+                        onClick={() => handleLikeReply(reply.id)} 
                         disabled={!isAuthenticated}
                         className={`text-xs font-medium flex items-center transition-colors ${isAuthenticated ? 'text-gray-500 hover:text-purple-600' : 'text-gray-400 cursor-default'}`}
                       >
@@ -222,17 +222,17 @@ const KdramaDetail = () => {
             <div className="flex gap-4 items-start">
               <div className="flex-shrink-0 hidden sm:block">
                 <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                  {user?.name?.[0].toUpperCase() || 'U'}
+                  {getUserInitial(user?.name)}
                 </div>
               </div>
               <div className="flex-grow">
                 <form onSubmit={handleReplySubmit} className="relative">
-                  <textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Share your review, favorite scene, or thoughts..."
+                  <textarea 
+                    value={replyContent} 
+                    onChange={(e) => setReplyContent(e.target.value)} 
+                    placeholder="Share your review, favorite scene, or thoughts..." 
                     className="w-full bg-white border border-gray-200 rounded-xl p-4 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[120px] resize-none shadow-sm transition-shadow"
-                    required
+                    required 
                   />
                   <div className="absolute bottom-3 right-3">
                     <button 
