@@ -179,7 +179,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     switch (formData.status) {
       case 'draft': return 'Save Draft';
       case 'scheduled': return 'Schedule Post';
-      default: return 'Publish Changes';
+      case 'published': return 'Publish Changes';
+      default: return 'Continue';
     }
   };
 

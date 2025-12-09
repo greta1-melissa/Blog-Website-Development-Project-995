@@ -42,7 +42,7 @@ const Admin = () => {
   // Blog Post State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('published'); // Updated: Defaults to 'published'
+  const [filterStatus, setFilterStatus] = useState('all'); // Updated: Defaults to 'all' to ensure drafts are seen
   const [editingPost, setEditingPost] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -270,10 +270,10 @@ const Admin = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
                 >
-                  <option value="published">Published (Default)</option>
+                  <option value="all">All Statuses (Default)</option>
+                  <option value="published">Published</option>
                   <option value="draft">Drafts</option>
                   <option value="scheduled">Scheduled</option>
-                  <option value="all">All Statuses</option>
                 </select>
                 <Link
                   to="/create"

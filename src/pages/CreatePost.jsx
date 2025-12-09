@@ -151,7 +151,7 @@ const CreatePost = () => {
     } else if (finalStatus === 'published') {
       // Keep today's date
     } else {
-      // Draft - Keep today's date or whatever
+      // Draft - Keep today's date
       finalStatus = 'draft'; 
     }
 
@@ -190,7 +190,8 @@ const CreatePost = () => {
     switch (formData.status) {
       case 'draft': return 'Save Draft';
       case 'scheduled': return 'Schedule Post';
-      default: return 'Publish Post';
+      case 'published': return 'Publish Now';
+      default: return 'Continue';
     }
   };
 
@@ -386,7 +387,7 @@ const CreatePost = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
+                    Action
                   </label>
                   <select
                     name="status"
@@ -396,36 +397,42 @@ const CreatePost = () => {
                   >
                     <option value="draft">Save as Draft</option>
                     <option value="published">Publish Immediately</option>
-                    <option value="scheduled">Schedule</option>
+                    <option value="scheduled">Schedule for Later</option>
                   </select>
                 </div>
 
+                {/* Show Date/Time Picker ONLY when Schedule is selected */}
                 {formData.status === 'scheduled' && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-3 bg-purple-50 p-3 rounded-lg"
+                    className="space-y-3 bg-purple-50 p-3 rounded-lg border border-purple-100"
                   >
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Date</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Publish Date *</label>
                       <input 
                         type="date" 
                         name="scheduledDate"
                         value={formData.scheduledDate}
                         onChange={handleChange}
                         min={new Date().toISOString().split('T')[0]}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                        required={formData.status === 'scheduled'}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Time</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Publish Time</label>
                       <input 
                         type="time" 
                         name="scheduledTime"
                         value={formData.scheduledTime}
                         onChange={handleChange}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                       />
+                    </div>
+                    <div className="text-xs text-purple-700 flex items-start">
+                      <SafeIcon icon={FiClock} className="mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Post will be visible to public on this date/time.</span>
                     </div>
                   </motion.div>
                 )}
