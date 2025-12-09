@@ -11,7 +11,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
 
-const { FiBarChart2, FiUsers, FiFileText, FiTv, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiActivity, FiStar } = FiIcons;
+const { FiBarChart2, FiUsers, FiFileText, FiTv, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiActivity, FiStar, FiCheckCircle, FiClock, FiFile } = FiIcons;
 
 const AccessDenied = () => (
   <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
@@ -42,6 +42,7 @@ const Admin = () => {
   // Blog Post State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState('published'); // Updated: Defaults to 'published'
   const [editingPost, setEditingPost] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -56,7 +57,7 @@ const Admin = () => {
     return {
       totalPosts,
       totalKdramas: kdramas.length,
-      totalUsers: 0 
+      totalUsers: 0
     };
   }, [posts, kdramas]);
 
@@ -66,9 +67,14 @@ const Admin = () => {
       const postTitle = post.title || '';
       const matchesSearch = searchTerm === '' || postTitle.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
-      return matchesSearch && matchesCategory;
+      
+      // Status filtering logic
+      const postStatus = post.status || 'published';
+      const matchesStatus = filterStatus === 'all' || postStatus === filterStatus;
+
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [posts, searchTerm, filterCategory]);
+  }, [posts, searchTerm, filterCategory, filterStatus]);
 
   const filteredKdramas = useMemo(() => {
     return kdramas.filter(drama => 
@@ -119,6 +125,32 @@ const Admin = () => {
       await updateKdrama(id, data);
     } else {
       await addKdrama(data);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const s = status || 'published';
+    switch (s) {
+      case 'published':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <SafeIcon icon={FiCheckCircle} className="mr-1" /> Published
+          </span>
+        );
+      case 'draft':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <SafeIcon icon={FiFile} className="mr-1" /> Draft
+          </span>
+        );
+      case 'scheduled':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <SafeIcon icon={FiClock} className="mr-1" /> Scheduled
+          </span>
+        );
+      default:
+        return null;
     }
   };
 
@@ -205,8 +237,9 @@ const Admin = () => {
 
       {activeTab === 'posts' && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          {/* Filters Bar */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -219,21 +252,36 @@ const Admin = () => {
                   />
                 </div>
               </div>
-              <div className="md:w-48">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
                 >
                   <option value="">All Categories</option>
                   {categories.map((category) => (
                     <option key={category} value={category}>{category}</option>
                   ))}
+                  {/* Manually added Career here since categories comes from context which might lag */}
+                  {!categories.includes('Career') && <option value="Career">Career</option>}
                 </select>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                >
+                  <option value="published">Published (Default)</option>
+                  <option value="draft">Drafts</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="all">All Statuses</option>
+                </select>
+                <Link
+                  to="/create"
+                  className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium whitespace-nowrap"
+                >
+                  <SafeIcon icon={FiPlus} className="mr-2" /> New Post
+                </Link>
               </div>
-              <Link to="/create" className="inline-flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm font-medium">
-                <SafeIcon icon={FiPlus} className="mr-2" /> New Post
-              </Link>
             </div>
           </div>
 
@@ -243,6 +291,7 @@ const Admin = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Post Detail</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Featured</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
@@ -261,9 +310,17 @@ const Admin = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap"><span className="px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full border border-purple-200">{post.category}</span></td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(post.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full border border-purple-200">{post.category}</span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button onClick={() => handleToggleFeatured(post)} className={`focus:outline-none transition-transform active:scale-95 ${post.isHandPicked ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}>
+                        <button
+                          onClick={() => handleToggleFeatured(post)}
+                          className={`focus:outline-none transition-transform active:scale-95 ${post.isHandPicked ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}
+                        >
                           <SafeIcon icon={FiStar} className={`text-lg ${post.isHandPicked ? 'fill-current' : ''}`} />
                         </button>
                       </td>
@@ -277,6 +334,13 @@ const Admin = () => {
                       </td>
                     </tr>
                   ))}
+                  {filteredPosts.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                        No posts found matching your filters.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -335,9 +399,11 @@ const Admin = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1 max-w-xs">
-                          {drama.tags && drama.tags.length > 0 ? drama.tags.slice(0, 2).map((tag, i) => (
-                            <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-md">{tag}</span>
-                          )) : <span className="text-gray-400 text-xs">-</span>}
+                          {drama.tags && drama.tags.length > 0 ? (
+                            drama.tags.slice(0, 2).map((tag, i) => (
+                              <span key={i} className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-md">{tag}</span>
+                            ))
+                          ) : <span className="text-gray-400 text-xs">-</span>}
                           {drama.tags && drama.tags.length > 2 && <span className="text-xs text-gray-400">+{drama.tags.length - 2}</span>}
                         </div>
                       </td>
@@ -363,8 +429,20 @@ const Admin = () => {
       {activeTab === 'users' && <UserManagement />}
 
       {/* Modals */}
-      <EditPostModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} post={editingPost} onSave={handleSavePost} categories={['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations']} />
-      <EditKdramaModal isOpen={isKdramaModalOpen} onClose={() => setIsKdramaModalOpen(false)} drama={editingKdrama} onSave={handleSaveKdrama} />
+      <EditPostModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        post={editingPost}
+        onSave={handleSavePost}
+        // Added Career to the list passed to the modal
+        categories={['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career']}
+      />
+      <EditKdramaModal
+        isOpen={isKdramaModalOpen}
+        onClose={() => setIsKdramaModalOpen(false)}
+        drama={editingKdrama}
+        onSave={handleSaveKdrama}
+      />
     </div>
   );
 };

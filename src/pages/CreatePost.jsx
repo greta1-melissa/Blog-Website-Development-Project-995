@@ -38,15 +38,16 @@ const CreatePost = () => {
     // Scheduling Fields
     scheduledDate: '',
     scheduledTime: '',
-    status: 'published' // 'published', 'draft', 'scheduled'
+    status: 'draft' // Default to draft for safety
   });
-
+  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations'];
+  // Added 'Career' to categories
+  const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career'];
 
   const processImageUrl = (url) => {
     if (!url) return '';
@@ -82,7 +83,7 @@ const CreatePost = () => {
     try {
       const data = new FormData();
       data.append('file', file);
-
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -94,7 +95,7 @@ const CreatePost = () => {
         console.warn("Fetch failed:", err);
         return null;
       });
-
+      
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
@@ -129,30 +130,35 @@ const CreatePost = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.content || !formData.category) {
-      alert('Please fill in all required fields');
+    if (!formData.title || !formData.content) {
+      alert('Please fill in at least the Title and Content to save.');
       return;
     }
 
     setIsSaving(true);
 
-    // Determine Status and Date
+    // Determine Status and Date strictly based on user selection
     let finalStatus = formData.status;
     let finalDate = new Date().toISOString().split('T')[0];
 
-    if (formData.scheduledDate) {
-      finalDate = formData.scheduledDate; // Format: YYYY-MM-DD
-      const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime || '00:00'}`);
-      
-      if (scheduledDateTime > new Date()) {
-        finalStatus = 'scheduled';
+    if (finalStatus === 'scheduled') {
+      if (!formData.scheduledDate) {
+        alert('Please select a date for your scheduled post.');
+        setIsSaving(false);
+        return;
       }
+      finalDate = formData.scheduledDate;
+    } else if (finalStatus === 'published') {
+      // Keep today's date
+    } else {
+      // Draft - Keep today's date or whatever
+      finalStatus = 'draft'; 
     }
 
     const postData = {
       ...formData,
       image: formData.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop',
-      author: user?.name || 'Anonymous Author',
+      author: user?.name || 'BangtanMom',
       date: finalDate,
       status: finalStatus
     };
@@ -160,18 +166,31 @@ const CreatePost = () => {
     try {
       const postId = await addPost(postData);
       
-      if (finalStatus === 'scheduled') {
+      if (finalStatus === 'draft') {
+        alert('Draft saved successfully!');
+        navigate('/admin'); // Go to admin to see drafts
+      } else if (finalStatus === 'scheduled') {
         alert(`Post scheduled for ${finalDate}!`);
-        navigate('/admin'); // Redirect to admin to see scheduled post
+        navigate('/admin');
       } else {
+        alert('Post published!');
         navigate(`/post/${postId}`);
       }
     } catch (error) {
       console.error("Save failed:", error);
-      alert(`Failed to save post to server: ${error.message}. The post is saved locally but may not be visible to others.`);
+      alert(`Failed to save post to server: ${error.message}. The post is saved locally.`);
       navigate(`/`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const getButtonText = () => {
+    if (isSaving) return 'Processing...';
+    switch (formData.status) {
+      case 'draft': return 'Save Draft';
+      case 'scheduled': return 'Schedule Post';
+      default: return 'Publish Post';
     }
   };
 
@@ -209,7 +228,6 @@ const CreatePost = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Main Content Column */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-xl shadow-sm p-8 border border-purple-50">
@@ -332,7 +350,7 @@ const CreatePost = () => {
                           <span>{formData.metaDescription.length} chars</span>
                         </p>
                       </div>
-                      
+
                       {/* SERP Preview */}
                       <div className="bg-white border border-gray-200 p-4 rounded-lg">
                         <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Google Preview</h4>
@@ -376,14 +394,14 @@ const CreatePost = () => {
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                   >
-                    <option value="published">Publish Immediately</option>
                     <option value="draft">Save as Draft</option>
+                    <option value="published">Publish Immediately</option>
                     <option value="scheduled">Schedule</option>
                   </select>
                 </div>
 
                 {formData.status === 'scheduled' && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     className="space-y-3 bg-purple-50 p-3 rounded-lg"
@@ -425,7 +443,7 @@ const CreatePost = () => {
                   ) : (
                     <span className="flex items-center">
                       <SafeIcon icon={FiSave} className="mr-2" />
-                      {formData.status === 'scheduled' ? 'Schedule Post' : 'Publish Post'}
+                      {getButtonText()}
                     </span>
                   )}
                 </button>
@@ -478,7 +496,11 @@ const CreatePost = () => {
                   />
                   <label
                     htmlFor="file-upload"
-                    className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
+                    className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${
+                      uploadStatus === 'Upload Failed' 
+                        ? 'border-red-300 text-red-600 bg-red-50' 
+                        : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                    }`}
                   >
                     {isUploading ? (
                       <span className="animate-pulse">Uploading...</span>

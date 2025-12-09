@@ -11,55 +11,50 @@ export const useBlog = () => {
   return context;
 };
 
-// Fallback data
+// CRITICAL: Exact data matching the Live Site screenshot requirements
+// Updated Images to match the specific story themes better
 const initialPosts = [
   {
-    id: 1,
-    title: "Why 'Our Beloved Summer' is the Comfort Watch We All Need",
-    content: "I recently re-watched 'Our Beloved Summer' and it hit differently this time. The way it portrays the messy, non-linear nature of growth and relationships is just... *chef's kiss*. It’s a reminder that it’s okay to not have everything figured out.",
-    author: "Melissa",
-    date: "2024-02-28",
-    category: "K-Drama",
-    readTime: "6 min read",
-    image: "https://images.unsplash.com/photo-1517604931442-71053e6e2306?w=800&h=400&fit=crop",
-    isHandPicked: true,
-    status: 'published'
-  },
-  {
-    id: 2,
-    title: "Surviving the Toddler Sleep Regression (Again)",
-    content: "Just when I thought we were in the clear, the 2-year sleep regression hit us like a truck. Here are the 3 things keeping me sane (and caffeinated) this week.",
-    author: "Melissa",
-    date: "2024-02-25",
-    category: "Fam Bam",
-    readTime: "4 min read",
-    image: "https://images.unsplash.com/photo-1522771753062-5887739e6583?w=800&h=400&fit=crop",
-    isHandPicked: true,
-    status: 'published'
-  },
-  {
-    id: 3,
-    title: "Top 5 Skincare Finds from Olive Young Global",
-    content: "My latest haul just arrived! I'm breaking down which viral products are actually worth the hype and which ones you can skip.",
-    author: "Melissa",
-    date: "2024-02-20",
-    category: "Product Recommendations",
+    id: 7,
+    title: "Starting Over at Forty (Something): Why I Finally Hit “Publish”",
+    content: "Hi, I’m Melissa—mom of two, in my early forties, virtual assistant for the past 12 years... and a woman who can happily lose herself in a good K-drama or a BTS song. For a long time, I’ve been helping others build their dreams, organize their lives, and manage their businesses. I love my work. I love the flexibility it gives me to be present for my kids. But somewhere along the way, I realized I had stopped creating for myself.",
+    author: "BangtanMom",
+    date: "2025-12-02",
+    category: "Health",
     readTime: "5 min read",
-    image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&h=400&fit=crop",
-    isHandPicked: false,
-    status: 'published'
+    image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop", // Cozy aesthetic workspace
+    isHandPicked: true, // FEATURED
+    status: 'published',
+    seoTitle: "Starting Over at Forty (Something): Why I Finally Hit “Publish”",
+    metaDescription: "Hi, I’m Melissa—mom of two, in my early forties. Here is why I finally started this blog."
   },
   {
-    id: 4,
-    title: "BTS 'Golden' Album Review: A Mom's Perspective",
-    content: "Jungkook's solo album is finally here, and I have thoughts. Let's talk about how the golden maknae has grown up.",
-    author: "Melissa",
-    date: "2024-02-15",
+    id: 8,
+    title: "How the Pandemic Changed Our Lives (and Made Me Appreciate My Work Even More)",
+    content: "If you knew me before 2020, you’d probably describe me as a social butterfly. I’m the type of person who will happily strike up a conversation with a stranger in line at the grocery store. I thrive on connection. So, when the world shut down, it felt like a part of me shut down too. Suddenly, my world shrank to the four walls of our home.",
+    author: "BangtanMom",
+    date: "2025-12-02",
+    category: "Fam Bam",
+    readTime: "7 min read",
+    image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&h=400&fit=crop", // Warm family/home life
+    isHandPicked: true, // FEATURED
+    status: 'published',
+    seoTitle: "How the Pandemic Changed Our Lives and Work",
+    metaDescription: "Reflecting on how the pandemic changed our family life and my appreciation for my work."
+  },
+  {
+    id: 9,
+    title: "How I Found BTS: From K-Dramas to Becoming an ARMY Mom (And Learning to Love Myself)",
+    content: "If you’d known me a few years ago, you’d have found me happily immersed in K-dramas, especially anything starring IU. It was my escape, my little bubble of joy after the kids went to bed. I knew *of* K-pop, of course. You can’t watch dramas without hearing the OSTs or seeing idols act. But I wasn’t *in* it. Then came 'Dynamite'.",
+    author: "BangtanMom",
+    date: "2025-12-02",
     category: "BTS",
-    readTime: "8 min read",
-    image: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=800&h=400&fit=crop",
-    isHandPicked: false,
-    status: 'published'
+    readTime: "10 min read",
+    image: "https://images.unsplash.com/photo-1574155376612-c84efdd3fc71?w=800&h=400&fit=crop", // Distinct Purple/Concert aesthetic
+    isHandPicked: true, // FEATURED
+    status: 'published',
+    seoTitle: "My Journey to Becoming an ARMY Mom",
+    metaDescription: "From K-Dramas to BTS: How I found music, joy, and learned to love myself."
   }
 ];
 
@@ -74,7 +69,7 @@ const getLocalPosts = () => {
 };
 
 export const BlogProvider = ({ children }) => {
-  const [posts, setPosts] = useState(() => getLocalPosts() || []);
+  const [posts, setPosts] = useState(() => getLocalPosts() || initialPosts);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -82,16 +77,11 @@ export const BlogProvider = ({ children }) => {
   const publishedPosts = useMemo(() => {
     const now = new Date();
     return posts.filter(post => {
-      // 1. Must not be a draft
       if (post.status === 'draft') return false;
-      
-      // 2. If scheduled, date must be in the past
       if (post.status === 'scheduled') {
         const postDate = new Date(post.date);
         return postDate <= now;
       }
-      
-      // 3. Default (legacy posts without status) are visible
       return true;
     });
   }, [posts]);
@@ -106,30 +96,46 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const serverData = await ncbGet('posts');
-      let mergedPosts = [];
+      let currentPosts = [];
 
-      if (serverData !== null) {
-        const localData = getLocalPosts() || [];
-        const serverIds = new Set(serverData.map(p => String(p.id)));
-        const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
-        mergedPosts = [...localDrafts, ...serverData];
-
-        if (mergedPosts.length === 0 && serverData.length === 0) {
-          mergedPosts = initialPosts;
-        }
-      } else {
-        const localData = getLocalPosts();
-        mergedPosts = (localData && localData.length > 0) ? localData : initialPosts;
+      // 1. Get Server Data
+      if (serverData && Array.isArray(serverData)) {
+        currentPosts = serverData;
       }
 
-      // Sort: Newest First
-      mergedPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setPosts(mergedPosts);
+      // 2. Get Local Drafts (that are not on server)
+      const localData = getLocalPosts() || [];
+      const serverIds = new Set(currentPosts.map(p => String(p.id)));
+      const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
 
+      // 3. Merge Server and Local
+      let merged = [...localDrafts, ...currentPosts];
+
+      // 4. CRITICAL: FORCE SEED DATA FOR FEATURED STORIES
+      // This ensures the 3 specific featured stories ALWAYS appear, 
+      // overwriting any old/conflicting data from server or local.
+      const seedIds = initialPosts.map(p => String(p.id));
+      
+      // Remove any existing versions of seed posts from 'merged' to avoid dupes/conflicts
+      merged = merged.filter(p => !seedIds.includes(String(p.id)));
+      
+      // Add the mandated Seed Posts
+      merged = [...merged, ...initialPosts];
+
+      // 5. Sort: Featured First, then Newest Date
+      merged.sort((a, b) => {
+        // Prioritize HandPicked
+        if (a.isHandPicked && !b.isHandPicked) return -1;
+        if (!a.isHandPicked && b.isHandPicked) return 1;
+        // Then by Date
+        return new Date(b.date) - new Date(a.date);
+      });
+      
+      setPosts(merged);
     } catch (error) {
       console.error("NoCodeBackend: Critical failure in fetchPosts.", error);
-      const localData = getLocalPosts();
-      setPosts(localData && localData.length > 0 ? localData : initialPosts);
+      // Fallback: Ensure initialPosts are at least present
+      setPosts(initialPosts);
     } finally {
       setIsLoading(false);
     }
@@ -151,15 +157,12 @@ export const BlogProvider = ({ children }) => {
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     
-    // Determine status and date
-    // If specific date provided, use it. Otherwise today.
     const postDate = postData.date || new Date().toISOString().split('T')[0];
     
-    // If status isn't explicitly set, determine based on date
     let status = postData.status;
     if (!status) {
-        const isFuture = new Date(postDate) > new Date();
-        status = isFuture ? 'scheduled' : 'published';
+      const isFuture = new Date(postDate) > new Date();
+      status = isFuture ? 'scheduled' : 'published';
     }
 
     const newPost = {
@@ -167,10 +170,9 @@ export const BlogProvider = ({ children }) => {
       id: tempId,
       date: postDate,
       readTime: readTime,
-      author: postData.author || "Melissa",
+      author: postData.author || "BangtanMom",
       isHandPicked: false,
       status: status,
-      // Ensure SEO fields are preserved
       seoTitle: postData.seoTitle || postData.title,
       metaDescription: postData.metaDescription || postData.content.substring(0, 160),
       focusKeyword: postData.focusKeyword || ''
@@ -194,6 +196,7 @@ export const BlogProvider = ({ children }) => {
 
   const updatePost = async (id, updatedFields) => {
     let updates = { ...updatedFields };
+    
     if (updates.content) {
       const wordCount = updates.content.split(' ').length;
       updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
@@ -229,8 +232,8 @@ export const BlogProvider = ({ children }) => {
   };
 
   const value = {
-    posts, // All posts (for admin)
-    publishedPosts, // Only visible posts (for frontend)
+    posts,
+    publishedPosts,
     categories,
     isLoading,
     addPost,

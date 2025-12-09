@@ -34,11 +34,24 @@ export const KdramaProvider = ({ children }) => {
   const normalizeData = (data) => {
     if (!Array.isArray(data)) return [];
 
+    // Robust Dropbox URL processor
     const processDropboxUrl = (url) => {
-      if (url && typeof url === 'string' && url.includes('dropbox.com') && url.includes('dl=0')) {
-        return url.replace('dl=0', 'raw=1');
+      if (!url || typeof url !== 'string' || !url.includes('dropbox.com')) return url;
+      let newUrl = url;
+      // Replace dl=0 with raw=1
+      if (newUrl.includes('dl=0')) {
+        newUrl = newUrl.replace('dl=0', 'raw=1');
+      } 
+      // Replace raw=0 with raw=1
+      else if (newUrl.includes('raw=0')) {
+        newUrl = newUrl.replace('raw=0', 'raw=1');
       }
-      return url;
+      // If raw=1 is still missing, append it
+      if (!newUrl.includes('raw=1')) {
+        const separator = newUrl.includes('?') ? '&' : '?';
+        newUrl = `${newUrl}${separator}raw=1`;
+      }
+      return newUrl;
     };
     
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
@@ -89,48 +102,58 @@ export const KdramaProvider = ({ children }) => {
         }
       }
 
-      // --- CRITICAL: FORCE SYNC WITH SEED DATA ---
-      // We need to ensure the new dramas requested are present and "Lovely Runner" is gone.
-      // This acts as a client-side migration since we don't have DB migrations here.
+      // --- CRITICAL: FORCE SYNC WITH SEED DATA & FEATURED FLAGS ---
       
-      // 1. Remove "Lovely Runner" if it exists (assuming ID or Title match)
+      // 1. Remove unwanted dramas (Lovely Runner, Hometown Cha Cha Cha)
       currentData = currentData.filter(d => 
         !d.title.toLowerCase().includes('lovely runner') && 
-        d.id !== 'lovely-runner'
+        d.id !== 'lovely-runner' &&
+        d.id !== 'hometown-cha-cha-cha'
       );
 
-      // 2. Upsert new dramas from seed data
+      // 2. Upsert new/specific dramas from seed data
       const dramasToEnsure = [
+        'the-haunted-palace',
+        'moon-lovers-scarlet-heart-ryeo',
+        'mr-queen',
+        'crash-landing-on-you',
         'moon-embracing-the-sun',
         'love-in-the-moonlight',
         'bon-appetit-your-highness',
         'when-life-gives-you-tangerines'
       ];
 
-      let hasChanges = false;
-
-      // Check if we need to add/update specific seed items
       initialSeedData.forEach(seedItem => {
         if (dramasToEnsure.includes(seedItem.id)) {
           const existingIndex = currentData.findIndex(d => d.id === seedItem.id);
-          
           if (existingIndex === -1) {
-            // Add if missing
             currentData.push(normalizeData([seedItem])[0]);
-            hasChanges = true;
           } else {
-            // Optional: Update if exists to ensure latest content? 
-            // For now, we assume if it exists, user might have edited it, so we leave it unless it's strictly a seed refresh.
+            // Update existing item to match seed (ensures content consistency)
+             currentData[existingIndex] = { ...currentData[existingIndex], ...normalizeData([seedItem])[0] };
           }
+        }
+      });
+
+      // 3. STRICTLY ENFORCE HOME PAGE FEATURED LIST
+      // Only these 4 IDs should be featured. All others set to false.
+      const HOMEPAGE_FEATURED_IDS = [
+        'the-haunted-palace',
+        'moon-lovers-scarlet-heart-ryeo',
+        'mr-queen',
+        'crash-landing-on-you'
+      ];
+
+      currentData = currentData.map(drama => {
+        if (HOMEPAGE_FEATURED_IDS.includes(drama.id)) {
+          return { ...drama, is_featured_on_home: true };
+        } else {
+          return { ...drama, is_featured_on_home: false };
         }
       });
 
       currentData.sort((a, b) => a.display_order - b.display_order);
       setKdramas(currentData);
-
-      // If we modified the list locally (removed lovely runner or added new ones), 
-      // we should try to sync these changes back to the backend silently if possible,
-      // but for now, updating the state ensures the UI is correct.
 
     } catch (error) {
       console.error("Failed to fetch kdramas", error);
@@ -201,12 +224,12 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const getKdramaBySlug = (slug) => {
-    // Robust check for string vs number ID match
     return kdramas.find(d => String(d.slug) === String(slug) || String(d.id) === String(slug));
   };
 
   const featuredKdramas = useMemo(() => {
-    return kdramas.filter(d => d.is_featured_on_home);
+    // Filter by the flag first, then ensure we only take the top 4 if somehow more are flagged
+    return kdramas.filter(d => d.is_featured_on_home).slice(0, 4);
   }, [kdramas]);
 
   const value = {

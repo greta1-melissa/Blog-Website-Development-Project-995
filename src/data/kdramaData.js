@@ -1,6 +1,19 @@
 // Initial seed data for the kdrama_recommendations table
 export const kdramas = [
   {
+    id: 'the-haunted-palace',
+    title: 'The Haunted Palace',
+    slug: 'the-haunted-palace',
+    image_url: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=800&auto=format&fit=crop&q=60',
+    image_alt: 'The Haunted Palace Poster',
+    tags: ['Horror', 'Historical', 'Romance'],
+    synopsis_short: "A mysterious palace where spirits wander and a forbidden romance blooms amidst the shadows.",
+    synopsis_long: "Deep within the royal grounds lies a palace abandoned for decades, rumored to be cursed by the vengeful spirit of a fallen queen. When a fearless shaman and a skeptical prince cross paths, they must uncover the dark secrets buried in the past to save the kingdom—and each other.",
+    my_two_cents: "Genuinely creepy moments balanced with a swoon-worthy romance. The production design is stunning!",
+    is_featured_on_home: true,
+    display_order: 1
+  },
+  {
     id: 'moon-lovers-scarlet-heart-ryeo',
     title: 'Moon Lovers: Scarlet Heart Ryeo',
     slug: 'moon-lovers-scarlet-heart-ryeo',
@@ -11,7 +24,7 @@ export const kdramas = [
     synopsis_long: "A 21st-century woman is pulled back in time to the Goryeo dynasty and wakes up in the body of Hae Soo, a noble lady surrounded by princes who are destined to fight for the throne. As she gets tangled in their politics and love stories, she realises that knowing history doesn’t mean she can save everyone. It’s a beautiful, heartbreaking ride about fate, loyalty, and choosing your own heart.",
     my_two_cents: "This drama ruined me in the best way possible. I still listen to the OST when I need a good cry. Lee Joon-gi's acting is phenomenal.",
     is_featured_on_home: true,
-    display_order: 1
+    display_order: 2
   },
   {
     id: 'mr-queen',
@@ -24,7 +37,7 @@ export const kdramas = [
     synopsis_long: "A modern-day male chef suddenly wakes up in the body of Queen Cheorin in the Joseon era, with his loud personality trapped inside royal silk and strict palace rules. While he panics, plots, and swears his way through court life, he slowly discovers the truth behind the seemingly weak king and the power games around them. It’s chaotic, hilarious, and surprisingly emotional.",
     my_two_cents: "Shin Hye-sun is an absolute genius. I have never laughed so hard at a historical drama. The kitchen scenes are chef's kiss!",
     is_featured_on_home: true,
-    display_order: 2
+    display_order: 3
   },
   {
     id: 'crash-landing-on-you',
@@ -37,7 +50,7 @@ export const kdramas = [
     synopsis_long: "A South Korean heiress accidentally crash-lands in North Korea during a paragliding trip gone wrong and is discovered by a quiet, principled North Korean officer. While he hides her and searches for a way to send her home, the two slowly fall in love in the most impossible situation. It’s dramatic, funny, and deeply romantic, with a lot of heart.",
     my_two_cents: "The ultimate gateway drug to K-dramas. Captain Ri sets the standard for romantic leads impossibly high. Prepare for the second lead syndrome too.",
     is_featured_on_home: true,
-    display_order: 3
+    display_order: 4
   },
   {
     id: 'itaewon-class',
@@ -50,19 +63,6 @@ export const kdramas = [
     synopsis_long: "After losing his father and his future because of a powerful chaebol family, Park Sae-ro-yi decides to build a small bar-restaurant in Itaewon and turn it into something big enough to fight back. Along the way, he gathers a group of misfits who become his team, his family, and and his reason to keep going. It’s a story about dignity, second chances, and building your own path.",
     my_two_cents: "A powerful story about grit and integrity. The romance takes a backseat to the revenge and business building, which I actually loved.",
     is_featured_on_home: false,
-    display_order: 4
-  },
-  {
-    id: 'hometown-cha-cha-cha',
-    title: 'Hometown Cha-Cha-Cha',
-    slug: 'hometown-cha-cha-cha',
-    image_url: 'https://images.unsplash.com/photo-1505238680356-667803448bb1?w=800&auto=format&fit=crop&q=60',
-    image_alt: 'Hometown Cha-Cha-Cha Poster',
-    tags: ['Romance', 'Slice of Life', 'Healing'],
-    synopsis_short: "A dentist moves to a seaside village and meets a handyman who helps everyone.",
-    synopsis_long: "A big-city dentist moves to the seaside village of Gongjin and meets Chief Hong, a jack-of-all-trades who helps everyone in town. As they clash and eventually connect, the stories of the villagers unfold around them. It's a warm, healing drama about community, forgiveness, and finding happiness in simple things.",
-    my_two_cents: "Pure comfort TV. If you're feeling stressed, just watch this. The Dimple Couple is adorable, but the villagers steal the show.",
-    is_featured_on_home: true,
     display_order: 5
   },
   {
@@ -101,7 +101,7 @@ export const kdramas = [
     synopsis_short: "The poignant love story between a fictional king of the Joseon Dynasty and a female shaman.",
     synopsis_long: "A historical fantasy drama telling the poignant love story between King Lee Hwon and a female shaman named Wol. Wol was born as Heo Yeon Woo, a noblewoman who was the first love of the Crown Prince, but she was presumed dead due to palace intrigues. Years later, she returns as a shaman with no memory of her past, and fate brings them together again.",
     my_two_cents: "A classic for a reason! Kim Soo-hyun's performance is incredibly moving. If you love palace politics mixed with deep, destined romance, this is it.",
-    is_featured_on_home: true,
+    is_featured_on_home: false,
     display_order: 8
   },
   {
@@ -140,7 +140,7 @@ export const kdramas = [
     synopsis_short: "The adventurous life stories of the rebellious Ae-soon and the steadfast Gwan-shik on Jeju Island.",
     synopsis_long: "Set on the beautiful Jeju Island in the 1950s, this drama follows the lives of Ae-soon, a rebellious and ambitious girl, and Gwan-shik, a diligent and quiet man who loves her unconditionally. It chronicles their adventures, struggles, and romance throughout the seasons of their lives, capturing the nostalgic charm of the era.",
     my_two_cents: "IU and Park Bo-gum together? Yes, please! The Jeju scenery is breathtaking, and the story feels like a warm hug mixed with a little bit of heartbreak.",
-    is_featured_on_home: true,
+    is_featured_on_home: false,
     display_order: 11
   }
 ];
