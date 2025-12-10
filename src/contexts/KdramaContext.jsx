@@ -27,37 +27,31 @@ const getLocalData = () => {
 export const KdramaProvider = ({ children }) => {
   const [kdramas, setKdramas] = useState(() => getLocalData() || []);
   const [isLoading, setIsLoading] = useState(true);
-
   const TABLE_NAME = 'kdrama_recommendations';
 
   // Normalize data to ensure all fields exist
   const normalizeData = (data) => {
     if (!Array.isArray(data)) return [];
 
-    // Robust Dropbox URL processor
     const processDropboxUrl = (url) => {
       if (!url || typeof url !== 'string' || !url.includes('dropbox.com')) return url;
       let newUrl = url;
-      // Replace dl=0 with raw=1
       if (newUrl.includes('dl=0')) {
         newUrl = newUrl.replace('dl=0', 'raw=1');
-      } 
-      // Replace raw=0 with raw=1
-      else if (newUrl.includes('raw=0')) {
+      } else if (newUrl.includes('raw=0')) {
         newUrl = newUrl.replace('raw=0', 'raw=1');
       }
-      // If raw=1 is still missing, append it
       if (!newUrl.includes('raw=1')) {
         const separator = newUrl.includes('?') ? '&' : '?';
         newUrl = `${newUrl}${separator}raw=1`;
       }
       return newUrl;
     };
-    
+
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
       const initialImageUrl = item.image_url || item.image || '';
       const finalImageUrl = processDropboxUrl(initialImageUrl);
-      
+
       return {
         ...item,
         id: item.id || `temp-${Date.now()}-${index}`,
@@ -92,8 +86,32 @@ export const KdramaProvider = ({ children }) => {
 
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         currentData = normalizeData(serverData);
+        
+        // Only merge seed data if the Server does NOT have it.
+        // This prevents overwriting user edits on the server.
+        const serverIds = new Set(currentData.map(d => String(d.id)));
+        const dramasToEnsure = [
+          'the-haunted-palace',
+          'moon-lovers-scarlet-heart-ryeo',
+          'mr-queen',
+          'crash-landing-on-you',
+          'moon-embracing-the-sun',
+          'love-in-the-moonlight',
+          'bon-appetit-your-highness',
+          'when-life-gives-you-tangerines'
+        ];
+
+        initialSeedData.forEach(seedItem => {
+          if (dramasToEnsure.includes(seedItem.id)) {
+            // ONLY ADD IF MISSING
+            if (!serverIds.has(String(seedItem.id))) {
+              currentData.push(normalizeData([seedItem])[0]);
+            }
+          }
+        });
+
       } else {
-        // Fallback to local if server empty
+        // Fallback to local or seed if server is empty
         const local = getLocalData();
         if (local && local.length > 0) {
           currentData = local;
@@ -102,62 +120,18 @@ export const KdramaProvider = ({ children }) => {
         }
       }
 
-      // --- CRITICAL: FORCE SYNC WITH SEED DATA & FEATURED FLAGS ---
-      
-      // 1. Remove unwanted dramas (Lovely Runner, Hometown Cha Cha Cha)
+      // Cleanup: Remove unwanted test dramas if necessary, but keep user created ones
       currentData = currentData.filter(d => 
         !d.title.toLowerCase().includes('lovely runner') && 
         d.id !== 'lovely-runner' &&
         d.id !== 'hometown-cha-cha-cha'
       );
 
-      // 2. Upsert new/specific dramas from seed data
-      const dramasToEnsure = [
-        'the-haunted-palace',
-        'moon-lovers-scarlet-heart-ryeo',
-        'mr-queen',
-        'crash-landing-on-you',
-        'moon-embracing-the-sun',
-        'love-in-the-moonlight',
-        'bon-appetit-your-highness',
-        'when-life-gives-you-tangerines'
-      ];
-
-      initialSeedData.forEach(seedItem => {
-        if (dramasToEnsure.includes(seedItem.id)) {
-          const existingIndex = currentData.findIndex(d => d.id === seedItem.id);
-          if (existingIndex === -1) {
-            currentData.push(normalizeData([seedItem])[0]);
-          } else {
-            // Update existing item to match seed (ensures content consistency)
-             currentData[existingIndex] = { ...currentData[existingIndex], ...normalizeData([seedItem])[0] };
-          }
-        }
-      });
-
-      // 3. STRICTLY ENFORCE HOME PAGE FEATURED LIST
-      // Only these 4 IDs should be featured. All others set to false.
-      const HOMEPAGE_FEATURED_IDS = [
-        'the-haunted-palace',
-        'moon-lovers-scarlet-heart-ryeo',
-        'mr-queen',
-        'crash-landing-on-you'
-      ];
-
-      currentData = currentData.map(drama => {
-        if (HOMEPAGE_FEATURED_IDS.includes(drama.id)) {
-          return { ...drama, is_featured_on_home: true };
-        } else {
-          return { ...drama, is_featured_on_home: false };
-        }
-      });
-
+      // Sort by display order
       currentData.sort((a, b) => a.display_order - b.display_order);
       setKdramas(currentData);
-
     } catch (error) {
       console.error("Failed to fetch kdramas", error);
-      // Fallback with forced seed
       const safeSeed = normalizeData(initialSeedData);
       setKdramas(safeSeed);
     } finally {
@@ -177,9 +151,8 @@ export const KdramaProvider = ({ children }) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-
+    
     const newDrama = { ...payload, id: tempId };
-
     setKdramas(prev => {
       const updated = [...prev, newDrama];
       return normalizeData(updated).sort((a, b) => a.display_order - b.display_order);
@@ -187,39 +160,58 @@ export const KdramaProvider = ({ children }) => {
 
     try {
       const savedDrama = await ncbCreate(TABLE_NAME, payload);
-      if (savedDrama) {
-        const realId = savedDrama.id || savedDrama._id;
-        setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...savedDrama, id: realId } : d));
-        return realId;
+      
+      if (!savedDrama || savedDrama.error) {
+        throw new Error(savedDrama?.error || "Unknown database error");
       }
-      return tempId;
+
+      const realId = savedDrama.id || savedDrama._id;
+      
+      setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...savedDrama, id: realId } : d));
+      return realId;
     } catch (e) {
-      console.error("Failed to save kdrama", e);
-      alert(`Error saving to backend: ${e.message}.`);
-      return tempId;
+      console.error("Failed to save kdrama to DB", e);
+      setKdramas(prev => prev.filter(d => d.id !== tempId));
+      alert(`Failed to save to database: ${e.message}. Changes have been reverted.`);
+      throw e; 
     }
   };
 
   const updateKdrama = async (id, updates) => {
     const updatedData = { ...updates, updated_at: new Date().toISOString() };
+    const previousState = [...kdramas];
+
     setKdramas(prev => {
       const updatedList = prev.map(d => d.id === id ? { ...d, ...updatedData } : d);
       return normalizeData(updatedList).sort((a, b) => a.display_order - b.display_order);
     });
 
     try {
-      await ncbUpdate(TABLE_NAME, id, updatedData);
+      const response = await ncbUpdate(TABLE_NAME, id, updatedData);
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
     } catch (e) {
       console.error("Failed to update kdrama", e);
+      setKdramas(previousState);
+      alert(`Failed to save changes to database: ${e.message}. Changes have been reverted.`);
+      throw e;
     }
   };
 
   const deleteKdrama = async (id) => {
+    const previousState = [...kdramas];
     setKdramas(prev => prev.filter(d => d.id !== id));
+
     try {
-      await ncbDelete(TABLE_NAME, id);
+      const success = await ncbDelete(TABLE_NAME, id);
+      if (!success) {
+        throw new Error("Delete operation returned failure");
+      }
     } catch (e) {
       console.error("Failed to delete kdrama", e);
+      setKdramas(previousState);
+      alert("Failed to delete from database. Item restored.");
     }
   };
 
@@ -228,7 +220,6 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const featuredKdramas = useMemo(() => {
-    // Filter by the flag first, then ensure we only take the top 4 if somehow more are flagged
     return kdramas.filter(d => d.is_featured_on_home).slice(0, 4);
   }, [kdramas]);
 

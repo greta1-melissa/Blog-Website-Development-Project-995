@@ -11,8 +11,7 @@ export const useBlog = () => {
   return context;
 };
 
-// CRITICAL: Exact data matching the Live Site screenshot requirements
-// Updated Images to match the specific story themes better
+// Initial seed data
 const initialPosts = [
   {
     id: 7,
@@ -22,8 +21,8 @@ const initialPosts = [
     date: "2025-12-02",
     category: "Health",
     readTime: "5 min read",
-    image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop", // Cozy aesthetic workspace
-    isHandPicked: true, // FEATURED
+    image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop",
+    isHandPicked: true,
     status: 'published',
     seoTitle: "Starting Over at Forty (Something): Why I Finally Hit “Publish”",
     metaDescription: "Hi, I’m Melissa—mom of two, in my early forties. Here is why I finally started this blog."
@@ -36,8 +35,8 @@ const initialPosts = [
     date: "2025-12-02",
     category: "Fam Bam",
     readTime: "7 min read",
-    image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&h=400&fit=crop", // Warm family/home life
-    isHandPicked: true, // FEATURED
+    image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&h=400&fit=crop",
+    isHandPicked: true,
     status: 'published',
     seoTitle: "How the Pandemic Changed Our Lives and Work",
     metaDescription: "Reflecting on how the pandemic changed our family life and my appreciation for my work."
@@ -50,8 +49,8 @@ const initialPosts = [
     date: "2025-12-02",
     category: "BTS",
     readTime: "10 min read",
-    image: "https://images.unsplash.com/photo-1574155376612-c84efdd3fc71?w=800&h=400&fit=crop", // Distinct Purple/Concert aesthetic
-    isHandPicked: true, // FEATURED
+    image: "https://images.unsplash.com/photo-1574155376612-c84efdd3fc71?w=800&h=400&fit=crop",
+    isHandPicked: true,
     status: 'published',
     seoTitle: "My Journey to Becoming an ARMY Mom",
     metaDescription: "From K-Dramas to BTS: How I found music, joy, and learned to love myself."
@@ -96,46 +95,38 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const serverData = await ncbGet('posts');
-      let currentPosts = [];
+      let finalPosts = [];
 
-      // 1. Get Server Data
-      if (serverData && Array.isArray(serverData)) {
-        currentPosts = serverData;
+      // 1. If Server has data, use it as the source of truth
+      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
+        finalPosts = serverData;
+
+        // 2. Ensure Seed Data exists if missing from server
+        // (Only adds if ID is NOT in server data)
+        const serverIds = new Set(finalPosts.map(p => String(p.id)));
+        initialPosts.forEach(seedPost => {
+          if (!serverIds.has(String(seedPost.id))) {
+            finalPosts.push(seedPost);
+          }
+        });
+      } else {
+        // Fallback: Use Local Storage or Initial Seed if server is empty
+        const localData = getLocalPosts();
+        finalPosts = (localData && localData.length > 0) ? localData : initialPosts;
       }
 
-      // 2. Get Local Drafts (that are not on server)
-      const localData = getLocalPosts() || [];
-      const serverIds = new Set(currentPosts.map(p => String(p.id)));
-      const localDrafts = localData.filter(p => !serverIds.has(String(p.id)));
-
-      // 3. Merge Server and Local
-      let merged = [...localDrafts, ...currentPosts];
-
-      // 4. CRITICAL: FORCE SEED DATA FOR FEATURED STORIES
-      // This ensures the 3 specific featured stories ALWAYS appear, 
-      // overwriting any old/conflicting data from server or local.
-      const seedIds = initialPosts.map(p => String(p.id));
-      
-      // Remove any existing versions of seed posts from 'merged' to avoid dupes/conflicts
-      merged = merged.filter(p => !seedIds.includes(String(p.id)));
-      
-      // Add the mandated Seed Posts
-      merged = [...merged, ...initialPosts];
-
-      // 5. Sort: Featured First, then Newest Date
-      merged.sort((a, b) => {
-        // Prioritize HandPicked
+      // 3. Sort by Featured then Date
+      finalPosts.sort((a, b) => {
         if (a.isHandPicked && !b.isHandPicked) return -1;
         if (!a.isHandPicked && b.isHandPicked) return 1;
-        // Then by Date
         return new Date(b.date) - new Date(a.date);
       });
-      
-      setPosts(merged);
+
+      setPosts(finalPosts);
     } catch (error) {
       console.error("NoCodeBackend: Critical failure in fetchPosts.", error);
-      // Fallback: Ensure initialPosts are at least present
-      setPosts(initialPosts);
+      // On error, keep existing state or fall back to seed
+      if (posts.length === 0) setPosts(initialPosts);
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +147,6 @@ export const BlogProvider = ({ children }) => {
     const tempId = Date.now();
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
-    
     const postDate = postData.date || new Date().toISOString().split('T')[0];
     
     let status = postData.status;
@@ -178,11 +168,17 @@ export const BlogProvider = ({ children }) => {
       focusKeyword: postData.focusKeyword || ''
     };
 
+    // Optimistic UI Update
     setPosts(prev => [newPost, ...prev]);
 
     try {
       const { id, ...postPayload } = newPost;
       const result = await ncbCreate('posts', postPayload);
+      
+      if (!result || result.error) {
+        throw new Error(result?.error || "Database persistence failed");
+      }
+
       if (result && result.id) {
         setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
         return result.id;
@@ -190,11 +186,13 @@ export const BlogProvider = ({ children }) => {
       return tempId;
     } catch (error) {
       console.error("NoCodeBackend: Failed to save post.", error);
-      throw error;
+      setPosts(prev => prev.filter(p => p.id !== tempId));
+      throw new Error(`Failed to save to database: ${error.message}`);
     }
   };
 
   const updatePost = async (id, updatedFields) => {
+    const previousPosts = [...posts];
     let updates = { ...updatedFields };
     
     if (updates.content) {
@@ -207,19 +205,28 @@ export const BlogProvider = ({ children }) => {
     ));
 
     try {
-      await ncbUpdate('posts', id, updates);
+      const response = await ncbUpdate('posts', id, updates);
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
     } catch (error) {
       console.error("Failed to update post on server:", error);
-      throw error;
+      setPosts(previousPosts);
+      throw new Error("Update failed: " + error.message);
     }
   };
 
   const deletePost = async (id) => {
+    const previousPosts = [...posts];
     setPosts(prev => prev.filter(post => post.id !== id));
+
     try {
-      await ncbDelete('posts', id);
+      const success = await ncbDelete('posts', id);
+      if (!success) throw new Error("Delete failed on server");
     } catch (error) {
       console.error("Failed to delete post:", error);
+      setPosts(previousPosts);
+      alert("Failed to delete post from server. Restored.");
     }
   };
 

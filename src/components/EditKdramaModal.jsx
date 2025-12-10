@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiHeart } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiHeart, FiAlertTriangle } = FiIcons;
 
 const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const [formData, setFormData] = useState({
@@ -12,17 +12,18 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     tags: '',
     synopsis_short: '',
     synopsis_long: '',
-    my_two_cents: '', 
+    my_two_cents: '',
     image_url: '',
     image_alt: '',
     is_featured_on_home: false,
     display_order: 0
   });
-
+  
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (drama) {
@@ -40,6 +41,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       });
       setUploadStatus('');
       setImageError(false);
+      setErrorMessage('');
     } else {
       setFormData({
         title: '',
@@ -70,9 +72,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   // Helper to normalize Dropbox URLs
   const processDropboxUrl = (url) => {
     if (!url || !url.includes('dropbox.com')) return url;
-    
     let newUrl = url;
-
     // 1. Replace dl=0 with raw=1
     if (newUrl.includes('dl=0')) {
       newUrl = newUrl.replace('dl=0', 'raw=1');
@@ -81,30 +81,24 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     else if (newUrl.includes('raw=0')) {
       newUrl = newUrl.replace('raw=0', 'raw=1');
     }
-    
     // 3. If raw=1 is still missing, append it
     if (!newUrl.includes('raw=1')) {
       const separator = newUrl.includes('?') ? '&' : '?';
       newUrl = `${newUrl}${separator}raw=1`;
     }
-    
     return newUrl;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let finalValue = type === 'checkbox' ? checked : value;
-
+    
     // Automatically normalize image_url if it's a Dropbox link
     if (name === 'image_url') {
       finalValue = processDropboxUrl(finalValue);
       setImageError(false);
     }
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: finalValue
-    }));
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
   };
 
   const handleFileUpload = async (e) => {
@@ -114,60 +108,76 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     setIsUploading(true);
     setUploadStatus('Uploading...');
     setImageError(false);
+    setErrorMessage('');
 
     try {
       const data = new FormData();
       data.append('file', file);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
         signal: controller.signal
       }).catch((err) => {
-        console.warn("Fetch failed:", err);
-        return null;
+        console.warn("Fetch failed (Network/Timeout):", err);
+        throw new Error("Network error or timeout connecting to upload server.");
       });
-
+      
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
+        
         if (result.success) {
           // Result.url is already processed by the API to be raw=1
           setFormData(prev => ({ ...prev, image_url: result.url }));
           setUploadStatus('Upload Complete!');
           return;
+        } else {
+          throw new Error(result.message || "Upload failed on server.");
         }
       }
-      throw new Error("Server upload unavailable or failed");
+      
+      // Handle non-JSON or error responses
+      const errorText = await response.text();
+      console.error("Upload Error Response:", errorText);
+      throw new Error(`Server returned status ${response.status}. Details: ${errorText.substring(0, 100)}`);
+
     } catch (error) {
-      console.warn("Server upload failed, falling back to local base64:", error);
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        setFormData(prev => ({ ...prev, image_url: base64 }));
-        setUploadStatus('Upload Complete! (Local)');
-      } catch (localError) {
-        setUploadStatus('Upload Failed');
-        alert("Could not process image.");
+      console.error("Upload Handler Error:", error);
+      setUploadStatus('Upload Failed');
+      
+      // Explicit user confirmation for fallback
+      if (window.confirm(`Cloud upload failed: ${error.message}\n\nWould you like to use local storage (base64) instead? Note: This increases page size significantly.`)) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          setFormData(prev => ({ ...prev, image_url: base64 }));
+          setUploadStatus('Saved Locally (Base64)');
+        } catch (localError) {
+          setErrorMessage("Could not process image locally.");
+        }
+      } else {
+        setErrorMessage(`Upload cancelled. Error: ${error.message}`);
       }
     } finally {
       setIsUploading(false);
-      e.target.value = null;
+      e.target.value = null; // Reset input
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
+    setErrorMessage('');
 
     const processedData = {
       ...formData,
@@ -179,7 +189,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       await onSave(drama ? drama.id : null, processedData);
       onClose();
     } catch (error) {
-      alert('Failed to save: ' + error.message);
+      setErrorMessage(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -217,6 +227,13 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {errorMessage && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2 mt-0.5" />
+                <span className="text-red-700 text-sm">{errorMessage}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
               <div className="space-y-4">
@@ -253,6 +270,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
+                
                 <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex items-center">
                     <input
@@ -267,10 +285,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Display Order</label>
-                    <input
-                      type="number"
-                      name="display_order"
-                      value={formData.display_order}
+                    <input 
+                      type="number" 
+                      name="display_order" 
+                      value={formData.display_order} 
                       onChange={handleChange}
                       className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -294,6 +312,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                         className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                       />
                     </div>
+                    
                     <div className="relative">
                       <input
                         type="file"
@@ -302,30 +321,36 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                         className="hidden"
                         accept="image/*"
                       />
-                      <label 
-                        htmlFor="kdrama-file-upload" 
-                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
+                      <label
+                        htmlFor="kdrama-file-upload"
+                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${
+                          uploadStatus.includes('Failed') 
+                            ? 'border-red-300 text-red-600' 
+                            : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                        }`}
                       >
-                        {isUploading ? 
-                          <span className="animate-pulse">Uploading...</span> : 
-                          uploadStatus.includes('Complete') ? 
-                          <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</> : 
+                        {isUploading ? (
+                          <span className="animate-pulse">Uploading...</span>
+                        ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
+                          <><SafeIcon icon={FiCheck} className="mr-2" /> {uploadStatus}</>
+                        ) : (
                           <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload New File</>
-                        }
+                        )}
                       </label>
                     </div>
-                    
+
                     {formData.image_url && (
                       <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
-                        <img 
-                          src={formData.image_url} 
-                          alt="Preview" 
+                        <img
+                          src={formData.image_url}
+                          alt="Preview"
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
                           onError={() => setImageError(true)}
                           onLoad={() => setImageError(false)}
                         />
                       </div>
                     )}
+                    
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Image Alt Text</label>
                       <input
@@ -355,30 +380,31 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   placeholder="A brief teaser..."
                 />
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Long Synopsis (Recommendations Page)</label>
-                    <textarea
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Long Synopsis (Recommendations Page)</label>
+                  <textarea
                     name="synopsis_long"
                     value={formData.synopsis_long}
                     onChange={handleChange}
                     rows="5"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                     placeholder="The full story details..."
-                    />
+                  />
                 </div>
                 <div>
-                     <label className="block text-sm font-medium text-purple-800 mb-1 flex items-center">
-                        <SafeIcon icon={FiHeart} className="mr-1 text-purple-500" /> My 2 Cents (Personal Opinion)
-                     </label>
-                    <textarea
+                  <label className="block text-sm font-medium text-purple-800 mb-1 flex items-center">
+                    <SafeIcon icon={FiHeart} className="mr-1 text-purple-500" /> My 2 Cents (Personal Opinion)
+                  </label>
+                  <textarea
                     name="my_two_cents"
                     value={formData.my_two_cents}
                     onChange={handleChange}
                     rows="5"
                     className="w-full px-4 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-purple-50/50"
                     placeholder="Why you love this drama, favorite moments, etc..."
-                    />
+                  />
                 </div>
               </div>
             </div>

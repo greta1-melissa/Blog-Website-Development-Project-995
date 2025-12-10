@@ -10,14 +10,13 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe, FiAlertTriangle } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
   const { addPost } = useBlog();
   const { user } = useAuth();
   
-  // Tab states for sections
   const [sections, setSections] = useState({
     seo: true,
     schedule: true
@@ -32,22 +31,20 @@ const CreatePost = () => {
     content: '',
     category: '',
     image: '',
-    // SEO Fields
     focusKeyword: '',
     seoTitle: '',
     metaDescription: '',
-    // Scheduling Fields
     scheduledDate: '',
     scheduledTime: '',
-    status: 'draft' // Default to draft for safety
+    status: 'draft' 
   });
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Added 'Career' to categories
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career'];
 
   const processImageUrl = (url) => {
@@ -80,21 +77,21 @@ const CreatePost = () => {
     setIsUploading(true);
     setUploadStatus('Uploading...');
     setImageError(false);
+    setErrorMessage('');
 
     try {
       const data = new FormData();
       data.append('file', file);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
         signal: controller.signal
       }).catch((err) => {
-        console.warn("Fetch failed:", err);
-        return null;
+        throw new Error("Network error or timeout connecting to upload server.");
       });
       
       clearTimeout(timeoutId);
@@ -106,23 +103,34 @@ const CreatePost = () => {
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;
+        } else {
+          throw new Error(result.message || "Server rejected upload.");
         }
       }
-      throw new Error("Server upload unavailable or failed");
+      
+      const errorText = await response.text();
+      throw new Error(`Server Error (${response.status}): ${errorText.substring(0,80)}`);
+
     } catch (error) {
-      console.warn("Server upload failed, falling back to local:", error);
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        setFormData(prev => ({ ...prev, image: base64 }));
-        setUploadStatus('Upload Complete! (Local)');
-      } catch (localError) {
-        setUploadStatus('Upload Failed');
-        alert("Could not process image.");
+      console.error("Upload failed:", error);
+      setUploadStatus('Upload Failed');
+      
+      // Explicit fallback logic
+      if (window.confirm(`Cloud upload failed: ${error.message}\n\nSwitch to local storage (base64)? This may slow down the page.`)) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          setFormData(prev => ({ ...prev, image: base64 }));
+          setUploadStatus('Saved Locally (Base64)');
+        } catch (localError) {
+          setErrorMessage("Could not process image locally.");
+        }
+      } else {
+        setErrorMessage(`Upload cancelled. Error: ${error.message}`);
       }
     } finally {
       setIsUploading(false);
@@ -131,6 +139,8 @@ const CreatePost = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
+    
     if (!formData.title || !formData.content) {
       alert('Please fill in at least the Title and Content to save.');
       return;
@@ -138,7 +148,6 @@ const CreatePost = () => {
 
     setIsSaving(true);
 
-    // Determine Status and Date strictly based on user selection
     let finalStatus = formData.status;
     let finalDate = new Date().toISOString().split('T')[0];
 
@@ -152,7 +161,6 @@ const CreatePost = () => {
     } else if (finalStatus === 'published') {
       // Keep today's date
     } else {
-      // Draft - Keep today's date
       finalStatus = 'draft'; 
     }
 
@@ -169,7 +177,7 @@ const CreatePost = () => {
       
       if (finalStatus === 'draft') {
         alert('Draft saved successfully!');
-        navigate('/admin'); // Go to admin to see drafts
+        navigate('/admin');
       } else if (finalStatus === 'scheduled') {
         alert(`Post scheduled for ${finalDate}!`);
         navigate('/admin');
@@ -179,8 +187,7 @@ const CreatePost = () => {
       }
     } catch (error) {
       console.error("Save failed:", error);
-      alert(`Failed to save post to server: ${error.message}. The post is saved locally.`);
-      navigate(`/`);
+      setErrorMessage(`Failed to save post: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -228,6 +235,16 @@ const CreatePost = () => {
             Create optimized content for your community 💜
           </p>
         </div>
+
+        {errorMessage && (
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-3 mt-1" />
+            <div className="text-red-800 font-medium">
+              <p>Error:</p>
+              <p className="text-sm font-normal">{errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content Column */}
@@ -302,7 +319,6 @@ const CreatePost = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                           placeholder="e.g., K-Drama Reviews"
                         />
-                        <p className="text-xs text-gray-500 mt-1">The main phrase you want this post to rank for.</p>
                       </div>
 
                       <div>
@@ -317,16 +333,6 @@ const CreatePost = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                           placeholder={formData.title || "Title tag for search engines"}
                         />
-                        <div className="w-full bg-gray-200 h-1 mt-2 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${formData.seoTitle.length > 60 ? 'bg-red-400' : 'bg-green-400'}`}
-                            style={{ width: `${Math.min((formData.seoTitle.length / 60) * 100, 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 flex justify-between">
-                          <span>Recommended: 50-60 characters</span>
-                          <span>{formData.seoTitle.length} chars</span>
-                        </p>
                       </div>
 
                       <div>
@@ -341,33 +347,6 @@ const CreatePost = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none"
                           placeholder="Summary for search results..."
                         />
-                        <div className="w-full bg-gray-200 h-1 mt-2 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${formData.metaDescription.length > 160 ? 'bg-red-400' : 'bg-green-400'}`}
-                            style={{ width: `${Math.min((formData.metaDescription.length / 160) * 100, 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 flex justify-between">
-                          <span>Recommended: 150-160 characters</span>
-                          <span>{formData.metaDescription.length} chars</span>
-                        </p>
-                      </div>
-
-                      {/* SERP Preview */}
-                      <div className="bg-white border border-gray-200 p-4 rounded-lg">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Google Preview</h4>
-                        <div className="font-sans">
-                          <div className="text-sm text-gray-800 flex items-center mb-1">
-                            <span className="bg-gray-100 rounded-full p-1 mr-2"><SafeIcon icon={FiGlobe} className="text-gray-500 text-xs"/></span>
-                            <span>bangtanmom.com › post</span>
-                          </div>
-                          <div className="text-xl text-[#1a0dab] hover:underline cursor-pointer truncate font-medium">
-                            {formData.seoTitle || formData.title || "Your Post Title"}
-                          </div>
-                          <div className="text-sm text-[#4d5156] line-clamp-2">
-                            {formData.metaDescription || "This is how your post description will appear in search engine results. Make it catchy and relevant to your focus keyword!"}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -430,10 +409,6 @@ const CreatePost = () => {
                         onChange={handleChange}
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                       />
-                    </div>
-                    <div className="text-xs text-purple-700 flex items-start">
-                      <SafeIcon icon={FiClock} className="mr-1 mt-0.5 flex-shrink-0" />
-                      <span>Post will be visible to public on this date/time.</span>
                     </div>
                   </motion.div>
                 )}
@@ -505,15 +480,15 @@ const CreatePost = () => {
                   <label
                     htmlFor="file-upload"
                     className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${
-                      uploadStatus === 'Upload Failed' 
+                      uploadStatus.includes('Failed')
                         ? 'border-red-300 text-red-600 bg-red-50' 
                         : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                     }`}
                   >
                     {isUploading ? (
                       <span className="animate-pulse">Uploading...</span>
-                    ) : uploadStatus.includes('Upload Complete') ? (
-                      <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
+                    ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
+                      <><SafeIcon icon={FiCheck} className="mr-2" /> {uploadStatus}</>
                     ) : (
                       <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload File</>
                     )}
@@ -526,10 +501,7 @@ const CreatePost = () => {
                       src={formData.image}
                       alt="Preview"
                       className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                      onError={() => {
-                        setImageError(true);
-                        // Optional: Set fallback if preview fails
-                      }}
+                      onError={() => setImageError(true)}
                       onLoad={() => setImageError(false)}
                     />
                   </div>

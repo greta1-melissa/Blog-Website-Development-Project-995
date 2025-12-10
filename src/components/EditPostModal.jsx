@@ -6,10 +6,9 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe, FiAlertTriangle } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
-  // Tab states for sections
   const [sections, setSections] = useState({
     seo: false,
     schedule: true
@@ -24,11 +23,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     content: '',
     category: '',
     image: '',
-    // SEO Fields
     focusKeyword: '',
     seoTitle: '',
     metaDescription: '',
-    // Scheduling Fields
     scheduledDate: '',
     scheduledTime: '',
     status: 'published'
@@ -38,6 +35,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (post) {
@@ -46,17 +44,16 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         content: post.content || '',
         category: post.category || '',
         image: post.image || '',
-        // Populate SEO fields or defaults
         focusKeyword: post.focusKeyword || '',
         seoTitle: post.seoTitle || post.title || '',
         metaDescription: post.metaDescription || '',
-        // Populate Status/Date
         status: post.status || 'published',
         scheduledDate: post.date || new Date().toISOString().split('T')[0],
-        scheduledTime: '' // Time isn't persistently stored in simple schema, reset
+        scheduledTime: ''
       });
       setUploadStatus('');
       setImageError(false);
+      setErrorMessage('');
     }
   }, [post]);
 
@@ -90,21 +87,21 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     setIsUploading(true);
     setUploadStatus('Uploading...');
     setImageError(false);
+    setErrorMessage('');
 
     try {
       const data = new FormData();
       data.append('file', file);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
         signal: controller.signal
       }).catch((err) => {
-        console.warn("Fetch failed:", err);
-        return null;
+        throw new Error("Network error or timeout.");
       });
       
       clearTimeout(timeoutId);
@@ -116,23 +113,33 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;
+        } else {
+          throw new Error(result.message || "Server rejected upload.");
         }
       }
-      throw new Error("Server upload unavailable or failed");
+      
+      const errorText = await response.text();
+      throw new Error(`Server Error: ${errorText.substring(0,80)}`);
+
     } catch (error) {
-      console.warn("Server upload failed, falling back to local:", error);
-      try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        setFormData(prev => ({ ...prev, image: base64 }));
-        setUploadStatus('Upload Complete! (Local)');
-      } catch (localError) {
-        setUploadStatus('Upload Failed');
-        alert("Could not process image.");
+      console.warn("Upload failed:", error);
+      setUploadStatus('Upload Failed');
+      
+      if (window.confirm(`Cloud upload failed: ${error.message}\n\nUse local storage instead?`)) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          setFormData(prev => ({ ...prev, image: base64 }));
+          setUploadStatus('Saved Locally (Base64)');
+        } catch (localError) {
+          setErrorMessage("Local fallback failed.");
+        }
+      } else {
+        setErrorMessage(`Upload cancelled: ${error.message}`);
       }
     } finally {
       setIsUploading(false);
@@ -142,19 +149,16 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
+    setErrorMessage('');
 
-    // Logic to update status and date based on user selection
     let finalStatus = formData.status;
     let finalDate = formData.scheduledDate || new Date().toISOString().split('T')[0];
 
-    // Explicit check: If status is 'draft', force it to remain 'draft' regardless of date
     if (finalStatus === 'draft') {
-      // Do nothing, ensure it stays draft
+      // stay draft
     } 
-    // If user explicitly sets 'scheduled' and picks a future date
     else if (finalStatus === 'scheduled') {
-      // We keep the date they selected
-      // Note: Time is used for immediate validation but generally we store YYYY-MM-DD
+      // keep date
     } else {
       finalStatus = 'published';
     }
@@ -170,7 +174,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       await onSave(post.id, updatedData);
       onClose();
     } catch (error) {
-      alert('Failed to save changes: ' + error.message);
+      setErrorMessage(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -207,7 +211,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         />
-        {/* Increased width to max-w-6xl for sidebar layout */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -229,10 +232,16 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6">
+            {errorMessage && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2 mt-0.5" />
+                <span className="text-red-700 text-sm">{errorMessage}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Main Column */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Title & Content */}
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
@@ -260,7 +269,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   </div>
                 </div>
 
-                {/* SEO Section (Collapsible) */}
+                {/* SEO Section */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
                   <button
                     type="button"
@@ -273,7 +282,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     </div>
                     <SafeIcon icon={sections.seo ? FiChevronUp : FiChevronDown} className="text-gray-500" />
                   </button>
-                  
                   <AnimatePresence>
                     {sections.seo && (
                       <motion.div
@@ -291,10 +299,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                               value={formData.focusKeyword}
                               onChange={handleChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
-                              placeholder="e.g., K-Drama Reviews"
                             />
                           </div>
-
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
                             <input
@@ -304,14 +310,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                               onChange={handleChange}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
                             />
-                            <div className="w-full bg-gray-200 h-1 mt-2 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full ${formData.seoTitle.length > 60 ? 'bg-red-400' : 'bg-green-400'}`}
-                                style={{ width: `${Math.min((formData.seoTitle.length / 60) * 100, 100)}%` }}
-                              />
-                            </div>
                           </div>
-
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
                             <textarea
@@ -322,22 +321,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none text-sm"
                             />
                           </div>
-
-                          {/* Preview Card */}
-                          <div className="bg-white border border-gray-200 p-3 rounded-lg mt-2">
-                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Preview</h4>
-                            <div className="font-sans">
-                              <div className="text-xs text-[#1a0dab] hover:underline cursor-pointer truncate font-medium text-lg leading-tight">
-                                {formData.seoTitle || formData.title || "Your Post Title"}
-                              </div>
-                              <div className="text-xs text-[#006621] flex items-center mt-1">
-                                bangtanmom.com › post
-                              </div>
-                              <div className="text-xs text-[#545454] line-clamp-2 mt-1">
-                                {formData.metaDescription || "This is how your post description will appear. Add a meta description to control this snippet."}
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -347,13 +330,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
 
               {/* Sidebar Column */}
               <div className="lg:col-span-1 space-y-6">
-                {/* Publishing */}
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <div className="flex items-center mb-4 text-purple-800">
                     <SafeIcon icon={FiCalendar} className="mr-2" />
                     <h3 className="font-bold">Publishing</h3>
                   </div>
-                  
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -368,8 +349,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         <option value="scheduled">Scheduled</option>
                       </select>
                     </div>
-
-                    {/* Date Picker - Always visible but context changes */}
                     <div className={formData.status === 'scheduled' ? 'bg-purple-100 p-3 rounded-lg border border-purple-200' : ''}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {formData.status === 'scheduled' ? 'Scheduled Date' : 'Publish Date'}
@@ -381,17 +360,10 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                       />
-                      {formData.status === 'scheduled' && (
-                        <div className="mt-2 text-xs text-purple-700 flex items-start">
-                          <SafeIcon icon={FiClock} className="mr-1 mt-0.5" />
-                          Post will be hidden until this date.
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Category */}
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3">Category</h3>
                   <select
@@ -408,7 +380,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   </select>
                 </div>
 
-                {/* Image */}
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3">Featured Image</h3>
                   <div className="space-y-4">
@@ -424,7 +395,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                         />
                       </div>
-                      
                       <div className="relative">
                         <input
                           type="file"
@@ -443,15 +413,14 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         >
                           {isUploading ? (
                             <span className="animate-pulse">Uploading...</span>
-                          ) : uploadStatus.includes('Upload Complete') ? (
-                            <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded</>
+                          ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
+                            <><SafeIcon icon={FiCheck} className="mr-2" /> {uploadStatus}</>
                           ) : (
                             <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload New File</>
                           )}
                         </label>
                       </div>
                     </div>
-
                     {formData.image && (
                       <div className="relative h-32 w-full bg-white rounded-lg overflow-hidden border border-gray-200">
                         <img
@@ -461,11 +430,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                           onError={() => setImageError(true)}
                           onLoad={() => setImageError(false)}
                         />
-                        {imageError && (
-                          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                            <span className="text-xs">Image preview unavailable</span>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
