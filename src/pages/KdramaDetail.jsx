@@ -6,6 +6,7 @@ import { useForum } from '../contexts/ForumContext';
 import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp, FiImage } = FiIcons;
 
@@ -21,16 +22,22 @@ const KdramaDetail = () => {
   const [replies, setReplies] = useState([]);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
     if (!isLoading) {
       const found = getKdramaBySlug(id);
       setDrama(found);
+      if (found) {
+        setImgSrc(found.image_url || KDRAMA_PLACEHOLDER);
+      }
     }
   }, [id, isLoading, getKdramaBySlug]);
 
   useEffect(() => {
     if (drama) {
+      setImgSrc(drama.image_url || KDRAMA_PLACEHOLDER);
+      
       // Try to find an existing discussion thread for this drama
       const existingThread = getThreadByTitle(drama.title);
       if (existingThread) {
@@ -50,7 +57,6 @@ const KdramaDetail = () => {
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
-    
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -59,7 +65,7 @@ const KdramaDetail = () => {
     setIsSubmitting(true);
     try {
       let threadId = activeThread?.id;
-      
+
       // If no thread exists yet, create one first
       if (!threadId) {
         // Category 2 is 'K-Drama & Entertainment'
@@ -91,10 +97,10 @@ const KdramaDetail = () => {
 
   const formatDate = (dateString) => {
     try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString();
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
     } catch (e) {
-        return 'Recently';
+      return 'Recently';
     }
   };
 
@@ -126,16 +132,14 @@ const KdramaDetail = () => {
       {/* Hero Header */}
       <div className="relative h-[400px] lg:h-[500px] overflow-hidden bg-purple-900">
         <div className="absolute inset-0">
-          {drama.image_url ? (
-            <img src={drama.image_url} alt={drama.image_alt || drama.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900">
-              <SafeIcon icon={FiImage} className="text-7xl text-white/20" />
-            </div>
-          )}
+          <img
+            src={imgSrc}
+            alt={drama.image_alt || drama.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgSrc(KDRAMA_PLACEHOLDER)}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
         </div>
-        
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 lg:p-20 text-white z-10">
           <div className="max-w-7xl mx-auto">
             <Link to="/kdrama-recommendations" className="inline-flex items-center text-purple-200 hover:text-white mb-6 transition-colors font-medium">
@@ -202,8 +206,8 @@ const KdramaDetail = () => {
                       <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
                     </div>
                     <div className="flex items-center gap-4 mt-2 ml-2">
-                      <button 
-                        onClick={() => handleLikeReply(reply.id)} 
+                      <button
+                        onClick={() => handleLikeReply(reply.id)}
                         disabled={!isAuthenticated}
                         className={`text-xs font-medium flex items-center transition-colors ${isAuthenticated ? 'text-gray-500 hover:text-purple-600' : 'text-gray-400 cursor-default'}`}
                       >
@@ -227,16 +231,16 @@ const KdramaDetail = () => {
               </div>
               <div className="flex-grow">
                 <form onSubmit={handleReplySubmit} className="relative">
-                  <textarea 
-                    value={replyContent} 
-                    onChange={(e) => setReplyContent(e.target.value)} 
-                    placeholder="Share your review, favorite scene, or thoughts..." 
+                  <textarea
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    placeholder="Share your review, favorite scene, or thoughts..."
                     className="w-full bg-white border border-gray-200 rounded-xl p-4 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[120px] resize-none shadow-sm transition-shadow"
-                    required 
+                    required
                   />
                   <div className="absolute bottom-3 right-3">
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={isSubmitting || !replyContent.trim()}
                       className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
                     >
@@ -257,7 +261,10 @@ const KdramaDetail = () => {
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 text-center border border-purple-100">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Join the Conversation</h3>
               <p className="text-gray-600 mb-4">Log in to share your thoughts with other fans!</p>
-              <Link to="/login" className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md">
+              <Link
+                to="/login"
+                className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md"
+              >
                 Sign In to Comment
               </Link>
             </div>

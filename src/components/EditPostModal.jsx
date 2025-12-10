@@ -4,6 +4,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe } = FiIcons;
 
@@ -160,6 +161,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
 
     const updatedData = {
       ...formData,
+      image: formData.image || BLOG_PLACEHOLDER,
       date: finalDate,
       status: finalStatus
     };

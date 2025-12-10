@@ -5,6 +5,7 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck, FiImage } = FiIcons;
 
@@ -12,17 +13,20 @@ const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
   const [isFollowing, setIsFollowing] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
   const post = getPost(id);
+  
+  const [imgSrc, setImgSrc] = useState(post?.image || BLOG_PLACEHOLDER);
+
+  useEffect(() => {
+    if (post) {
+      setImgSrc(post.image || BLOG_PLACEHOLDER);
+    }
+  }, [post]);
 
   // SEO: Update Document Title and Meta Tags
   useEffect(() => {
     if (post) {
-      // Update Title
       document.title = post.seoTitle || post.title + " | Bangtan Mom";
-      
-      // Update Meta Description
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute('content', post.metaDescription || post.content.substring(0, 150));
@@ -33,8 +37,6 @@ const BlogPost = () => {
         document.head.appendChild(newMeta);
       }
     }
-    
-    // Cleanup function to reset title when leaving
     return () => {
       document.title = "Bangtan Mom - BTS, K-Pop, Family & Lifestyle";
     };
@@ -47,12 +49,8 @@ const BlogPost = () => {
           <SafeIcon icon={FiHeart} className="text-purple-400 text-6xl mb-4 mx-auto" />
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Post Not Found</h1>
           <p className="text-gray-600 mb-8">The blog post you're looking for doesn't exist.</p>
-          <Link
-            to="/"
-            className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-          >
-            <SafeIcon icon={FiArrowLeft} className="mr-2" />
-            Back to Home
+          <Link to="/" className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium">
+            <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
           </Link>
         </div>
       </div>
@@ -80,13 +78,10 @@ const BlogPost = () => {
     setIsFollowing(!isFollowing);
   };
 
-  const fallbackImage = "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop";
-  
   const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
-
   const cleanHtmlContent = isHtml 
     ? post.content
-        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '') 
+        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
         .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')
     : post.content;
 
@@ -98,39 +93,24 @@ const BlogPost = () => {
         transition={{ duration: 0.6 }}
         className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
       >
-        <Link
-          to="/"
-          className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 border border-purple-200 transition-colors mb-8 shadow-sm"
-        >
-          <SafeIcon icon={FiArrowLeft} className="mr-2" />
-          Back to Home
+        <Link to="/" className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 border border-purple-200 transition-colors mb-8 shadow-sm">
+          <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
         </Link>
-        
+
         <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100">
-          {!imgError ? (
-            <img
-              src={post.image || fallbackImage}
-              alt={post.title}
-              className="w-full h-64 md:h-96 object-cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className="w-full h-64 md:h-96 flex flex-col items-center justify-center text-gray-400">
-              <SafeIcon icon={FiImage} className="text-6xl mb-3 opacity-50" />
-              <span className="text-sm font-medium">Image unavailable</span>
-            </div>
-          )}
+          <img
+            src={imgSrc}
+            alt={post.title}
+            className="w-full h-64 md:h-96 object-cover"
+            onError={() => setImgSrc(BLOG_PLACEHOLDER)}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
           <div className="absolute top-6 left-6">
             <span className={`px-4 py-2 rounded-full text-sm font-medium shadow-lg ${getCategoryStyle(post.category)}`}>
-              <SafeIcon icon={FiTag} className="inline mr-1" />
-              {post.category}
+              <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
             </span>
           </div>
-          <button
-            onClick={handleShare}
-            className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
-          >
+          <button onClick={handleShare} className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors">
             <SafeIcon icon={FiShare2} className="text-lg" />
           </button>
         </div>
@@ -150,7 +130,7 @@ const BlogPost = () => {
               <span className="text-purple-800">{post.readTime}</span>
             </div>
           </div>
-          
+
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight text-center">
             <span className="bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
               {post.title}
@@ -158,10 +138,7 @@ const BlogPost = () => {
           </h1>
           
           <div className="w-full bg-purple-100 rounded-full h-2 mb-6">
-            <div
-              className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300"
-              id="reading-progress"
-            ></div>
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300" id="reading-progress"></div>
           </div>
         </div>
 
@@ -173,12 +150,12 @@ const BlogPost = () => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
                 className="article-content"
-                dangerouslySetInnerHTML={{ __html: cleanHtmlContent }} 
+                dangerouslySetInnerHTML={{ __html: cleanHtmlContent }}
               />
             ) : (
               <div className="article-content">
                 {post.content.split('\n')
-                  .filter(p => p.trim() !== '') 
+                  .filter(p => p.trim() !== '')
                   .map((paragraph, index) => (
                     <motion.p
                       key={index}
@@ -188,7 +165,7 @@ const BlogPost = () => {
                     >
                       {paragraph}
                     </motion.p>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -220,12 +197,11 @@ const BlogPost = () => {
               <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} />
               {isFollowing ? 'Following' : 'Follow'}
             </button>
-            <button
+            <button 
               onClick={handleShare}
               className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
             >
-              <SafeIcon icon={FiShare2} className="mr-2" />
-              Share
+              <SafeIcon icon={FiShare2} className="mr-2" /> Share
             </button>
           </div>
         </motion.div>
@@ -249,15 +225,12 @@ const BlogPost = () => {
               to="/"
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              <SafeIcon icon={FiArrowLeft} className="mr-2" />
-              Back to All Posts
+              <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to All Posts
             </Link>
           </div>
         </motion.div>
       </motion.article>
-
-      <script dangerouslySetInnerHTML={{
-        __html: `
+      <script dangerouslySetInnerHTML={{__html: `
         window.addEventListener('scroll', function() {
           const article = document.querySelector('article');
           const progressBar = document.getElementById('reading-progress');

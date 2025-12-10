@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe } = FiIcons;
 
@@ -157,7 +158,7 @@ const CreatePost = () => {
 
     const postData = {
       ...formData,
-      image: formData.image || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop',
+      image: formData.image || BLOG_PLACEHOLDER,
       author: user?.name || 'BangtanMom',
       date: finalDate,
       status: finalStatus
@@ -525,7 +526,10 @@ const CreatePost = () => {
                       src={formData.image}
                       alt="Preview"
                       className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                      onError={() => setImageError(true)}
+                      onError={() => {
+                        setImageError(true);
+                        // Optional: Set fallback if preview fails
+                      }}
                       onLoad={() => setImageError(false)}
                     />
                   </div>
