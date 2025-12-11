@@ -267,9 +267,7 @@ export const BlogProvider = ({ children }) => {
       return safe.filter(post => String(post.id) !== String(id));
     });
 
-    // Get the post we just tried to delete from the previous state (captured via closure/ref or just find it in current 'posts' before setPosts took effect?)
-    // Better to find it from the 'posts' variable available in scope before the setter update runs fully, 
-    // but React batching means 'posts' is still the old value here.
+    // Get the post we just tried to delete from the previous state
     const postToDelete = posts.find(post => String(post.id) === String(id));
 
     // 1) If this was a local-only post, just remove it locally and return.
