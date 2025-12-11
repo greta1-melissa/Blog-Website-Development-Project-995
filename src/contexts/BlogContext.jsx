@@ -97,38 +97,45 @@ export const BlogProvider = ({ children }) => {
       const localData = getLocalPosts() || [];
       let finalPosts = [];
 
-      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        finalPosts = [...serverData];
-        const serverIds = new Set(finalPosts.map(p => String(p.id)));
+      // 1. Build a Set of IDs that exist on the server
+      const safeServerData = Array.isArray(serverData) ? serverData : [];
+      const serverIds = new Set(safeServerData.map(p => String(p.id)));
 
-        // 1. Merge Seed Posts if missing from server
-        initialPosts.forEach(seedPost => {
-          if (!serverIds.has(String(seedPost.id))) {
-            finalPosts.push(seedPost);
-          }
-        });
-
-        // 2. Merge Local Drafts/Unsynced Posts
-        // If a post exists locally but NOT on server, preserve it (it might be a draft or failed sync)
-        if (localData.length > 0) {
-            localData.forEach(localPost => {
-                if (!serverIds.has(String(localPost.id))) {
-                    finalPosts.push({ ...localPost, isLocalOnly: true });
-                }
-            });
-        }
-      } else {
-        // Fallback: Use local data if server empty/fails, otherwise seed data
-        finalPosts = (localData.length > 0) ? localData : initialPosts;
-      }
-
-      // 3. Data Sanitization: Ensure status exists
-      finalPosts = finalPosts.map(p => ({
-          ...p,
-          status: ['draft', 'scheduled', 'published'].includes(p.status) ? p.status : 'published'
+      // 2. Normalize server posts (ensure isLocalOnly is false)
+      const normalizedServerPosts = safeServerData.map(post => ({
+        ...post,
+        isLocalOnly: false
       }));
 
-      // 4. Sort: Featured first, then Date Descending
+      finalPosts = [...normalizedServerPosts];
+
+      // 3. Merge Seed Posts if missing from server
+      initialPosts.forEach(seedPost => {
+        if (!serverIds.has(String(seedPost.id))) {
+          finalPosts.push(seedPost);
+        }
+      });
+
+      // 4. Merge Local Drafts/Unsynced Posts
+      // If a post exists locally but NOT on server, preserve it and mark as local-only
+      if (localData.length > 0) {
+        localData.forEach(localPost => {
+          if (!serverIds.has(String(localPost.id))) {
+            finalPosts.push({
+              ...localPost,
+              isLocalOnly: true
+            });
+          }
+        });
+      }
+
+      // 5. Data Sanitization: Ensure status exists
+      finalPosts = finalPosts.map(p => ({
+        ...p,
+        status: ['draft', 'scheduled', 'published'].includes(p.status) ? p.status : 'published'
+      }));
+
+      // 6. Sort: Featured first, then Date Descending
       finalPosts.sort((a, b) => {
         if (a.isHandPicked && !b.isHandPicked) return -1;
         if (!a.isHandPicked && b.isHandPicked) return 1;
@@ -179,62 +186,119 @@ export const BlogProvider = ({ children }) => {
       status: status,
       seoTitle: postData.seoTitle || postData.title,
       metaDescription: postData.metaDescription || postData.content.substring(0, 160),
-      focusKeyword: postData.focusKeyword || ''
+      focusKeyword: postData.focusKeyword || '',
+      isLocalOnly: true // Initially local until synced
     };
 
     setPosts(prev => [newPost, ...prev]);
 
     try {
-      const { id, ...postPayload } = newPost;
+      const { id, isLocalOnly, ...postPayload } = newPost;
       const savedPost = await ncbCreate('posts', postPayload);
 
       if (!savedPost || !savedPost.id) {
         throw new Error("Database did not return a valid post with an ID.");
       }
       
-      setPosts(prev => prev.map(p => (p.id === tempId ? savedPost : p)));
+      // Update with real ID and remove local flag
+      setPosts(prev => prev.map(p => (p.id === tempId ? { ...savedPost, isLocalOnly: false } : p)));
       return savedPost.id;
     } catch (error) {
       console.error("[BlogContext] Failed to save post.", error);
-      // Keep the post in state but maybe flag it? For now leaving it as isLocalOnly implicitly
-      setPosts(prev => prev.filter(p => p.id !== tempId)); // Revert for now based on strict instructions, or keep? Instructions say "Remove optimistic post".
+      // Keep it in state as local-only, letting user know or retry later could be an enhancement
       throw error;
     }
   };
 
   const updatePost = async (id, updatedFields) => {
-    const previousPosts = [...posts];
+    const previousPosts = Array.isArray(posts) ? [...posts] : [];
     let updates = { ...updatedFields };
-    
+
+    // Recalculate read time if content changed
     if (updates.content) {
       const wordCount = updates.content.split(' ').length;
       updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     }
 
-    setPosts(prev => prev.map(post => 
-      String(post.id) === String(id) ? { ...post, ...updates } : post
-    ));
+    // Find target post
+    const target = previousPosts.find(post => String(post.id) === String(id));
 
+    // Optimistic UI update
+    setPosts(prev =>
+      prev.map(post =>
+        String(post.id) === String(id) ? { ...post, ...updates } : post
+      )
+    );
+
+    // If this is a local-only post, just update state + localStorage and skip NCB.
+    if (target && target.isLocalOnly) {
+      try {
+        const local = localStorage.getItem('blog_posts');
+        if (local) {
+          const parsed = JSON.parse(local);
+          const updatedLocal = parsed.map(p =>
+            String(p.id) === String(id) ? { ...p, ...updates, isLocalOnly: true } : p
+          );
+          localStorage.setItem('blog_posts', JSON.stringify(updatedLocal));
+        }
+      } catch (e) {
+        console.error('Error updating localStorage for local-only post', e);
+      }
+      return;
+    }
+
+    // For server posts, keep current NCB update behaviour.
     try {
-      await ncbUpdate('posts', id, updates);
+      const response = await ncbUpdate('posts', id, updates);
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
     } catch (error) {
-      console.error("Failed to update post on server:", error);
+      console.error('Failed to update post on server:', error);
       setPosts(previousPosts);
-      throw error;
+      throw new Error('Update failed: ' + error.message);
     }
   };
 
   const deletePost = async (id) => {
-    const previousPosts = [...posts];
-    setPosts(prev => prev.filter(post => post.id !== id));
+    // Optimistic delete from state
+    setPosts(prev => {
+      const safe = Array.isArray(prev) ? prev : [];
+      return safe.filter(post => String(post.id) !== String(id));
+    });
+
+    // Get the post we just tried to delete from the previous state (captured via closure/ref or just find it in current 'posts' before setPosts took effect?)
+    // Better to find it from the 'posts' variable available in scope before the setter update runs fully, 
+    // but React batching means 'posts' is still the old value here.
+    const postToDelete = posts.find(post => String(post.id) === String(id));
+
+    // 1) If this was a local-only post, just remove it locally and return.
+    if (postToDelete && postToDelete.isLocalOnly) {
+      try {
+        // Also clean it from localStorage so it doesn’t come back
+        const local = localStorage.getItem('blog_posts');
+        if (local) {
+          const parsed = JSON.parse(local);
+          const updated = parsed.filter(p => String(p.id) !== String(id));
+          localStorage.setItem('blog_posts', JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error('Error updating localStorage after local-only delete', e);
+      }
+      return;
+    }
+
+    // 2) Otherwise, this post should exist on the server – call NoCodeBackend.
+    const previousPosts = Array.isArray(posts) ? [...posts] : [];
 
     try {
       const success = await ncbDelete('posts', id);
-      if (!success) throw new Error("Delete failed on server");
+      if (!success) throw new Error('Delete failed on server');
     } catch (error) {
-      console.error("Failed to delete post:", error);
+      console.error('Failed to delete post from server:', error);
+      // Restore the previous list
       setPosts(previousPosts);
-      alert("Failed to delete post from server. Restored.");
+      alert('Failed to delete post from server. Restored.');
     }
   };
 
