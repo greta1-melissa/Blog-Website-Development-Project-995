@@ -94,21 +94,41 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const serverData = await ncbGet('posts');
+      const localData = getLocalPosts() || [];
       let finalPosts = [];
 
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        finalPosts = serverData;
+        finalPosts = [...serverData];
         const serverIds = new Set(finalPosts.map(p => String(p.id)));
+
+        // 1. Merge Seed Posts if missing from server
         initialPosts.forEach(seedPost => {
           if (!serverIds.has(String(seedPost.id))) {
             finalPosts.push(seedPost);
           }
         });
+
+        // 2. Merge Local Drafts/Unsynced Posts
+        // If a post exists locally but NOT on server, preserve it (it might be a draft or failed sync)
+        if (localData.length > 0) {
+            localData.forEach(localPost => {
+                if (!serverIds.has(String(localPost.id))) {
+                    finalPosts.push({ ...localPost, isLocalOnly: true });
+                }
+            });
+        }
       } else {
-        const localData = getLocalPosts();
-        finalPosts = (localData && localData.length > 0) ? localData : initialPosts;
+        // Fallback: Use local data if server empty/fails, otherwise seed data
+        finalPosts = (localData.length > 0) ? localData : initialPosts;
       }
 
+      // 3. Data Sanitization: Ensure status exists
+      finalPosts = finalPosts.map(p => ({
+          ...p,
+          status: ['draft', 'scheduled', 'published'].includes(p.status) ? p.status : 'published'
+      }));
+
+      // 4. Sort: Featured first, then Date Descending
       finalPosts.sort((a, b) => {
         if (a.isHandPicked && !b.isHandPicked) return -1;
         if (!a.isHandPicked && b.isHandPicked) return 1;
@@ -118,7 +138,9 @@ export const BlogProvider = ({ children }) => {
       setPosts(finalPosts);
     } catch (error) {
       console.error("[BlogContext] Critical failure in fetchPosts.", error);
-      if (posts.length === 0) setPosts(initialPosts);
+      // Fallback on critical error
+      const localData = getLocalPosts();
+      setPosts((localData && localData.length > 0) ? localData : initialPosts);
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +196,8 @@ export const BlogProvider = ({ children }) => {
       return savedPost.id;
     } catch (error) {
       console.error("[BlogContext] Failed to save post.", error);
-      setPosts(prev => prev.filter(p => p.id !== tempId));
+      // Keep the post in state but maybe flag it? For now leaving it as isLocalOnly implicitly
+      setPosts(prev => prev.filter(p => p.id !== tempId)); // Revert for now based on strict instructions, or keep? Instructions say "Remove optimistic post".
       throw error;
     }
   };
