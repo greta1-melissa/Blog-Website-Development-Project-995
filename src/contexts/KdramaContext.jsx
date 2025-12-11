@@ -12,7 +12,7 @@ export const useKdrama = () => {
   return context;
 };
 
-// Helper: Local Storage wrapper for fallback/caching
+// Helper: Local Storage wrapper
 const getLocalData = () => {
   try {
     const data = localStorage.getItem('kdrama_recommendations');
@@ -29,18 +29,22 @@ export const KdramaProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const TABLE_NAME = 'kdrama_recommendations';
 
-  // Normalize data to ensure all fields exist
+  // Normalize data to ensure all fields exist AND URLs are display-ready
   const normalizeData = (data) => {
     if (!Array.isArray(data)) return [];
 
     const processDropboxUrl = (url) => {
-      if (!url || typeof url !== 'string' || !url.includes('dropbox.com')) return url;
+      if (!url || typeof url !== 'string') return '';
+      if (!url.includes('dropbox.com')) return url;
+      
       let newUrl = url;
+      // Force raw=1 for direct image rendering
       if (newUrl.includes('dl=0')) {
         newUrl = newUrl.replace('dl=0', 'raw=1');
       } else if (newUrl.includes('raw=0')) {
         newUrl = newUrl.replace('raw=0', 'raw=1');
       }
+      
       if (!newUrl.includes('raw=1')) {
         const separator = newUrl.includes('?') ? '&' : '?';
         newUrl = `${newUrl}${separator}raw=1`;
@@ -87,8 +91,7 @@ export const KdramaProvider = ({ children }) => {
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         currentData = normalizeData(serverData);
         
-        // Only merge seed data if the Server does NOT have it.
-        // This prevents overwriting user edits on the server.
+        // Merge strategy: Prioritize Server, add missing Seed items
         const serverIds = new Set(currentData.map(d => String(d.id)));
         const dramasToEnsure = [
           'the-haunted-palace',
@@ -103,7 +106,6 @@ export const KdramaProvider = ({ children }) => {
 
         initialSeedData.forEach(seedItem => {
           if (dramasToEnsure.includes(seedItem.id)) {
-            // ONLY ADD IF MISSING
             if (!serverIds.has(String(seedItem.id))) {
               currentData.push(normalizeData([seedItem])[0]);
             }
@@ -111,7 +113,6 @@ export const KdramaProvider = ({ children }) => {
         });
 
       } else {
-        // Fallback to local or seed if server is empty
         const local = getLocalData();
         if (local && local.length > 0) {
           currentData = local;
@@ -120,20 +121,17 @@ export const KdramaProvider = ({ children }) => {
         }
       }
 
-      // Cleanup: Remove unwanted test dramas if necessary, but keep user created ones
+      // Filter out test/deleted items if needed
       currentData = currentData.filter(d => 
         !d.title.toLowerCase().includes('lovely runner') && 
-        d.id !== 'lovely-runner' &&
-        d.id !== 'hometown-cha-cha-cha'
+        String(d.id) !== 'lovely-runner'
       );
 
-      // Sort by display order
       currentData.sort((a, b) => a.display_order - b.display_order);
       setKdramas(currentData);
     } catch (error) {
       console.error("Failed to fetch kdramas", error);
-      const safeSeed = normalizeData(initialSeedData);
-      setKdramas(safeSeed);
+      setKdramas(normalizeData(initialSeedData));
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +145,7 @@ export const KdramaProvider = ({ children }) => {
     const tempId = Date.now().toString();
     const payload = {
       ...dramaData,
-      image_url: dramaData.image_url || '',
+      image_url: dramaData.image_url || '', // API URL is already normalized by form, but context normalizes again to be safe
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -160,19 +158,16 @@ export const KdramaProvider = ({ children }) => {
 
     try {
       const savedDrama = await ncbCreate(TABLE_NAME, payload);
-      
       if (!savedDrama || savedDrama.error) {
         throw new Error(savedDrama?.error || "Unknown database error");
       }
-
       const realId = savedDrama.id || savedDrama._id;
-      
       setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...savedDrama, id: realId } : d));
       return realId;
     } catch (e) {
-      console.error("Failed to save kdrama to DB", e);
+      console.error("Failed to save kdrama", e);
       setKdramas(prev => prev.filter(d => d.id !== tempId));
-      alert(`Failed to save to database: ${e.message}. Changes have been reverted.`);
+      alert(`Failed to save to database: ${e.message}`);
       throw e; 
     }
   };
@@ -188,13 +183,11 @@ export const KdramaProvider = ({ children }) => {
 
     try {
       const response = await ncbUpdate(TABLE_NAME, id, updatedData);
-      if (response && response.error) {
-        throw new Error(response.error);
-      }
+      if (response && response.error) throw new Error(response.error);
     } catch (e) {
       console.error("Failed to update kdrama", e);
       setKdramas(previousState);
-      alert(`Failed to save changes to database: ${e.message}. Changes have been reverted.`);
+      alert(`Failed to save changes: ${e.message}`);
       throw e;
     }
   };
@@ -205,13 +198,11 @@ export const KdramaProvider = ({ children }) => {
 
     try {
       const success = await ncbDelete(TABLE_NAME, id);
-      if (!success) {
-        throw new Error("Delete operation returned failure");
-      }
+      if (!success) throw new Error("Delete failed");
     } catch (e) {
       console.error("Failed to delete kdrama", e);
       setKdramas(previousState);
-      alert("Failed to delete from database. Item restored.");
+      alert("Failed to delete from database.");
     }
   };
 

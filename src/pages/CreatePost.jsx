@@ -10,17 +10,13 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiSearch, FiCalendar, FiClock, FiChevronDown, FiChevronUp, FiGlobe, FiAlertTriangle } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
   const { addPost } = useBlog();
   const { user } = useAuth();
-  
-  const [sections, setSections] = useState({
-    seo: true,
-    schedule: true
-  });
+  const [sections, setSections] = useState({ seo: true, schedule: true });
 
   const toggleSection = (section) => {
     setSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -36,9 +32,9 @@ const CreatePost = () => {
     metaDescription: '',
     scheduledDate: '',
     scheduledTime: '',
-    status: 'draft' 
+    status: 'draft'
   });
-  
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
@@ -49,8 +45,13 @@ const CreatePost = () => {
 
   const processImageUrl = (url) => {
     if (!url) return '';
-    if (url.includes('dropbox.com') && url.includes('dl=0')) {
-      return url.replace('dl=0', 'raw=1');
+    if (url.includes('dropbox.com') && !url.includes('raw=1')) {
+       // Convert dl=0/raw=0 to raw=1, or append
+       let newUrl = url.replace('dl=0', 'raw=1').replace('raw=0', 'raw=1');
+       if (!newUrl.includes('raw=1')) {
+         newUrl += (newUrl.includes('?') ? '&' : '?') + 'raw=1';
+       }
+       return newUrl;
     }
     return url;
   };
@@ -82,55 +83,43 @@ const CreatePost = () => {
     try {
       const data = new FormData();
       data.append('file', file);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
+      // Upload to Cloudflare Function
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
-        body: data,
-        signal: controller.signal
-      }).catch((err) => {
-        throw new Error("Network error or timeout connecting to upload server.");
+        body: data
       });
-      
-      clearTimeout(timeoutId);
 
-      const contentType = response?.headers?.get("content-type");
-      if (response?.ok && contentType && contentType.includes("application/json")) {
+      const contentType = response.headers.get("content-type");
+      if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
+          // Success! Use the returned direct URL
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;
         } else {
-          throw new Error(result.message || "Server rejected upload.");
+          throw new Error(result.message || "Server upload failed.");
         }
-      }
+      } 
       
       const errorText = await response.text();
-      throw new Error(`Server Error (${response.status}): ${errorText.substring(0,80)}`);
+      throw new Error(`Upload Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
 
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadStatus('Upload Failed');
+      setErrorMessage(`Upload failed: ${error.message}. Please try a manual URL or local fallback.`);
       
-      // Explicit fallback logic
-      if (window.confirm(`Cloud upload failed: ${error.message}\n\nSwitch to local storage (base64)? This may slow down the page.`)) {
-        try {
-          const base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          setFormData(prev => ({ ...prev, image: base64 }));
-          setUploadStatus('Saved Locally (Base64)');
-        } catch (localError) {
-          setErrorMessage("Could not process image locally.");
-        }
-      } else {
-        setErrorMessage(`Upload cancelled. Error: ${error.message}`);
+      // Optional: Local Base64 Fallback
+      if (window.confirm("Upload failed. Use local image (Base64) instead?")) {
+          const reader = new FileReader();
+          reader.onload = () => {
+             setFormData(prev => ({ ...prev, image: reader.result }));
+             setUploadStatus('Saved Locally');
+             setErrorMessage('');
+          };
+          reader.readAsDataURL(file);
       }
     } finally {
       setIsUploading(false);
@@ -140,7 +129,7 @@ const CreatePost = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
-    
+
     if (!formData.title || !formData.content) {
       alert('Please fill in at least the Title and Content to save.');
       return;
@@ -161,7 +150,7 @@ const CreatePost = () => {
     } else if (finalStatus === 'published') {
       // Keep today's date
     } else {
-      finalStatus = 'draft'; 
+      finalStatus = 'draft';
     }
 
     const postData = {
@@ -174,7 +163,6 @@ const CreatePost = () => {
 
     try {
       const postId = await addPost(postData);
-      
       if (finalStatus === 'draft') {
         alert('Draft saved successfully!');
         navigate('/admin');
@@ -193,16 +181,6 @@ const CreatePost = () => {
     }
   };
 
-  const getButtonText = () => {
-    if (isSaving) return 'Processing...';
-    switch (formData.status) {
-      case 'draft': return 'Save Draft';
-      case 'scheduled': return 'Schedule Post';
-      case 'published': return 'Publish Now';
-      default: return 'Continue';
-    }
-  };
-
   const quillModules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
@@ -212,28 +190,12 @@ const CreatePost = () => {
     ],
   };
 
-  const quillFormats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike', 'blockquote',
-    'list', 'bullet',
-    'link'
-  ];
-
   return (
     <ProtectedRoute requiredRole="author">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Share Your Story
-          </h1>
-          <p className="text-lg text-gray-600">
-            Create optimized content for your community 💜
-          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"> Share Your Story </h1>
+          <p className="text-lg text-gray-600"> Create optimized content for your community 💜 </p>
         </div>
 
         {errorMessage && (
@@ -251,102 +213,41 @@ const CreatePost = () => {
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-xl shadow-sm p-8 border border-purple-50">
               <div className="mb-6">
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg font-medium"
-                  placeholder="Enter a catchy title..."
-                  required
-                />
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2"> Title * </label>
+                <input type="text" id="title" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg font-medium" placeholder="Enter a catchy title..." required />
               </div>
-
               <div className="mb-8">
-                <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-                  Content *
-                </label>
-                <div className="rounded-lg overflow-hidden border border-gray-300 focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-transparent transition-all">
-                  <ReactQuill
-                    theme="snow"
-                    value={formData.content}
-                    onChange={handleContentChange}
-                    modules={quillModules}
-                    formats={quillFormats}
-                    className="bg-white min-h-[400px]"
-                    placeholder="Share your thoughts..."
-                  />
+                <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2"> Content * </label>
+                <div className="rounded-lg overflow-hidden border border-gray-300">
+                  <ReactQuill theme="snow" value={formData.content} onChange={handleContentChange} modules={quillModules} className="bg-white min-h-[400px]" placeholder="Share your thoughts..." />
                 </div>
               </div>
             </div>
-
+            
             {/* SEO Section */}
             <div className="bg-white rounded-xl shadow-sm border border-purple-50 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('seo')}
-                className="w-full flex items-center justify-between p-6 bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
+              <button type="button" onClick={() => toggleSection('seo')} className="w-full flex items-center justify-between p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
                 <div className="flex items-center">
                   <SafeIcon icon={FiSearch} className="text-purple-600 mr-2" />
                   <h3 className="text-lg font-bold text-gray-900">SEO Optimization</h3>
                 </div>
                 <SafeIcon icon={sections.seo ? FiChevronUp : FiChevronDown} className="text-gray-500" />
               </button>
-              
               <AnimatePresence>
                 {sections.seo && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-gray-100"
-                  >
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100">
                     <div className="p-6 space-y-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Focus Keyword
-                        </label>
-                        <input
-                          type="text"
-                          name="focusKeyword"
-                          value={formData.focusKeyword}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                          placeholder="e.g., K-Drama Reviews"
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2"> Focus Keyword </label>
+                        <input type="text" name="focusKeyword" value={formData.focusKeyword} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="e.g., K-Drama Reviews" />
                       </div>
-
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          SEO Title
-                        </label>
-                        <input
-                          type="text"
-                          name="seoTitle"
-                          value={formData.seoTitle}
-                          onChange={handleChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                          placeholder={formData.title || "Title tag for search engines"}
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2"> SEO Title </label>
+                        <input type="text" name="seoTitle" value={formData.seoTitle} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder={formData.title || "Title tag for search engines"} />
                       </div>
-
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Meta Description
-                        </label>
-                        <textarea
-                          name="metaDescription"
-                          value={formData.metaDescription}
-                          onChange={handleChange}
-                          rows="3"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-                          placeholder="Summary for search results..."
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-2"> Meta Description </label>
+                        <textarea name="metaDescription" value={formData.metaDescription} onChange={handleChange} rows="3" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none" placeholder="Summary for search results..." />
                       </div>
                     </div>
                   </motion.div>
@@ -363,70 +264,35 @@ const CreatePost = () => {
                 <SafeIcon icon={FiCalendar} className="mr-2" />
                 <h3 className="font-bold">Publishing</h3>
               </div>
-              
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Action
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-2"> Action </label>
+                  <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none">
                     <option value="draft">Save as Draft</option>
                     <option value="published">Publish Immediately</option>
                     <option value="scheduled">Schedule for Later</option>
                   </select>
                 </div>
-
-                {/* Show Date/Time Picker ONLY when Schedule is selected */}
                 {formData.status === 'scheduled' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-3 bg-purple-50 p-3 rounded-lg border border-purple-100"
-                  >
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 bg-purple-50 p-3 rounded-lg border border-purple-100">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Publish Date *</label>
-                      <input 
-                        type="date" 
-                        name="scheduledDate"
-                        value={formData.scheduledDate}
-                        onChange={handleChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                        required={formData.status === 'scheduled'}
-                      />
+                      <input type="date" name="scheduledDate" value={formData.scheduledDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none" required={formData.status === 'scheduled'} />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Publish Time</label>
-                      <input 
-                        type="time" 
-                        name="scheduledTime"
-                        value={formData.scheduledTime}
-                        onChange={handleChange}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                      />
+                      <input type="time" name="scheduledTime" value={formData.scheduledTime} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
                     </div>
                   </motion.div>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 disabled:opacity-70"
-                >
+                <button type="submit" disabled={isSaving} className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 disabled:opacity-70">
                   {isSaving ? (
                     <span className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                      Saving...
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> Saving...
                     </span>
                   ) : (
                     <span className="flex items-center">
-                      <SafeIcon icon={FiSave} className="mr-2" />
-                      {getButtonText()}
+                      <SafeIcon icon={FiSave} className="mr-2" /> {isSaving ? 'Processing...' : (formData.status === 'draft' ? 'Save Draft' : 'Publish')}
                     </span>
                   )}
                 </button>
@@ -436,19 +302,10 @@ const CreatePost = () => {
             {/* Categories */}
             <div className="bg-white rounded-xl shadow-sm border border-purple-50 p-6">
               <h3 className="font-bold text-gray-900 mb-4">Category</h3>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              >
+              <select id="category" name="category" value={formData.category} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required>
                 <option value="">Select Category</option>
                 {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
+                  <option key={category} value={category}> {category} </option>
                 ))}
               </select>
             </div>
@@ -459,32 +316,11 @@ const CreatePost = () => {
               <div className="space-y-4">
                 <div className="relative">
                   <SafeIcon icon={FiImage} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="url"
-                    name="image"
-                    value={formData.image}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    placeholder="Image URL..."
-                  />
+                  <input type="url" name="image" value={formData.image} onChange={handleChange} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm" placeholder="Image URL..." />
                 </div>
-                
                 <div className="relative">
-                  <input
-                    type="file"
-                    id="file-upload"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept="image/*"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${
-                      uploadStatus.includes('Failed')
-                        ? 'border-red-300 text-red-600 bg-red-50' 
-                        : 'border-purple-300 text-purple-600 hover:bg-purple-50'
-                    }`}
-                  >
+                  <input type="file" id="file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
+                  <label htmlFor="file-upload" className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}>
                     {isUploading ? (
                       <span className="animate-pulse">Uploading...</span>
                     ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
@@ -494,16 +330,9 @@ const CreatePost = () => {
                     )}
                   </label>
                 </div>
-
                 {formData.image && (
                   <div className="relative rounded-lg overflow-hidden h-32 w-full border border-gray-200 bg-gray-50">
-                    <img
-                      src={formData.image}
-                      alt="Preview"
-                      className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                      onError={() => setImageError(true)}
-                      onLoad={() => setImageError(false)}
-                    />
+                    <img src={formData.image} alt="Preview" className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`} onError={() => setImageError(true)} onLoad={() => setImageError(false)} />
                   </div>
                 )}
               </div>

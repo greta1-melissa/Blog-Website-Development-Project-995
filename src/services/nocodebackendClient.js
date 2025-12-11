@@ -3,20 +3,18 @@
  * Handles all REST API interactions with the NoCodeBackend service.
  *
  * This implementation is aligned with the Swagger for instance:
- *   54230_bangtan_mom_blog_site
+ * 54230_bangtan_mom_blog_site
  *
  * Base URL:
- *   https://api.nocodebackend.com
+ * https://api.nocodebackend.com
  */
 
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------
-
 const env = import.meta.env || {};
 const rawUrl = env.VITE_NCB_URL || 'https://api.nocodebackend.com';
 const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
-
 const NCB_INSTANCE = env.VITE_NCB_INSTANCE || '54230_bangtan_mom_blog_site';
 const NCB_API_KEY = env.VITE_NCB_API_KEY;
 
@@ -30,16 +28,13 @@ console.log('[NCB config]', {
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
-
 function buildHeaders() {
   const headers = {
     'Content-Type': 'application/json',
   };
-
   if (NCB_API_KEY) {
     headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
   }
-
   return headers;
 }
 
@@ -52,38 +47,31 @@ function normalizeTableName(table) {
  */
 function withInstanceParam(path, extraParams = {}) {
   const url = new URL(`${NCB_URL}${path}`);
-
   if (NCB_INSTANCE) {
     // CRITICAL: query parameter, not header, capital I
     url.searchParams.set('Instance', NCB_INSTANCE);
   }
-
   Object.entries(extraParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value));
     }
   });
-
   return url.toString();
 }
 
 async function handleResponse(res, context) {
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.warn('NCB: Request failed', {
-      context,
-      status: res.status,
-      body: text,
-    });
-    return null;
+    const errorBody = await res.text().catch(() => 'Could not read error body.');
+    const errorMessage = `NCB Request Failed: ${context} (Status: ${res.status}). Body: ${errorBody.substring(0, 300)}`;
+    console.error("[NCB Client Error]", errorMessage);
+    throw new Error(errorMessage);
   }
 
-  // Most NCB endpoints return JSON
-  const json = await res.json().catch(() => null);
-  if (!json) {
-    return {};
+  const contentType = res.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return res.json().catch(() => ({}));
   }
-  return json;
+  return { status: 'success' };
 }
 
 // -----------------------------------------------------------------------------
@@ -96,17 +84,9 @@ async function handleResponse(res, context) {
 export async function ncbReadAll(table, queryParams = {}) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/read/${cleanTable}`, queryParams);
-
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: buildHeaders(),
-    });
-
+    const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readAll:${cleanTable}`);
-    if (!json) return [];
-
-    // Swagger: { status: string, data: [...] }
     return Array.isArray(json.data) ? json.data : [];
   } catch (error) {
     console.error(`NCB: Network error readAll:${cleanTable}`, error);
@@ -120,16 +100,9 @@ export async function ncbReadAll(table, queryParams = {}) {
 export async function ncbReadOne(table, id) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/read/${cleanTable}/${id}`);
-
   try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: buildHeaders(),
-    });
-
+    const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readOne:${cleanTable}:${id}`);
-    if (!json) return null;
-
     return json.data || null;
   } catch (error) {
     console.error(`NCB: Network error readOne:${cleanTable}`, error);
@@ -143,27 +116,21 @@ export async function ncbReadOne(table, id) {
 export async function ncbCreate(table, payload) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/create/${cleanTable}`);
-
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: buildHeaders(),
       body: JSON.stringify(payload),
     });
-
     const json = await handleResponse(res, `create:${cleanTable}`);
-    if (!json) return null;
-
-    // NCB returns 'id' at top level usually, but sometimes inside data
-    const id = json.id ?? json.data?.id ?? null;
-    if (id == null) {
-      return json;
+    // NCB create often returns the full object inside a 'data' property.
+    if (json && json.data) {
+      return Array.isArray(json.data) ? json.data[0] : json.data;
     }
-
-    return { id, ...payload };
+    return json; // Fallback for other response structures
   } catch (error) {
     console.error(`NCB: Network error create:${cleanTable}`, error);
-    throw error;
+    throw error; // Re-throw to be caught by context/UI
   }
 }
 
@@ -173,16 +140,13 @@ export async function ncbCreate(table, payload) {
 export async function ncbUpdate(table, id, payload) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/update/${cleanTable}/${id}`);
-
   try {
     const res = await fetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
       body: JSON.stringify(payload),
     });
-
-    const json = await handleResponse(res, `update:${cleanTable}:${id}`);
-    return json || { status: 'success' };
+    return await handleResponse(res, `update:${cleanTable}:${id}`);
   } catch (error) {
     console.error(`NCB: Network error update:${cleanTable}`, error);
     throw error;
@@ -195,15 +159,10 @@ export async function ncbUpdate(table, id, payload) {
 export async function ncbDelete(table, id) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/delete/${cleanTable}/${id}`);
-
   try {
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers: buildHeaders(),
-    });
-
-    const json = await handleResponse(res, `delete:${cleanTable}:${id}`);
-    return !!json || res.ok;
+    const res = await fetch(url, { method: 'DELETE', headers: buildHeaders() });
+    await handleResponse(res, `delete:${cleanTable}:${id}`);
+    return true;
   } catch (error) {
     console.error(`NCB: Network error delete:${cleanTable}`, error);
     return false;
@@ -216,17 +175,13 @@ export async function ncbDelete(table, id) {
 export async function ncbSearch(table, filters = {}) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/search/${cleanTable}`);
-
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: buildHeaders(),
       body: JSON.stringify(filters),
     });
-
     const json = await handleResponse(res, `search:${cleanTable}`);
-    if (!json) return [];
-
     return Array.isArray(json.data) ? json.data : [];
   } catch (error) {
     console.error(`NCB: Network error search:${cleanTable}`, error);
@@ -244,7 +199,6 @@ export async function ncbGet(table, queryParams) {
 // -----------------------------------------------------------------------------
 // Status helper for NcbDebug page
 // -----------------------------------------------------------------------------
-
 export async function getNcbStatus() {
   const status = {
     baseUrl: NCB_URL,
@@ -252,8 +206,6 @@ export async function getNcbStatus() {
     instance: NCB_INSTANCE || null,
     hasApiKey: !!NCB_API_KEY,
     canReadPosts: false,
-    canReadThreads: false,
-    canReadReplies: false,
     lastError: null,
     maskedInstance: NCB_INSTANCE ? `${NCB_INSTANCE.substring(0, 4)}...${NCB_INSTANCE.slice(-4)}` : 'Missing',
     maskedKey: NCB_API_KEY ? `${NCB_API_KEY.substring(0, 4)}...${NCB_API_KEY.slice(-4)}` : 'Missing',
@@ -265,26 +217,15 @@ export async function getNcbStatus() {
     const posts = await ncbReadAll('posts', { page: 1, limit: 1 });
     if (Array.isArray(posts)) {
       status.canReadPosts = true;
-      status.postCount = posts.length;
-      status.message = 'Connection successful';
+      // To get total count, we'd need another call, but this confirms readability
+      status.postCount = 'N/A'; // Count from a limited query is not total
+      status.message = 'Connection successful for `posts` table.';
     } else {
-      status.message = 'Failed to read posts';
+      status.message = 'Failed to read `posts` table. Response was not an array.';
     }
   } catch (e) {
     status.lastError = e?.message || 'Failed to read posts';
     status.message = `Connection failed: ${status.lastError}`;
   }
-
-  // Non-blocking checks
-  try {
-    const threads = await ncbReadAll('threads', { page: 1, limit: 1 });
-    status.canReadThreads = Array.isArray(threads);
-  } catch (e) { /* ignore */ }
-
-  try {
-    const replies = await ncbReadAll('replies', { page: 1, limit: 1 });
-    status.canReadReplies = Array.isArray(replies);
-  } catch (e) { /* ignore */ }
-
   return status;
 }

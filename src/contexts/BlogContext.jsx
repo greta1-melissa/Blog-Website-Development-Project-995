@@ -72,7 +72,6 @@ export const BlogProvider = ({ children }) => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Derived state for public viewing
   const publishedPosts = useMemo(() => {
     const now = new Date();
     return posts.filter(post => {
@@ -97,12 +96,8 @@ export const BlogProvider = ({ children }) => {
       const serverData = await ncbGet('posts');
       let finalPosts = [];
 
-      // 1. If Server has data, use it as the source of truth
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         finalPosts = serverData;
-
-        // 2. Ensure Seed Data exists if missing from server
-        // (Only adds if ID is NOT in server data)
         const serverIds = new Set(finalPosts.map(p => String(p.id)));
         initialPosts.forEach(seedPost => {
           if (!serverIds.has(String(seedPost.id))) {
@@ -110,12 +105,10 @@ export const BlogProvider = ({ children }) => {
           }
         });
       } else {
-        // Fallback: Use Local Storage or Initial Seed if server is empty
         const localData = getLocalPosts();
         finalPosts = (localData && localData.length > 0) ? localData : initialPosts;
       }
 
-      // 3. Sort by Featured then Date
       finalPosts.sort((a, b) => {
         if (a.isHandPicked && !b.isHandPicked) return -1;
         if (!a.isHandPicked && b.isHandPicked) return 1;
@@ -124,8 +117,7 @@ export const BlogProvider = ({ children }) => {
 
       setPosts(finalPosts);
     } catch (error) {
-      console.error("NoCodeBackend: Critical failure in fetchPosts.", error);
-      // On error, keep existing state or fall back to seed
+      console.error("[BlogContext] Critical failure in fetchPosts.", error);
       if (posts.length === 0) setPosts(initialPosts);
     } finally {
       setIsLoading(false);
@@ -168,26 +160,22 @@ export const BlogProvider = ({ children }) => {
       focusKeyword: postData.focusKeyword || ''
     };
 
-    // Optimistic UI Update
     setPosts(prev => [newPost, ...prev]);
 
     try {
       const { id, ...postPayload } = newPost;
-      const result = await ncbCreate('posts', postPayload);
-      
-      if (!result || result.error) {
-        throw new Error(result?.error || "Database persistence failed");
-      }
+      const savedPost = await ncbCreate('posts', postPayload);
 
-      if (result && result.id) {
-        setPosts(prev => prev.map(p => p.id === tempId ? { ...p, id: result.id } : p));
-        return result.id;
+      if (!savedPost || !savedPost.id) {
+        throw new Error("Database did not return a valid post with an ID.");
       }
-      return tempId;
+      
+      setPosts(prev => prev.map(p => (p.id === tempId ? savedPost : p)));
+      return savedPost.id;
     } catch (error) {
-      console.error("NoCodeBackend: Failed to save post.", error);
+      console.error("[BlogContext] Failed to save post.", error);
       setPosts(prev => prev.filter(p => p.id !== tempId));
-      throw new Error(`Failed to save to database: ${error.message}`);
+      throw error;
     }
   };
 
@@ -205,14 +193,11 @@ export const BlogProvider = ({ children }) => {
     ));
 
     try {
-      const response = await ncbUpdate('posts', id, updates);
-      if (response && response.error) {
-        throw new Error(response.error);
-      }
+      await ncbUpdate('posts', id, updates);
     } catch (error) {
       console.error("Failed to update post on server:", error);
       setPosts(previousPosts);
-      throw new Error("Update failed: " + error.message);
+      throw error;
     }
   };
 
