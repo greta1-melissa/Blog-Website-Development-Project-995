@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertCircle, FiHeart, FiAlertTriangle } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiHeart } = FiIcons;
 
 const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const [formData, setFormData] = useState({
@@ -18,7 +18,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     is_featured_on_home: false,
     display_order: 0
   });
-  
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [imageError, setImageError] = useState(false);
@@ -92,7 +92,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let finalValue = type === 'checkbox' ? checked : value;
-    
+
     // Automatically normalize image_url if it's a Dropbox link
     if (name === 'image_url') {
       finalValue = processDropboxUrl(finalValue);
@@ -113,7 +113,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     try {
       const data = new FormData();
       data.append('file', file);
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
@@ -125,13 +125,12 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         console.warn("Fetch failed (Network/Timeout):", err);
         throw new Error("Network error or timeout connecting to upload server.");
       });
-      
+
       clearTimeout(timeoutId);
 
       const contentType = response?.headers?.get("content-type");
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
-        
         if (result.success) {
           // Result.url is already processed by the API to be raw=1
           setFormData(prev => ({ ...prev, image_url: result.url }));
@@ -141,16 +140,15 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
           throw new Error(result.message || "Upload failed on server.");
         }
       }
-      
+
       // Handle non-JSON or error responses
       const errorText = await response.text();
       console.error("Upload Error Response:", errorText);
       throw new Error(`Server returned status ${response.status}. Details: ${errorText.substring(0, 100)}`);
-
     } catch (error) {
       console.error("Upload Handler Error:", error);
       setUploadStatus('Upload Failed');
-      
+
       // Explicit user confirmation for fallback
       if (window.confirm(`Cloud upload failed: ${error.message}\n\nWould you like to use local storage (base64) instead? Note: This increases page size significantly.`)) {
         try {
@@ -176,6 +174,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSaving) return; // double-check prevent
+    
     setIsSaving(true);
     setErrorMessage('');
 
@@ -189,7 +189,23 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       await onSave(drama ? drama.id : null, processedData);
       onClose();
     } catch (error) {
-      setErrorMessage(error.message);
+      console.error("Submit Error:", error);
+      
+      // Extract status code if present in error message string
+      let displayError = error.message.replace('NCB Request Failed:', '').trim();
+      
+      // If it's a JSON string, parse it for cleaner display
+      try {
+        if (displayError.includes('Body: {')) {
+           const bodyPart = displayError.split('Body: ')[1];
+           const jsonBody = JSON.parse(bodyPart);
+           if (jsonBody.message) displayError = jsonBody.message;
+        }
+      } catch (parseErr) {
+        // ignore parsing error
+      }
+      
+      setErrorMessage(`Failed to save: ${displayError}`);
     } finally {
       setIsSaving(false);
     }
@@ -228,9 +244,9 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {errorMessage && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-                <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2 mt-0.5" />
-                <span className="text-red-700 text-sm">{errorMessage}</span>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start animate-fade-in">
+                <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-2 mt-0.5 text-lg flex-shrink-0" />
+                <span className="text-red-700 text-sm font-medium">{errorMessage}</span>
               </div>
             )}
 
@@ -270,7 +286,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                   />
                 </div>
-                
                 <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex items-center">
                     <input
@@ -285,10 +300,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Display Order</label>
-                    <input 
-                      type="number" 
-                      name="display_order" 
-                      value={formData.display_order} 
+                    <input
+                      type="number"
+                      name="display_order"
+                      value={formData.display_order}
                       onChange={handleChange}
                       className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -312,7 +327,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                         className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                       />
                     </div>
-                    
                     <div className="relative">
                       <input
                         type="file"
@@ -323,11 +337,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                       />
                       <label
                         htmlFor="kdrama-file-upload"
-                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${
-                          uploadStatus.includes('Failed') 
-                            ? 'border-red-300 text-red-600' 
-                            : 'border-purple-300 text-purple-600 hover:bg-purple-50'
-                        }`}
+                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
                       >
                         {isUploading ? (
                           <span className="animate-pulse">Uploading...</span>
@@ -338,7 +348,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                         )}
                       </label>
                     </div>
-
                     {formData.image_url && (
                       <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
                         <img
@@ -350,7 +359,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                         />
                       </div>
                     )}
-                    
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Image Alt Text</label>
                       <input
@@ -380,7 +388,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   placeholder="A brief teaser..."
                 />
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Long Synopsis (Recommendations Page)</label>
@@ -425,9 +432,14 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                 className="flex items-center px-8 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-70 shadow-lg shadow-purple-200"
               >
                 {isSaving ? (
-                  <>Saving...</>
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                    Saving...
+                  </>
                 ) : (
-                  <><SafeIcon icon={FiSave} className="mr-2" /> Save Drama</>
+                  <>
+                    <SafeIcon icon={FiSave} className="mr-2" /> Save Drama
+                  </>
                 )}
               </button>
             </div>
