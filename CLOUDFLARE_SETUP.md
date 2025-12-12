@@ -1,35 +1,21 @@
 # Cloudflare Pages Setup Guide
 
-For your blog posts to be saved and visible to everyone, you must configure the environment variables in Cloudflare.
+## 1. Environment Variables (Critical for Proxy)
 
-## 1. Get Your Secrets
-Ensure you have these values ready:
-- `VITE_NCB_URL`: (Usually `https://api.nocodebackend.com`)
-- `VITE_NCB_INSTANCE`: Your specific Instance ID
-- `VITE_NCB_API_KEY`: Your private API Key
-- `DROPBOX_ACCESS_TOKEN`: (Optional) If using Dropbox for images
+Since we switched to a secure server-side proxy, the API Key is no longer exposed to the browser.
+You must configure these variables in the **Cloudflare Dashboard** under **Settings > Environment variables**.
 
-## 2. Go to Cloudflare Dashboard
-1. Log in to Cloudflare.
-2. Go to **Pages & Workers**.
-3. Click on your project (`bangtan-mom-blog`).
-4. Click **Settings** (top tabs).
-5. Click **Environment variables** (left sidebar).
+| Variable Name | Value | Required? |
+|---------------|-------|-----------|
+| `NCB_URL` | `https://api.nocodebackend.com` | **YES** |
+| `NCB_API_KEY` | *Your Secret API Key* | **YES** |
+| `VITE_NCB_INSTANCE` | *Your Instance ID* | **YES** (Used by client) |
+| `DROPBOX_ACCESS_TOKEN` | *Your Dropbox Token* | Optional |
 
-## 3. Add Variables for Production
-Click **Add variable** for each of the following. Ensure they are added to the **Production** environment (and Preview if you want them there too).
+> **Note:** `VITE_NCB_API_KEY` is deprecated but supported as a fallback for `NCB_API_KEY` if already set.
 
-| Variable Name | Value |
-|---------------|-------|
-| `VITE_NCB_URL` | `https://api.nocodebackend.com` |
-| `VITE_NCB_INSTANCE` | *Your Instance ID* |
-| `VITE_NCB_API_KEY` | *Your API Key* |
-| `DROPBOX_ACCESS_TOKEN` | *Your Dropbox Token* (Optional) |
+## 2. Redeploy
+After adding `NCB_API_KEY` and `NCB_URL`, you **must trigger a new deployment** (Retry deployment) for the Functions to pick up the new variables.
 
-## 4. Redeploy
-**Crucial Step:** After adding the variables, you must trigger a **new deployment** for them to take effect.
-1. Go to the **Deployments** tab.
-2. Click the three dots `...` next to your latest deployment.
-3. Select **Retry deployment**.
-
-Once redeployed, the application will be able to connect to NoCodeBackend and your posts will be visible to everyone!
+## 3. Verify
+Go to `/admin` -> **System Status** and click **Run Test** under Proxy Read/Write to confirm the connection works.

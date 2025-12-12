@@ -1,41 +1,37 @@
 /**
  * NoCodeBackend (NCB) Client
- * Handles all REST API interactions with the NoCodeBackend service.
- *
- * This implementation is aligned with the Swagger for instance:
- * 54230_bangtan_mom_blog_site
- *
- * Base URL:
- * https://api.nocodebackend.com
+ * 
+ * UPDATED: Uses local proxy /api/ncb to secure the API Key.
+ * No longer requires VITE_NCB_API_KEY in the browser bundle.
  */
 
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------
 const env = import.meta.env || {};
-const rawUrl = env.VITE_NCB_URL || 'https://api.nocodebackend.com';
-const NCB_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
-const NCB_INSTANCE = env.VITE_NCB_INSTANCE || '54230_bangtan_mom_blog_site';
-const NCB_API_KEY = env.VITE_NCB_API_KEY;
 
-// Debug config (helps in browser console)
-console.log('[NCB config]', {
-  url: NCB_URL,
-  instance: NCB_INSTANCE,
-  hasApiKey: !!NCB_API_KEY,
+// CRITICAL CHANGE: Point to local proxy instead of external URL
+const NCB_URL = '/api/ncb'; 
+
+const NCB_INSTANCE = env.VITE_NCB_INSTANCE || '54230_bangtan_mom_blog_site';
+
+// Debug config
+console.log('[NCB Client]', {
+  mode: 'Proxy Mode',
+  proxyUrl: NCB_URL,
+  instance: NCB_INSTANCE
 });
 
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
+
 function buildHeaders() {
-  const headers = {
+  // We NO LONGER inject the API Key here. 
+  // The /api/ncb proxy adds it server-side.
+  return {
     'Content-Type': 'application/json',
   };
-  if (NCB_API_KEY) {
-    headers['Authorization'] = `Bearer ${NCB_API_KEY}`;
-  }
-  return headers;
 }
 
 function normalizeTableName(table) {
@@ -43,19 +39,24 @@ function normalizeTableName(table) {
 }
 
 /**
- * Attach Instance (capital I) and any extra query params.
+ * Attach Instance and query params.
  */
 function withInstanceParam(path, extraParams = {}) {
-  const url = new URL(`${NCB_URL}${path}`);
+  // Construct URL relative to current origin (handled by proxy)
+  // path usually starts with / (e.g. /read/posts)
+  // combined: /api/ncb/read/posts
+  const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
+  
   if (NCB_INSTANCE) {
-    // CRITICAL: query parameter, not header, capital I
     url.searchParams.set('Instance', NCB_INSTANCE);
   }
+
   Object.entries(extraParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value));
     }
   });
+
   return url.toString();
 }
 
@@ -64,6 +65,16 @@ async function handleResponse(res, context) {
     const errorBody = await res.text().catch(() => 'Could not read error body.');
     const errorMessage = `NCB Request Failed: ${context} (Status: ${res.status}). Body: ${errorBody.substring(0, 300)}`;
     console.error("[NCB Client Error]", errorMessage);
+    
+    // Try to parse JSON error for cleaner message
+    try {
+        const jsonErr = JSON.parse(errorBody);
+        if(jsonErr.message) {
+             throw new Error(`${context}: ${jsonErr.message}`);
+        }
+    } catch(e) {
+        // ignore
+    }
     throw new Error(errorMessage);
   }
 
@@ -75,15 +86,13 @@ async function handleResponse(res, context) {
 }
 
 // -----------------------------------------------------------------------------
-// Core CRUD helpers (table-based)
+// Core CRUD helpers
 // -----------------------------------------------------------------------------
 
-/**
- * READ all records from a table.
- */
 export async function ncbReadAll(table, queryParams = {}) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/read/${cleanTable}`, queryParams);
+  
   try {
     const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readAll:${cleanTable}`);
@@ -94,12 +103,10 @@ export async function ncbReadAll(table, queryParams = {}) {
   }
 }
 
-/**
- * READ single record by ID.
- */
 export async function ncbReadOne(table, id) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/read/${cleanTable}/${id}`);
+  
   try {
     const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readOne:${cleanTable}:${id}`);
@@ -110,12 +117,10 @@ export async function ncbReadOne(table, id) {
   }
 }
 
-/**
- * CREATE record in table.
- */
 export async function ncbCreate(table, payload) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/create/${cleanTable}`);
+  
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -123,23 +128,21 @@ export async function ncbCreate(table, payload) {
       body: JSON.stringify(payload),
     });
     const json = await handleResponse(res, `create:${cleanTable}`);
-    // NCB create often returns the full object inside a 'data' property.
+    
     if (json && json.data) {
       return Array.isArray(json.data) ? json.data[0] : json.data;
     }
-    return json; // Fallback for other response structures
+    return json;
   } catch (error) {
     console.error(`NCB: Network error create:${cleanTable}`, error);
-    throw error; // Re-throw to be caught by context/UI
+    throw error;
   }
 }
 
-/**
- * UPDATE record in table.
- */
 export async function ncbUpdate(table, id, payload) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/update/${cleanTable}/${id}`);
+  
   try {
     const res = await fetch(url, {
       method: 'PUT',
@@ -153,12 +156,10 @@ export async function ncbUpdate(table, id, payload) {
   }
 }
 
-/**
- * DELETE record from table.
- */
 export async function ncbDelete(table, id) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/delete/${cleanTable}/${id}`);
+  
   try {
     const res = await fetch(url, { method: 'DELETE', headers: buildHeaders() });
     await handleResponse(res, `delete:${cleanTable}:${id}`);
@@ -169,12 +170,10 @@ export async function ncbDelete(table, id) {
   }
 }
 
-/**
- * SEARCH records in table.
- */
 export async function ncbSearch(table, filters = {}) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/search/${cleanTable}`);
+  
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -189,27 +188,18 @@ export async function ncbSearch(table, filters = {}) {
   }
 }
 
-/**
- * Backwards-compatible alias.
- */
+// Alias
 export async function ncbGet(table, queryParams) {
   return ncbReadAll(table, queryParams);
 }
 
-// -----------------------------------------------------------------------------
-// Status helper for NcbDebug page
-// -----------------------------------------------------------------------------
+// Status helper
 export async function getNcbStatus() {
   const status = {
     baseUrl: NCB_URL,
-    url: NCB_URL,
-    instance: NCB_INSTANCE || null,
-    hasApiKey: !!NCB_API_KEY,
+    usingProxy: true,
+    instance: NCB_INSTANCE,
     canReadPosts: false,
-    lastError: null,
-    maskedInstance: NCB_INSTANCE ? `${NCB_INSTANCE.substring(0, 4)}...${NCB_INSTANCE.slice(-4)}` : 'Missing',
-    maskedKey: NCB_API_KEY ? `${NCB_API_KEY.substring(0, 4)}...${NCB_API_KEY.slice(-4)}` : 'Missing',
-    postCount: 0,
     message: ''
   };
 
@@ -217,15 +207,12 @@ export async function getNcbStatus() {
     const posts = await ncbReadAll('posts', { page: 1, limit: 1 });
     if (Array.isArray(posts)) {
       status.canReadPosts = true;
-      // To get total count, we'd need another call, but this confirms readability
-      status.postCount = 'N/A'; // Count from a limited query is not total
-      status.message = 'Connection successful for `posts` table.';
+      status.message = 'Proxy connection successful.';
     } else {
-      status.message = 'Failed to read `posts` table. Response was not an array.';
+      status.message = 'Proxy connected, but response format invalid.';
     }
   } catch (e) {
-    status.lastError = e?.message || 'Failed to read posts';
-    status.message = `Connection failed: ${status.lastError}`;
+    status.message = `Connection failed: ${e.message}`;
   }
   return status;
 }
