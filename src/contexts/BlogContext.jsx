@@ -84,6 +84,7 @@ export const BlogProvider = ({ children }) => {
     });
   }, [posts]);
 
+  // Sync to LocalStorage whenever posts change
   useEffect(() => {
     if (posts.length > 0) {
       localStorage.setItem('blog_posts', JSON.stringify(posts));
@@ -110,9 +111,15 @@ export const BlogProvider = ({ children }) => {
       finalPosts = [...normalizedServerPosts];
 
       // 3. Merge Seed Posts if missing from server
+      // CRITICAL FIX: If seed posts aren't on server, mark them as isLocalOnly: true
+      // This ensures deletePost won't try to delete them from server and fail.
       initialPosts.forEach(seedPost => {
         if (!serverIds.has(String(seedPost.id))) {
-          finalPosts.push(seedPost);
+          // Check if we already have this seed post in finalPosts (unlikely but safe)
+          const exists = finalPosts.some(p => String(p.id) === String(seedPost.id));
+          if (!exists) {
+            finalPosts.push({ ...seedPost, isLocalOnly: true });
+          }
         }
       });
 
@@ -120,11 +127,20 @@ export const BlogProvider = ({ children }) => {
       // If a post exists locally but NOT on server, preserve it and mark as local-only
       if (localData.length > 0) {
         localData.forEach(localPost => {
-          if (!serverIds.has(String(localPost.id))) {
-            finalPosts.push({
-              ...localPost,
-              isLocalOnly: true
-            });
+          const idStr = String(localPost.id);
+          // Only add if NOT on server and NOT one of the seed posts we already handled
+          // This prevents duplicates if seed IDs match local IDs
+          const isSeed = initialPosts.some(s => String(s.id) === idStr);
+          
+          if (!serverIds.has(idStr) && !isSeed) {
+             // Deduplication: Ensure we haven't added this ID already
+             const alreadyAdded = finalPosts.some(p => String(p.id) === idStr);
+             if (!alreadyAdded) {
+               finalPosts.push({
+                 ...localPost,
+                 isLocalOnly: true
+               });
+             }
           }
         });
       }
@@ -145,7 +161,7 @@ export const BlogProvider = ({ children }) => {
       setPosts(finalPosts);
     } catch (error) {
       console.error("[BlogContext] Critical failure in fetchPosts.", error);
-      // Fallback on critical error
+      // Fallback on critical error: use local data or initial seeds
       const localData = getLocalPosts();
       setPosts((localData && localData.length > 0) ? localData : initialPosts);
     } finally {
@@ -165,7 +181,7 @@ export const BlogProvider = ({ children }) => {
   }, [posts]);
 
   const addPost = async (postData) => {
-    const tempId = Date.now();
+    const tempId = Date.now(); // Temporary ID
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     const postDate = postData.date || new Date().toISOString().split('T')[0];
@@ -190,28 +206,41 @@ export const BlogProvider = ({ children }) => {
       isLocalOnly: true // Initially local until synced
     };
 
+    // Optimistic Update
     setPosts(prev => [newPost, ...prev]);
 
     try {
+      // Remove local-only flags before sending to server
       const { id, isLocalOnly, ...postPayload } = newPost;
+      
       const savedPost = await ncbCreate('posts', postPayload);
 
-      if (!savedPost || !savedPost.id) {
+      if (!savedPost || (!savedPost.id && !savedPost._id)) {
         throw new Error("Database did not return a valid post with an ID.");
       }
       
-      // Update with real ID and remove local flag
-      setPosts(prev => prev.map(p => (p.id === tempId ? { ...savedPost, isLocalOnly: false } : p)));
-      return savedPost.id;
+      const realId = savedPost.id || savedPost._id;
+
+      // CRITICAL: Update the specific post with the REAL ID from server
+      // This prevents duplicates on next fetch (where server has RealID and local has TempID)
+      setPosts(prev => prev.map(p => {
+        if (p.id === tempId) {
+          return { ...p, ...savedPost, id: realId, isLocalOnly: false };
+        }
+        return p;
+      }));
+
+      return realId;
     } catch (error) {
       console.error("[BlogContext] Failed to save post.", error);
-      // Keep it in state as local-only, letting user know or retry later could be an enhancement
+      // We keep it in state as local-only. 
+      // The user will see "Unsynced" badge and can try to save again later (logic to be added) or delete it.
       throw error;
     }
   };
 
   const updatePost = async (id, updatedFields) => {
-    const previousPosts = Array.isArray(posts) ? [...posts] : [];
+    const previousPosts = [...posts];
     let updates = { ...updatedFields };
 
     // Recalculate read time if content changed
@@ -220,8 +249,9 @@ export const BlogProvider = ({ children }) => {
       updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     }
 
-    // Find target post
+    // Find target post using String comparison for safety
     const target = previousPosts.find(post => String(post.id) === String(id));
+    if (!target) return;
 
     // Optimistic UI update
     setPosts(prev =>
@@ -231,7 +261,7 @@ export const BlogProvider = ({ children }) => {
     );
 
     // If this is a local-only post, just update state + localStorage and skip NCB.
-    if (target && target.isLocalOnly) {
+    if (target.isLocalOnly) {
       try {
         const local = localStorage.getItem('blog_posts');
         if (local) {
@@ -255,25 +285,22 @@ export const BlogProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to update post on server:', error);
-      setPosts(previousPosts);
+      setPosts(previousPosts); // Revert optimistic update
       throw new Error('Update failed: ' + error.message);
     }
   };
 
   const deletePost = async (id) => {
-    // Optimistic delete from state
-    setPosts(prev => {
-      const safe = Array.isArray(prev) ? prev : [];
-      return safe.filter(post => String(post.id) !== String(id));
-    });
-
-    // Get the post we just tried to delete from the previous state
+    // 1. Find the post first to check if it's local
     const postToDelete = posts.find(post => String(post.id) === String(id));
+    
+    // Optimistic delete from state
+    const previousPosts = [...posts];
+    setPosts(prev => prev.filter(post => String(post.id) !== String(id)));
 
-    // 1) If this was a local-only post, just remove it locally and return.
+    // 2. If this was a local-only post (or seed post not on server), just remove it locally and return.
     if (postToDelete && postToDelete.isLocalOnly) {
       try {
-        // Also clean it from localStorage so it doesn’t come back
         const local = localStorage.getItem('blog_posts');
         if (local) {
           const parsed = JSON.parse(local);
@@ -283,20 +310,18 @@ export const BlogProvider = ({ children }) => {
       } catch (e) {
         console.error('Error updating localStorage after local-only delete', e);
       }
-      return;
+      return; // DONE - No server call
     }
 
-    // 2) Otherwise, this post should exist on the server – call NoCodeBackend.
-    const previousPosts = Array.isArray(posts) ? [...posts] : [];
-
+    // 3. Otherwise, this post should exist on the server – call NoCodeBackend.
     try {
       const success = await ncbDelete('posts', id);
-      if (!success) throw new Error('Delete failed on server');
+      if (!success) throw new Error('Delete operation returned false');
     } catch (error) {
       console.error('Failed to delete post from server:', error);
-      // Restore the previous list
+      // Restore the previous list because server delete failed
       setPosts(previousPosts);
-      alert('Failed to delete post from server. Restored.');
+      alert(`Failed to delete post from server: ${error.message || 'Unknown error'}. Restored.`);
     }
   };
 

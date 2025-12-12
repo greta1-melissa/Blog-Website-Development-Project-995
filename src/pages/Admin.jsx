@@ -39,6 +39,7 @@ const Admin = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingPost, setEditingPost] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null); // Track which ID is being deleted
 
   // K-Drama State
   const [kdramaSearch, setKdramaSearch] = useState('');
@@ -53,7 +54,18 @@ const Admin = () => {
 
   const filteredPosts = useMemo(() => {
     const safePosts = Array.isArray(posts) ? posts : [];
-    return safePosts.filter(post => {
+    // Deduplicate posts by ID just in case
+    const seen = new Set();
+    const uniquePosts = [];
+    
+    safePosts.forEach(post => {
+      if (!seen.has(String(post.id))) {
+        seen.add(String(post.id));
+        uniquePosts.push(post);
+      }
+    });
+
+    return uniquePosts.filter(post => {
       const postTitle = post.title || '';
       const matchesSearch = searchTerm === '' || postTitle.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
@@ -75,8 +87,14 @@ const Admin = () => {
 
   // Handlers for Blog Posts
   const handleDeletePost = async (postId) => {
-    if (window.confirm('Are you sure you want to delete this post?')) {
-      await deletePost(postId);
+    if (deletingId) return; // Prevent double clicks
+    if (window.confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+      setDeletingId(postId);
+      try {
+        await deletePost(postId);
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -291,7 +309,13 @@ const Admin = () => {
                         <div className="flex space-x-3">
                           <Link to={`/post/${post.id}`} className="text-indigo-600 hover:text-indigo-900"><SafeIcon icon={FiEye} className="w-4 h-4" /></Link>
                           <button onClick={() => handleEditClick(post)} className="text-fuchsia-600 hover:text-fuchsia-900"><SafeIcon icon={FiEdit} className="w-4 h-4" /></button>
-                          <button onClick={() => handleDeletePost(post.id)} className="text-red-500 hover:text-red-700"><SafeIcon icon={FiTrash2} className="w-4 h-4" /></button>
+                          <button 
+                            onClick={() => handleDeletePost(post.id)} 
+                            disabled={deletingId === post.id}
+                            className={`text-red-500 hover:text-red-700 ${deletingId === post.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <SafeIcon icon={FiTrash2} className={`w-4 h-4 ${deletingId === post.id ? 'animate-pulse' : ''}`} />
+                          </button>
                         </div>
                       </td>
                     </tr>
