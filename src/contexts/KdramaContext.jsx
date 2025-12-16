@@ -56,6 +56,7 @@ export const KdramaProvider = ({ children }) => {
         synopsis_long: item.synopsis_long || item.synopsis || '',
         my_two_cents: item.my_two_cents || '',
         image_url: finalImageUrl,
+        image: finalImageUrl, // Ensure legacy image field is also normalized
         is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
         display_order: parseInt(item.display_order) || (index + 1),
         updated_at: item.updated_at || new Date().toISOString()
@@ -105,7 +106,13 @@ export const KdramaProvider = ({ children }) => {
 
   const addKdrama = async (dramaData) => {
     const tempId = Date.now().toString();
-    const payload = { ...dramaData, created_at: new Date().toISOString() };
+    // CRITICAL: Sync image and image_url to ensure persistence regardless of schema preference
+    const payload = { 
+      ...dramaData, 
+      image: dramaData.image_url, 
+      image_url: dramaData.image_url,
+      created_at: new Date().toISOString() 
+    };
     
     if (kdramas.some(d => d.slug === payload.slug)) {
       throw new Error(`Slug "${payload.slug}" already exists.`);
@@ -137,15 +144,23 @@ export const KdramaProvider = ({ children }) => {
       throw new Error("Cannot update: Record has no slug.");
     }
 
+    // CRITICAL: Prepare robust payload with synced fields
+    const preparedUpdates = {
+      ...updates,
+      image: updates.image_url || updates.image || itemToUpdate.image_url, // Fallback to existing if not updating
+      image_url: updates.image_url || updates.image || itemToUpdate.image_url,
+      updated_at: new Date().toISOString()
+    };
+
     // 1. Optimistic Update
     setKdramas(prev => {
-      const updatedList = prev.map(d => d.id === id ? { ...d, ...updates, updated_at: new Date().toISOString() } : d);
+      const updatedList = prev.map(d => d.id === id ? { ...d, ...preparedUpdates } : d);
       return normalizeData(updatedList).sort((a, b) => a.display_order - b.display_order);
     });
 
     try {
       // 2. FETCH FIRST: Check if record exists on server by SLUG
-      // This avoids 404s when updating items that might have 'slug-ids' locally
+      // Note: ncbGet now has cache-busting enabled in client
       const allRecords = await ncbGet(TABLE_NAME);
       const existingRecord = allRecords.find(r => r.slug === targetSlug);
 
@@ -154,9 +169,9 @@ export const KdramaProvider = ({ children }) => {
         console.log(`[KdramaContext] Upsert: Found ${targetSlug} (ID: ${existingRecord.id}). Updating...`);
         const realId = existingRecord.id;
         
-        await ncbUpdate(TABLE_NAME, realId, updates);
+        await ncbUpdate(TABLE_NAME, realId, preparedUpdates);
 
-        // Sync local ID if it was different (e.g. was using slug or temp id)
+        // Sync local ID if it was different
         if (String(id) !== String(realId)) {
           setKdramas(prev => prev.map(d => d.id === id ? { ...d, id: realId } : d));
         }
@@ -165,7 +180,7 @@ export const KdramaProvider = ({ children }) => {
         console.log(`[KdramaContext] Upsert: ${targetSlug} not found. Creating...`);
         
         // Remove 'id' if it's junk/temp/slug
-        const { id: _, ...createPayload } = { ...itemToUpdate, ...updates };
+        const { id: _, ...createPayload } = { ...itemToUpdate, ...preparedUpdates };
         
         const saved = await ncbCreate(TABLE_NAME, createPayload);
         if (!saved || saved.error) throw new Error(saved?.error || "Create failed during upsert");

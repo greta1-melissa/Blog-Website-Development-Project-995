@@ -2,7 +2,7 @@
  * NoCodeBackend (NCB) Client
  * 
  * UPDATED: Uses local proxy /api/ncb to secure the API Key.
- * No longer requires VITE_NCB_API_KEY in the browser bundle.
+ * Includes Cache Busting to ensure fresh data for updates.
  */
 
 // -----------------------------------------------------------------------------
@@ -40,16 +40,17 @@ function normalizeTableName(table) {
 
 /**
  * Attach Instance and query params.
+ * Adds timestamp to prevent caching on GET requests.
  */
 function withInstanceParam(path, extraParams = {}) {
-  // Construct URL relative to current origin (handled by proxy)
-  // path usually starts with / (e.g. /read/posts)
-  // combined: /api/ncb/read/posts
   const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
   
   if (NCB_INSTANCE) {
     url.searchParams.set('Instance', NCB_INSTANCE);
   }
+
+  // Cache Busting: Always add a timestamp
+  url.searchParams.set('_t', Date.now());
 
   Object.entries(extraParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
