@@ -3,6 +3,7 @@
  * 
  * UPDATED: Uses local proxy /api/ncb to secure the API Key.
  * Includes Cache Busting to ensure fresh data for updates.
+ * Includes ID Normalization to prevent duplicates and persistence errors.
  */
 
 // -----------------------------------------------------------------------------
@@ -61,8 +62,36 @@ function withInstanceParam(path, extraParams = {}) {
   return url.toString();
 }
 
+/**
+ * Normalizes an item to ensure it has a consistent 'id' property.
+ * Checks id, _id, ID, Id in that order.
+ */
+function normalizeItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  
+  // Find the ID
+  const id = item.id || item._id || item.ID || item.Id;
+  
+  // Return shallow copy with normalized id
+  // We keep original _id fields just in case, but ensure 'id' exists
+  return { ...item, id: id };
+}
+
+/**
+ * Normalizes an array of items.
+ */
+function normalizeArray(data) {
+  if (!Array.isArray(data)) return [];
+  return data.map(normalizeItem);
+}
+
 async function handleResponse(res, context) {
   if (!res.ok) {
+    // Special handling for 405 Method Not Allowed - handled in caller
+    if (res.status === 405) {
+      throw new Error('405_METHOD_NOT_ALLOWED');
+    }
+
     const errorBody = await res.text().catch(() => 'Could not read error body.');
     const errorMessage = `NCB Request Failed: ${context} (Status: ${res.status}). Body: ${errorBody.substring(0, 300)}`;
     console.error("[NCB Client Error]", errorMessage);
@@ -97,7 +126,8 @@ export async function ncbReadAll(table, queryParams = {}) {
   try {
     const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readAll:${cleanTable}`);
-    return Array.isArray(json.data) ? json.data : [];
+    // Normalize response data
+    return normalizeArray(json.data);
   } catch (error) {
     console.error(`NCB: Network error readAll:${cleanTable}`, error);
     return [];
@@ -111,7 +141,8 @@ export async function ncbReadOne(table, id) {
   try {
     const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
     const json = await handleResponse(res, `readOne:${cleanTable}:${id}`);
-    return json.data || null;
+    // Normalize single item
+    return normalizeItem(json.data || null);
   } catch (error) {
     console.error(`NCB: Network error readOne:${cleanTable}`, error);
     return null;
@@ -131,9 +162,10 @@ export async function ncbCreate(table, payload) {
     const json = await handleResponse(res, `create:${cleanTable}`);
     
     if (json && json.data) {
-      return Array.isArray(json.data) ? json.data[0] : json.data;
+      const item = Array.isArray(json.data) ? json.data[0] : json.data;
+      return normalizeItem(item);
     }
-    return json;
+    return normalizeItem(json);
   } catch (error) {
     console.error(`NCB: Network error create:${cleanTable}`, error);
     throw error;
@@ -144,7 +176,10 @@ export async function ncbUpdate(table, id, payload) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/update/${cleanTable}/${id}`);
   
+  console.log(`[NCB Update] Table: ${cleanTable}, ID: ${id}`);
+
   try {
+    // Attempt 1: PUT
     const res = await fetch(url, {
       method: 'PUT',
       headers: buildHeaders(),
@@ -152,6 +187,21 @@ export async function ncbUpdate(table, id, payload) {
     });
     return await handleResponse(res, `update:${cleanTable}:${id}`);
   } catch (error) {
+    if (error.message === '405_METHOD_NOT_ALLOWED') {
+      console.warn(`[NCB Update] PUT 405 for ${id}. Retrying with POST...`);
+      // Attempt 2: POST (Fallback)
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: buildHeaders(),
+          body: JSON.stringify(payload),
+        });
+        return await handleResponse(res, `update-post:${cleanTable}:${id}`);
+      } catch (retryError) {
+        console.error(`NCB: Update Retry failed for ${id}`, retryError);
+        throw retryError;
+      }
+    }
     console.error(`NCB: Network error update:${cleanTable}`, error);
     throw error;
   }
@@ -161,11 +211,26 @@ export async function ncbDelete(table, id) {
   const cleanTable = normalizeTableName(table);
   const url = withInstanceParam(`/delete/${cleanTable}/${id}`);
   
+  console.log(`[NCB Delete] Table: ${cleanTable}, ID: ${id}`);
+
   try {
+    // Attempt 1: DELETE
     const res = await fetch(url, { method: 'DELETE', headers: buildHeaders() });
     await handleResponse(res, `delete:${cleanTable}:${id}`);
     return true;
   } catch (error) {
+    if (error.message === '405_METHOD_NOT_ALLOWED') {
+       console.warn(`[NCB Delete] DELETE 405 for ${id}. Retrying with POST...`);
+       // Attempt 2: POST (Fallback)
+       try {
+         const res = await fetch(url, { method: 'POST', headers: buildHeaders() });
+         await handleResponse(res, `delete-post:${cleanTable}:${id}`);
+         return true;
+       } catch (retryError) {
+         console.error(`NCB: Delete Retry failed for ${id}`, retryError);
+         return false;
+       }
+    }
     console.error(`NCB: Network error delete:${cleanTable}`, error);
     return false;
   }
@@ -182,7 +247,7 @@ export async function ncbSearch(table, filters = {}) {
       body: JSON.stringify(filters),
     });
     const json = await handleResponse(res, `search:${cleanTable}`);
-    return Array.isArray(json.data) ? json.data : [];
+    return normalizeArray(Array.isArray(json.data) ? json.data : []);
   } catch (error) {
     console.error(`NCB: Network error search:${cleanTable}`, error);
     return [];

@@ -96,18 +96,14 @@ export const BlogProvider = ({ children }) => {
     try {
       const serverData = await ncbGet('posts');
       const localData = getLocalPosts() || [];
+      
       let finalPosts = [];
-
       // 1. Build a Set of IDs that exist on the server
       const safeServerData = Array.isArray(serverData) ? serverData : [];
       const serverIds = new Set(safeServerData.map(p => String(p.id)));
 
       // 2. Normalize server posts (ensure isLocalOnly is false)
-      const normalizedServerPosts = safeServerData.map(post => ({
-        ...post,
-        isLocalOnly: false
-      }));
-
+      const normalizedServerPosts = safeServerData.map(post => ({ ...post, isLocalOnly: false }));
       finalPosts = [...normalizedServerPosts];
 
       // 3. Merge Seed Posts if missing from server
@@ -133,14 +129,11 @@ export const BlogProvider = ({ children }) => {
           const isSeed = initialPosts.some(s => String(s.id) === idStr);
           
           if (!serverIds.has(idStr) && !isSeed) {
-             // Deduplication: Ensure we haven't added this ID already
-             const alreadyAdded = finalPosts.some(p => String(p.id) === idStr);
-             if (!alreadyAdded) {
-               finalPosts.push({
-                 ...localPost,
-                 isLocalOnly: true
-               });
-             }
+            // Deduplication: Ensure we haven't added this ID already
+            const alreadyAdded = finalPosts.some(p => String(p.id) === idStr);
+            if (!alreadyAdded) {
+              finalPosts.push({ ...localPost, isLocalOnly: true });
+            }
           }
         });
       }
@@ -159,6 +152,7 @@ export const BlogProvider = ({ children }) => {
       });
 
       setPosts(finalPosts);
+
     } catch (error) {
       console.error("[BlogContext] Critical failure in fetchPosts.", error);
       // Fallback on critical error: use local data or initial seeds
@@ -201,7 +195,8 @@ export const BlogProvider = ({ children }) => {
       isHandPicked: false,
       status: status,
       seoTitle: postData.seoTitle || postData.title,
-      metaDescription: postData.metaDescription || postData.content.substring(0, 160),
+      // CRITICAL FIX: Handle undefined content safely
+      metaDescription: postData.metaDescription || (postData.content || "").substring(0, 160),
       focusKeyword: postData.focusKeyword || '',
       isLocalOnly: true // Initially local until synced
     };
@@ -214,13 +209,13 @@ export const BlogProvider = ({ children }) => {
       const { id, isLocalOnly, ...postPayload } = newPost;
       
       const savedPost = await ncbCreate('posts', postPayload);
-
+      
       if (!savedPost || (!savedPost.id && !savedPost._id)) {
         throw new Error("Database did not return a valid post with an ID.");
       }
-      
-      const realId = savedPost.id || savedPost._id;
 
+      const realId = savedPost.id || savedPost._id;
+      
       // CRITICAL: Update the specific post with the REAL ID from server
       // This prevents duplicates on next fetch (where server has RealID and local has TempID)
       setPosts(prev => prev.map(p => {
@@ -229,7 +224,7 @@ export const BlogProvider = ({ children }) => {
         }
         return p;
       }));
-
+      
       return realId;
     } catch (error) {
       console.error("[BlogContext] Failed to save post.", error);
@@ -254,11 +249,9 @@ export const BlogProvider = ({ children }) => {
     if (!target) return;
 
     // Optimistic UI update
-    setPosts(prev =>
-      prev.map(post =>
-        String(post.id) === String(id) ? { ...post, ...updates } : post
-      )
-    );
+    setPosts(prev => prev.map(post => 
+      String(post.id) === String(id) ? { ...post, ...updates } : post
+    ));
 
     // If this is a local-only post, just update state + localStorage and skip NCB.
     if (target.isLocalOnly) {
@@ -266,7 +259,7 @@ export const BlogProvider = ({ children }) => {
         const local = localStorage.getItem('blog_posts');
         if (local) {
           const parsed = JSON.parse(local);
-          const updatedLocal = parsed.map(p =>
+          const updatedLocal = parsed.map(p => 
             String(p.id) === String(id) ? { ...p, ...updates, isLocalOnly: true } : p
           );
           localStorage.setItem('blog_posts', JSON.stringify(updatedLocal));
