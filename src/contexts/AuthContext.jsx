@@ -12,12 +12,13 @@ export const useAuth = () => {
   return context;
 };
 
-// Admin credentials - In production, this would be in a secure backend
+// Admin credentials - Reads from Environment Variables for Security
+// Fallback values are provided for development convenience but should be overridden in production
 const ADMIN_CREDENTIALS = {
-  username: 'bangtanmom',
-  password: 'admin123',
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmom',
+  password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   role: 'admin',
-  email: 'bangtanmom@bangtanmom.com'
+  email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
 };
 
 export const AuthProvider = ({ children }) => {
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (userData) => {
     const { userId, token, newUser, email } = userData;
-
+    
     // Determine user role - default to subscriber
     let role = 'subscriber';
     if (email === ADMIN_CREDENTIALS.email) {
@@ -90,12 +91,10 @@ export const AuthProvider = ({ children }) => {
           lastLogin: new Date().toISOString().split('T')[0],
           userId: userId // Store Quest ID for reference
         };
-        
         // We don't await this to avoid blocking the UI transition
         ncbCreate('users', userPayload).catch(err => 
           console.error("Auth: Failed to sync new user to NCB", err)
         );
-        
         navigate('/onboarding');
       } catch (err) {
         console.error("Auth: Error during user sync", err);
@@ -112,7 +111,7 @@ export const AuthProvider = ({ children }) => {
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       const userId = 'admin-' + Date.now();
       const token = 'admin-token-' + Date.now();
-      
+
       localStorage.setItem('userId', userId);
       localStorage.setItem('token', token);
       localStorage.setItem('userRole', 'admin');
@@ -126,7 +125,6 @@ export const AuthProvider = ({ children }) => {
         email: ADMIN_CREDENTIALS.email,
         name: 'BangtanMom'
       });
-      
       navigate('/admin');
       return true;
     }
@@ -139,7 +137,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
-    
+
     setIsAuthenticated(false);
     setUser(null);
     navigate('/login');
@@ -147,16 +145,13 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    
     const roleHierarchy = {
       'subscriber': 1,
       'author': 2,
       'admin': 3
     };
-
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
-
     return userLevel >= requiredLevel;
   };
 
@@ -165,12 +160,12 @@ export const AuthProvider = ({ children }) => {
   const isSubscriber = () => user?.role === 'subscriber' || user?.role === 'author' || user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      isLoading, 
-      login, 
-      adminLogin, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      isLoading,
+      login,
+      adminLogin,
       logout,
       hasPermission,
       isAdmin,

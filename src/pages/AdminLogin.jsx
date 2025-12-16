@@ -10,11 +10,9 @@ const { FiShield, FiEye, FiEyeOff, FiLock, FiUser, FiArrowLeft } = FiIcons;
 const AdminLogin = () => {
   const { adminLogin } = useAuth();
   const navigate = useNavigate();
-  // Pre-filled credentials for easier access
-  const [formData, setFormData] = useState({
-    username: 'bangtanmom',
-    password: 'admin123'
-  });
+
+  // Credentials are no longer pre-filled for security
+  const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,24 +22,19 @@ const AdminLogin = () => {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    try {
-      // Simulate network delay for effect
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+    // Simulate network delay for effect
+    setTimeout(() => {
       const success = adminLogin(formData);
       if (!success) {
         setError('Invalid username or password. Please try again.');
       }
-    } catch (error) {
-      setError('An error occurred during login. Please try again.');
-    } finally {
       setIsLoading(false);
-    }
+    }, 800);
   };
 
   return (
@@ -143,14 +136,6 @@ const AdminLogin = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <div className="bg-purple-50 rounded-lg p-3 mb-6 border border-purple-100">
-            <h3 className="text-xs font-bold text-purple-900 mb-1 uppercase tracking-wide">Credentials Auto-Filled</h3>
-            <p className="text-xs text-purple-700">
-              Username: <strong>bangtanmom</strong><br />
-              Password: <strong>admin123</strong>
-            </p>
-          </div>
-          
           <Link
             to="/login"
             className="inline-flex items-center text-sm text-purple-200 hover:text-white font-medium transition-colors"

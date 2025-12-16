@@ -14,8 +14,18 @@ You must configure these variables in the **Cloudflare Dashboard** under **Setti
 
 > **Note:** `VITE_NCB_API_KEY` is deprecated but supported as a fallback for `NCB_API_KEY` if already set.
 
-## 2. Redeploy
+## 2. Admin Credentials (Optional Security)
+
+To override the default admin credentials without changing the code, add these variables:
+
+| Variable Name | Value | Description |
+|---------------|-------|-------------|
+| `VITE_ADMIN_USERNAME` | *your_username* | Custom admin username |
+| `VITE_ADMIN_PASSWORD` | *your_secure_password* | Custom admin password |
+| `VITE_ADMIN_EMAIL` | *your_email@domain.com* | Custom admin email |
+
+## 3. Redeploy
 After adding `NCB_API_KEY` and `NCB_URL`, you **must trigger a new deployment** (Retry deployment) for the Functions to pick up the new variables.
 
-## 3. Verify
+## 4. Verify
 Go to `/admin` -> **System Status** and click **Run Test** under Proxy Read/Write to confirm the connection works.
