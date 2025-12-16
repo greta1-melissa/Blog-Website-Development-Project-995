@@ -8,6 +8,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
+import { toDirectImageUrl } from '../utils/media.js';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
@@ -23,13 +24,13 @@ const Home = () => {
   // Logic for Featured Section: Prioritize Hand Picked, fallback to Recent
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
-
+    
     // 1. Get all manually featured posts
     let selection = posts.filter(p => p.isHandPicked);
-
+    
     // 2. Sort them by date (newest first)
     selection.sort((a, b) => new Date(b.date) - new Date(a.date));
-
+    
     // 3. If fewer than 3, fill with most recent posts that aren't already selected
     if (selection.length < 3) {
       const selectedIds = new Set(selection.map(p => p.id));
@@ -37,10 +38,9 @@ const Home = () => {
         .filter(p => !selectedIds.has(p.id))
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .slice(0, 3 - selection.length);
-      
       selection = [...selection, ...fillers];
     }
-
+    
     // 4. Return exactly 3 (or fewer if total posts < 3)
     return selection.slice(0, 3);
   }, [posts]);
@@ -77,8 +77,7 @@ const Home = () => {
               💜 Welcome to the chaos & charm
             </span>
             <h1 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 mb-6 leading-tight">
-              Life, Love, and a <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-400">Little Bit of BTS</span>
+              Life, Love, and a <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-400">Little Bit of BTS</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
               A cozy corner for moms navigating parenting, wellness, and the joy of K-culture. Grab a coffee (or tea) and stay a while.
@@ -98,14 +97,11 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
-              {/* Video Background - Priority Load */}
+              {/* Fallback Image or Video */}
+              {/* Note: We prioritize video if available, but could use post.image with normalization if desired */}
               <video 
-                src={FEATURED_STORY_VIDEO_URL}
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
-                preload="auto"
+                src={FEATURED_STORY_VIDEO_URL} 
+                autoPlay loop muted playsInline preload="auto"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/40 to-transparent" />
@@ -116,8 +112,7 @@ const Home = () => {
                     Latest Story
                   </span>
                   <span className="text-purple-100 text-sm flex items-center font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                    <SafeIcon icon={FiCalendar} className="mr-2" />
-                    {formatDate(mostRecentPost.date)}
+                    <SafeIcon icon={FiCalendar} className="mr-2" /> {formatDate(mostRecentPost.date)}
                   </span>
                 </div>
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
@@ -128,7 +123,7 @@ const Home = () => {
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {stripHtml(mostRecentPost.content)}
                 </p>
-                <Link 
+                <Link
                   to={`/post/${mostRecentPost.id}`}
                   className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
                 >
@@ -155,7 +150,11 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group border border-purple-800 min-h-[240px]"
             >
-              <img src={currentKDrama.image} alt="K-Drama" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+              <img 
+                src={toDirectImageUrl(currentKDrama.image)} 
+                alt="K-Drama" 
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
+              />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
                 <div className="flex justify-between items-start">
@@ -184,15 +183,15 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
             >
-              <iframe 
-                style={{borderRadius: '0px'}} 
-                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0" 
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                allowFullScreen="" 
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                loading="lazy" 
+              <iframe
+                style={{ borderRadius: '0px' }}
+                src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                allowFullScreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
                 title="Spotify Playlist"
                 className="absolute inset-0 w-full h-full"
               ></iframe>
@@ -203,31 +202,28 @@ const Home = () => {
 
       {/* NEW: K-Drama Recommendations Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center mb-12"
         >
           <div className="inline-flex items-center space-x-2 bg-purple-100 text-purple-800 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-4">
-            <SafeIcon icon={FiHeart} />
-            <span>Curated with Love</span>
+            <SafeIcon icon={FiHeart} /> <span>Curated with Love</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-6">
             K-Drama Recommendations <span className="text-purple-600">to Date</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            As a K-drama-loving ARMY mom, these are the shows I recommend to anyone looking for their next emotional rollercoaster. This list will keep growing and changing over time, but here are some of my favourites so far.
+            As a K-drama-loving ARMY mom, these are the shows I recommend to anyone looking for their next emotional rollercoaster.
+            This list will keep growing and changing over time, but here are some of my favourites so far.
           </p>
         </motion.div>
-        
+
         <KdramaGrid />
-        
+
         <div className="text-center mt-12">
-          <Link 
-            to="/kdrama-recommendations"
-            className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all"
-          >
+          <Link to="/kdrama-recommendations" className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all" >
             View All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
           </Link>
         </div>
@@ -254,33 +250,33 @@ const Home = () => {
         </div>
 
         {/* Newsletter / CTA Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
               {/* Lazy load the footer video only when in view */}
               {isFooterInView && (
                 <video 
-                  src={ANIMATED_LOGO_VIDEO_URL}
-                  autoPlay 
-                  loop 
-                  muted 
-                  playsInline 
-                  className="w-full h-full object-cover transform scale-110"
+                  src={ANIMATED_LOGO_VIDEO_URL} 
+                  autoPlay loop muted playsInline 
+                  className="w-full h-full object-cover transform scale-110" 
                 />
               )}
             </div>
+            
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
             <p className="text-purple-200 mb-8 text-lg">
               Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.
             </p>
+            
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
               <input 
                 type="email" 

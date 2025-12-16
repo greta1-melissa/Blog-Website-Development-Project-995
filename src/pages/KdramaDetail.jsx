@@ -6,6 +6,7 @@ import { useForum } from '../contexts/ForumContext';
 import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { toDirectImageUrl } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp, FiImage } = FiIcons;
@@ -16,12 +17,14 @@ const KdramaDetail = () => {
   const { isAuthenticated, user } = useAuth();
   const { getThreadByTitle, createThread, createReply, getRepliesByThread, likeReply } = useForum();
   const { getKdramaBySlug, isLoading } = useKdrama();
-  
+
   const [drama, setDrama] = useState(null);
   const [activeThread, setActiveThread] = useState(null);
   const [replies, setReplies] = useState([]);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Image handling
   const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
@@ -29,14 +32,16 @@ const KdramaDetail = () => {
       const found = getKdramaBySlug(id);
       setDrama(found);
       if (found) {
-        setImgSrc(found.image_url || KDRAMA_PLACEHOLDER);
+        const directUrl = toDirectImageUrl(found.image_url || found.image);
+        setImgSrc(directUrl || KDRAMA_PLACEHOLDER);
       }
     }
   }, [id, isLoading, getKdramaBySlug]);
 
   useEffect(() => {
     if (drama) {
-      setImgSrc(drama.image_url || KDRAMA_PLACEHOLDER);
+      const directUrl = toDirectImageUrl(drama.image_url || drama.image);
+      setImgSrc(directUrl || KDRAMA_PLACEHOLDER);
       
       // Try to find an existing discussion thread for this drama
       const existingThread = getThreadByTitle(drama.title);
@@ -65,7 +70,7 @@ const KdramaDetail = () => {
     setIsSubmitting(true);
     try {
       let threadId = activeThread?.id;
-
+      
       // If no thread exists yet, create one first
       if (!threadId) {
         // Category 2 is 'K-Drama & Entertainment'
@@ -136,7 +141,10 @@ const KdramaDetail = () => {
             src={imgSrc}
             alt={drama.image_alt || drama.title}
             className="w-full h-full object-cover"
-            onError={() => setImgSrc(KDRAMA_PLACEHOLDER)}
+            onError={(e) => {
+              e.currentTarget.src = KDRAMA_PLACEHOLDER;
+              setImgSrc(KDRAMA_PLACEHOLDER);
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
         </div>
@@ -206,8 +214,8 @@ const KdramaDetail = () => {
                       <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
                     </div>
                     <div className="flex items-center gap-4 mt-2 ml-2">
-                      <button
-                        onClick={() => handleLikeReply(reply.id)}
+                      <button 
+                        onClick={() => handleLikeReply(reply.id)} 
                         disabled={!isAuthenticated}
                         className={`text-xs font-medium flex items-center transition-colors ${isAuthenticated ? 'text-gray-500 hover:text-purple-600' : 'text-gray-400 cursor-default'}`}
                       >
@@ -261,10 +269,7 @@ const KdramaDetail = () => {
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 text-center border border-purple-100">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Join the Conversation</h3>
               <p className="text-gray-600 mb-4">Log in to share your thoughts with other fans!</p>
-              <Link
-                to="/login"
-                className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md"
-              >
+              <Link to="/login" className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md" >
                 Sign In to Comment
               </Link>
             </div>

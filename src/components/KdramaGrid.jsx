@@ -4,16 +4,19 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
+import { toDirectImageUrl } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowRight, FiImage, FiMessageCircle } = FiIcons;
+const { FiArrowRight, FiMessageCircle } = FiIcons;
 
 const KdramaCard = ({ drama, index }) => {
-  const [imgSrc, setImgSrc] = useState(drama.image_url || KDRAMA_PLACEHOLDER);
+  // Normalize: check image_url, then image, then imageUrl
+  const normalizedImage = toDirectImageUrl(drama.image_url || drama.image || drama.imageUrl);
+  const [imgSrc, setImgSrc] = useState(normalizedImage || KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
-    setImgSrc(drama.image_url || KDRAMA_PLACEHOLDER);
-  }, [drama.image_url]);
+    setImgSrc(normalizedImage || KDRAMA_PLACEHOLDER);
+  }, [normalizedImage]);
 
   return (
     <motion.div
@@ -29,7 +32,10 @@ const KdramaCard = ({ drama, index }) => {
           alt={drama.image_alt || drama.title}
           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
           loading="lazy"
-          onError={() => setImgSrc(KDRAMA_PLACEHOLDER)}
+          onError={(e) => {
+            e.currentTarget.src = KDRAMA_PLACEHOLDER;
+            setImgSrc(KDRAMA_PLACEHOLDER);
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -40,6 +46,7 @@ const KdramaCard = ({ drama, index }) => {
           ))}
         </div>
       </Link>
+      
       <div className="p-5 flex flex-col flex-grow">
         <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`}>
           <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight hover:text-purple-600 transition-colors line-clamp-2 min-h-[3rem]">

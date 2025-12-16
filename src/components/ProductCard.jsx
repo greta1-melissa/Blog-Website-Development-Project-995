@@ -5,16 +5,18 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
+import { toDirectImageUrl } from '../utils/media.js';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
 
 const ProductCard = ({ product, index }) => {
-  const [imgSrc, setImgSrc] = useState(product.image || PLACEHOLDER_IMAGE);
+  const normalizedImage = toDirectImageUrl(product.image || product.image_url);
+  const [imgSrc, setImgSrc] = useState(normalizedImage || PLACEHOLDER_IMAGE);
 
   useEffect(() => {
-    setImgSrc(product.image || PLACEHOLDER_IMAGE);
-  }, [product.image]);
+    setImgSrc(normalizedImage || PLACEHOLDER_IMAGE);
+  }, [normalizedImage]);
 
   const getRatingStars = (rating = 5) => {
     const stars = [];
@@ -31,7 +33,6 @@ const ProductCard = ({ product, index }) => {
   };
 
   const extractPrice = (content) => {
-    // Basic regex might need adjustment if HTML is present, but usually stripHtml is safer first
     const cleanContent = stripHtml(content);
     const priceMatch = cleanContent.match(/\$\d+(\.\d{2})?/);
     return priceMatch ? priceMatch[0] : null;
@@ -53,7 +54,10 @@ const ProductCard = ({ product, index }) => {
             src={imgSrc}
             alt={product.title}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={() => setImgSrc(PLACEHOLDER_IMAGE)}
+            onError={(e) => {
+              e.currentTarget.src = PLACEHOLDER_IMAGE;
+              setImgSrc(PLACEHOLDER_IMAGE);
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute top-4 left-4">
@@ -80,6 +84,7 @@ const ProductCard = ({ product, index }) => {
             {getRatingStars(4)}
           </div>
         </div>
+
         <Link to={`/post/${product.id}`}>
           <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
             {product.title}
@@ -88,6 +93,7 @@ const ProductCard = ({ product, index }) => {
         <p className="text-gray-600 mb-4 leading-relaxed line-clamp-3">
           {stripHtml(product.content).substring(0, 150)}...
         </p>
+
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
             {formatDate(product.date)}

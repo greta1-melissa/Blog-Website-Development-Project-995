@@ -5,6 +5,7 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
+import { toDirectImageUrl } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck, FiImage } = FiIcons;
@@ -13,13 +14,17 @@ const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
   const [isFollowing, setIsFollowing] = useState(false);
+  
   const post = getPost(id);
   
-  const [imgSrc, setImgSrc] = useState(post?.image || BLOG_PLACEHOLDER);
+  // Normalization logic
+  const normalizedImage = post ? toDirectImageUrl(post.image || post.image_url) : '';
+  const [imgSrc, setImgSrc] = useState(normalizedImage || BLOG_PLACEHOLDER);
 
   useEffect(() => {
     if (post) {
-      setImgSrc(post.image || BLOG_PLACEHOLDER);
+      const directUrl = toDirectImageUrl(post.image || post.image_url);
+      setImgSrc(directUrl || BLOG_PLACEHOLDER);
     }
   }, [post]);
 
@@ -102,7 +107,10 @@ const BlogPost = () => {
             src={imgSrc}
             alt={post.title}
             className="w-full h-64 md:h-96 object-cover"
-            onError={() => setImgSrc(BLOG_PLACEHOLDER)}
+            onError={(e) => {
+              e.currentTarget.src = BLOG_PLACEHOLDER;
+              setImgSrc(BLOG_PLACEHOLDER);
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
           <div className="absolute top-6 left-6">
@@ -197,10 +205,7 @@ const BlogPost = () => {
               <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} />
               {isFollowing ? 'Following' : 'Follow'}
             </button>
-            <button 
-              onClick={handleShare}
-              className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
-            >
+            <button onClick={handleShare} className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors">
               <SafeIcon icon={FiShare2} className="mr-2" /> Share
             </button>
           </div>
@@ -230,7 +235,9 @@ const BlogPost = () => {
           </div>
         </motion.div>
       </motion.article>
-      <script dangerouslySetInnerHTML={{__html: `
+      
+      <script dangerouslySetInnerHTML={{
+        __html: `
         window.addEventListener('scroll', function() {
           const article = document.querySelector('article');
           const progressBar = document.getElementById('reading-progress');
