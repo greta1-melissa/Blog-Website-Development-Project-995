@@ -5,19 +5,18 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
 
 const BlogCard = ({ post, index }) => {
-  // Normalize image URL immediately
-  const normalizedImage = toDirectImageUrl(post.image || post.image_url || post.imageUrl);
-  const [imgSrc, setImgSrc] = useState(normalizedImage || BLOG_PLACEHOLDER);
+  const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
 
   useEffect(() => {
-    setImgSrc(normalizedImage || BLOG_PLACEHOLDER);
-  }, [normalizedImage]);
+    const src = getImageSrc(post.image || post.image_url);
+    setImgSrc(src || BLOG_PLACEHOLDER);
+  }, [post.image, post.image_url]);
 
   const getCategoryColor = (category) => {
     switch (category) {
@@ -44,7 +43,6 @@ const BlogCard = ({ post, index }) => {
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out"
           onError={(e) => {
             e.currentTarget.src = BLOG_PLACEHOLDER;
-            setImgSrc(BLOG_PLACEHOLDER);
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

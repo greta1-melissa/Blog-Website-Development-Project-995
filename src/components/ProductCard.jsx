@@ -5,18 +5,18 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
 
 const ProductCard = ({ product, index }) => {
-  const normalizedImage = toDirectImageUrl(product.image || product.image_url);
-  const [imgSrc, setImgSrc] = useState(normalizedImage || PLACEHOLDER_IMAGE);
+  const [imgSrc, setImgSrc] = useState(PLACEHOLDER_IMAGE);
 
   useEffect(() => {
-    setImgSrc(normalizedImage || PLACEHOLDER_IMAGE);
-  }, [normalizedImage]);
+    const src = getImageSrc(product.image || product.image_url);
+    setImgSrc(src || PLACEHOLDER_IMAGE);
+  }, [product.image, product.image_url]);
 
   const getRatingStars = (rating = 5) => {
     const stars = [];
@@ -56,7 +56,6 @@ const ProductCard = ({ product, index }) => {
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               e.currentTarget.src = PLACEHOLDER_IMAGE;
-              setImgSrc(PLACEHOLDER_IMAGE);
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

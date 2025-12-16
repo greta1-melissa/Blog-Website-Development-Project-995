@@ -5,10 +5,10 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck, FiImage } = FiIcons;
+const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
 
 const BlogPost = () => {
   const { id } = useParams();
@@ -16,19 +16,15 @@ const BlogPost = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   
   const post = getPost(id);
-  
-  // Normalization logic
-  const normalizedImage = post ? toDirectImageUrl(post.image || post.image_url) : '';
-  const [imgSrc, setImgSrc] = useState(normalizedImage || BLOG_PLACEHOLDER);
+  const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
 
   useEffect(() => {
     if (post) {
-      const directUrl = toDirectImageUrl(post.image || post.image_url);
-      setImgSrc(directUrl || BLOG_PLACEHOLDER);
+      const src = getImageSrc(post.image || post.image_url);
+      setImgSrc(src || BLOG_PLACEHOLDER);
     }
   }, [post]);
 
-  // SEO: Update Document Title and Meta Tags
   useEffect(() => {
     if (post) {
       document.title = post.seoTitle || post.title + " | Bangtan Mom";
@@ -109,7 +105,6 @@ const BlogPost = () => {
             className="w-full h-64 md:h-96 object-cover"
             onError={(e) => {
               e.currentTarget.src = BLOG_PLACEHOLDER;
-              setImgSrc(BLOG_PLACEHOLDER);
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />

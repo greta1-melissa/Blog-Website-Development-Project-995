@@ -8,30 +8,21 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
 
 const Home = () => {
-  // Use publishedPosts instead of raw posts to hide drafts/scheduled
   const { publishedPosts: posts } = useBlog();
-  
-  // Lazy load ref for footer video
   const footerVideoRef = useRef(null);
   const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
 
-  // Logic for Featured Section: Prioritize Hand Picked, fallback to Recent
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
-    
-    // 1. Get all manually featured posts
     let selection = posts.filter(p => p.isHandPicked);
-    
-    // 2. Sort them by date (newest first)
     selection.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    // 3. If fewer than 3, fill with most recent posts that aren't already selected
     if (selection.length < 3) {
       const selectedIds = new Set(selection.map(p => p.id));
       const fillers = posts
@@ -40,12 +31,9 @@ const Home = () => {
         .slice(0, 3 - selection.length);
       selection = [...selection, ...fillers];
     }
-    
-    // 4. Return exactly 3 (or fewer if total posts < 3)
     return selection.slice(0, 3);
   }, [posts]);
 
-  // Safely access the most recent post for the Hero/Bento section
   const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
 
   const currentKDrama = {
@@ -61,7 +49,6 @@ const Home = () => {
     <div className="min-h-screen pb-20 bg-primary-50">
       {/* Hero Section */}
       <div className="relative pt-20 pb-32 overflow-hidden">
-        {/* Background Decor */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float"></div>
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '2s' }}></div>
@@ -86,10 +73,9 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Bento Grid Featured Section */}
+      {/* Bento Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
-          {/* Main Feature: Latest Post */}
           {mostRecentPost ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -97,8 +83,6 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
-              {/* Fallback Image or Video */}
-              {/* Note: We prioritize video if available, but could use post.image with normalization if desired */}
               <video 
                 src={FEATURED_STORY_VIDEO_URL} 
                 autoPlay loop muted playsInline preload="auto"
@@ -136,14 +120,11 @@ const Home = () => {
               <div className="text-center">
                 <div className="text-4xl mb-4">✍️</div>
                 <h3 className="text-xl font-bold text-gray-900">Stories loading...</h3>
-                <p className="text-gray-500">Getting the latest updates for you.</p>
               </div>
             </div>
           )}
 
-          {/* Right Column */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
-            {/* Top Right: Currently Watching */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -151,7 +132,7 @@ const Home = () => {
               className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group border border-purple-800 min-h-[240px]"
             >
               <img 
-                src={toDirectImageUrl(currentKDrama.image)} 
+                src={getImageSrc(currentKDrama.image)} 
                 alt="K-Drama" 
                 className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
               />
@@ -171,12 +152,10 @@ const Home = () => {
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
                   <p className="text-sm text-purple-200 mb-3">{currentKDrama.episode}</p>
-                  <p className="text-xs text-purple-300 line-clamp-2">{currentKDrama.description}</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Bottom Right: Spotify Embed */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -200,7 +179,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* NEW: K-Drama Recommendations Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -216,7 +194,6 @@ const Home = () => {
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             As a K-drama-loving ARMY mom, these are the shows I recommend to anyone looking for their next emotional rollercoaster.
-            This list will keep growing and changing over time, but here are some of my favourites so far.
           </p>
         </motion.div>
 
@@ -229,7 +206,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured Collection Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
           <div>
@@ -238,18 +214,15 @@ const Home = () => {
               <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Editor's Picks</span>
             </div>
             <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
-            <p className="text-gray-500 mt-1">Curated selections just for you</p>
           </div>
         </div>
 
-        {/* Featured Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
           {featuredPosts.map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
         </div>
 
-        {/* Newsletter / CTA Section */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -260,7 +233,6 @@ const Home = () => {
           
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
-              {/* Lazy load the footer video only when in view */}
               {isFooterInView && (
                 <video 
                   src={ANIMATED_LOGO_VIDEO_URL} 
@@ -273,10 +245,6 @@ const Home = () => {
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
-            <p className="text-purple-200 mb-8 text-lg">
-              Get weekly updates on parenting hacks, K-Drama recommendations, and a dose of positivity delivered to your inbox.
-            </p>
-            
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
               <input 
                 type="email" 

@@ -5,11 +5,13 @@ import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { BLOG_PLACEHOLDER } from '../config/assets';
+import { normalizeDropboxUrl } from '../utils/media.js';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const [sections, setSections] = useState({ seo: false, schedule: true });
+  
   const toggleSection = (section) => {
     setSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -53,23 +55,10 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     }
   }, [post]);
 
-  const processImageUrl = (url) => {
-    if (!url) return '';
-    if (url.includes('dropbox.com') && !url.includes('raw=1')) {
-       // Convert dl=0/raw=0 to raw=1
-       let newUrl = url.replace('dl=0', 'raw=1').replace('raw=0', 'raw=1');
-       if (!newUrl.includes('raw=1')) {
-         newUrl += (newUrl.includes('?') ? '&' : '?') + 'raw=1';
-       }
-       return newUrl;
-    }
-    return url;
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'image') {
-      const processedUrl = processImageUrl(value);
+      const processedUrl = normalizeDropboxUrl(value);
       setFormData({ ...formData, [name]: processedUrl });
       setImageError(false);
     } else {
@@ -93,13 +82,13 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     try {
       const data = new FormData();
       data.append('file', file);
-
+      
       // Upload to Cloudflare Function
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data
       });
-
+      
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
@@ -110,10 +99,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         } else {
           throw new Error(result.message || "Server upload failed.");
         }
-      }
+      } 
+      
       const errorText = await response.text();
       throw new Error(`Server Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
-
+      
     } catch (error) {
       console.warn("Upload failed:", error);
       setUploadStatus('Upload Failed');
@@ -122,8 +112,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       if (window.confirm("Cloud upload failed. Use local storage (Base64) instead?")) {
         const reader = new FileReader();
         reader.onload = () => {
-             setFormData(prev => ({ ...prev, image: reader.result }));
-             setUploadStatus('Saved Locally');
+          setFormData(prev => ({ ...prev, image: reader.result }));
+          setUploadStatus('Saved Locally');
         };
         reader.readAsDataURL(file);
       }
@@ -189,16 +179,29 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-          
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
+        >
           {/* Header */}
           <div className="sticky top-0 bg-white z-20 px-6 py-4 border-b border-gray-100 flex justify-between items-center shadow-sm">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Edit Post</h2>
               <p className="text-xs text-gray-500">Updating: {post?.title}</p>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+            >
               <SafeIcon icon={FiX} className="text-xl" />
             </button>
           </div>
@@ -217,7 +220,14 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-medium text-lg" required />
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none font-medium text-lg"
+                      required
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
@@ -238,19 +248,42 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   </button>
                   <AnimatePresence>
                     {sections.seo && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-200 bg-white">
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="border-t border-gray-200 bg-white"
+                      >
                         <div className="p-4 space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Focus Keyword</label>
-                            <input type="text" name="focusKeyword" value={formData.focusKeyword} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" />
+                            <input
+                              type="text"
+                              name="focusKeyword"
+                              value={formData.focusKeyword}
+                              onChange={handleChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
-                            <input type="text" name="seoTitle" value={formData.seoTitle} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm" />
+                            <input
+                              type="text"
+                              name="seoTitle"
+                              value={formData.seoTitle}
+                              onChange={handleChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
-                            <textarea name="metaDescription" value={formData.metaDescription} onChange={handleChange} rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none text-sm" />
+                            <textarea
+                              name="metaDescription"
+                              value={formData.metaDescription}
+                              onChange={handleChange}
+                              rows="3"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none text-sm"
+                            />
                           </div>
                         </div>
                       </motion.div>
@@ -269,7 +302,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white">
+                      <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
+                      >
                         <option value="draft">Save as Draft</option>
                         <option value="published">Published</option>
                         <option value="scheduled">Scheduled</option>
@@ -279,14 +317,26 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {formData.status === 'scheduled' ? 'Scheduled Date' : 'Publish Date'}
                       </label>
-                      <input type="date" name="scheduledDate" value={formData.scheduledDate} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white" />
+                      <input
+                        type="date"
+                        name="scheduledDate"
+                        value={formData.scheduledDate}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
+                      />
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3">Category</h3>
-                  <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white text-sm" required>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white text-sm"
+                    required
+                  >
                     <option value="">Select Category</option>
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -300,11 +350,31 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     <div className="flex flex-col gap-3">
                       <div className="relative">
                         <SafeIcon icon={FiImage} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL" className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white" />
+                        <input
+                          type="url"
+                          name="image"
+                          value={formData.image}
+                          onChange={handleChange}
+                          placeholder="Image URL"
+                          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
+                        />
                       </div>
                       <div className="relative">
-                        <input type="file" id="edit-file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
-                        <label htmlFor="edit-file-upload" className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap text-sm bg-white ${uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}>
+                        <input 
+                          type="file" 
+                          id="edit-file-upload" 
+                          onChange={handleFileUpload} 
+                          className="hidden" 
+                          accept="image/*" 
+                        />
+                        <label 
+                          htmlFor="edit-file-upload" 
+                          className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap text-sm bg-white ${
+                            uploadStatus === 'Upload Failed' 
+                              ? 'border-red-300 text-red-600' 
+                              : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                          }`}
+                        >
                           {isUploading ? (
                             <span className="animate-pulse">Uploading...</span>
                           ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
@@ -317,7 +387,13 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     </div>
                     {formData.image && (
                       <div className="relative h-32 w-full bg-white rounded-lg overflow-hidden border border-gray-200">
-                        <img src={formData.image} alt="Preview" className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`} onError={() => setImageError(true)} onLoad={() => setImageError(false)} />
+                        <img 
+                          src={formData.image} 
+                          alt="Preview" 
+                          className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
+                          onError={() => setImageError(true)}
+                          onLoad={() => setImageError(false)}
+                        />
                       </div>
                     )}
                   </div>
@@ -328,17 +404,27 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
 
           {/* Footer Actions */}
           <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-100 flex justify-end gap-3 z-20">
-            <button onClick={onClose} className="px-6 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors border border-gray-200" disabled={isSaving}>
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+              disabled={isSaving}
+            >
               Cancel
             </button>
-            <button onClick={handleSubmit} disabled={isSaving} className="flex items-center px-8 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-70 shadow-lg shadow-purple-200">
+            <button
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="flex items-center px-8 py-2.5 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-70 shadow-lg shadow-purple-200"
+            >
               {isSaving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> Saving...
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                  Saving...
                 </>
               ) : (
                 <>
-                  <SafeIcon icon={FiSave} className="mr-2" /> {getButtonText()}
+                  <SafeIcon icon={FiSave} className="mr-2" />
+                  {getButtonText()}
                 </>
               )}
             </button>

@@ -6,10 +6,10 @@ import { useForum } from '../contexts/ForumContext';
 import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp, FiImage } = FiIcons;
+const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp } = FiIcons;
 
 const KdramaDetail = () => {
   const { id } = useParams(); // id here acts as slug or ID
@@ -23,8 +23,6 @@ const KdramaDetail = () => {
   const [replies, setReplies] = useState([]);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Image handling
   const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
@@ -32,18 +30,17 @@ const KdramaDetail = () => {
       const found = getKdramaBySlug(id);
       setDrama(found);
       if (found) {
-        const directUrl = toDirectImageUrl(found.image_url || found.image);
-        setImgSrc(directUrl || KDRAMA_PLACEHOLDER);
+        const src = getImageSrc(found.image_url || found.image);
+        setImgSrc(src || KDRAMA_PLACEHOLDER);
       }
     }
   }, [id, isLoading, getKdramaBySlug]);
 
   useEffect(() => {
     if (drama) {
-      const directUrl = toDirectImageUrl(drama.image_url || drama.image);
-      setImgSrc(directUrl || KDRAMA_PLACEHOLDER);
+      const src = getImageSrc(drama.image_url || drama.image);
+      setImgSrc(src || KDRAMA_PLACEHOLDER);
       
-      // Try to find an existing discussion thread for this drama
       const existingThread = getThreadByTitle(drama.title);
       if (existingThread) {
         setActiveThread(existingThread);
@@ -70,10 +67,7 @@ const KdramaDetail = () => {
     setIsSubmitting(true);
     try {
       let threadId = activeThread?.id;
-      
-      // If no thread exists yet, create one first
       if (!threadId) {
-        // Category 2 is 'K-Drama & Entertainment'
         threadId = await createThread(2, {
           title: drama.title,
           content: `Discussion thread for ${drama.title}. ${drama.synopsis_short}`
@@ -81,7 +75,6 @@ const KdramaDetail = () => {
         setActiveThread({ id: threadId, title: drama.title });
       }
 
-      // Now create the reply
       await createReply(threadId, replyContent);
       setReplyContent('');
       if (activeThread) {
@@ -109,7 +102,6 @@ const KdramaDetail = () => {
     }
   };
 
-  // Helper to safely get user initial
   const getUserInitial = (name) => {
     if (!name) return 'U';
     return name.charAt(0).toUpperCase();
@@ -134,7 +126,6 @@ const KdramaDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Hero Header */}
       <div className="relative h-[400px] lg:h-[500px] overflow-hidden bg-purple-900">
         <div className="absolute inset-0">
           <img
@@ -143,7 +134,6 @@ const KdramaDetail = () => {
             className="w-full h-full object-cover"
             onError={(e) => {
               e.currentTarget.src = KDRAMA_PLACEHOLDER;
-              setImgSrc(KDRAMA_PLACEHOLDER);
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
@@ -187,7 +177,6 @@ const KdramaDetail = () => {
             </div>
           </div>
 
-          {/* Comments List */}
           <div className="space-y-8 mb-12">
             {replies.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
@@ -229,7 +218,6 @@ const KdramaDetail = () => {
             )}
           </div>
 
-          {/* Comment Form */}
           {isAuthenticated ? (
             <div className="flex gap-4 items-start">
               <div className="flex-shrink-0 hidden sm:block">

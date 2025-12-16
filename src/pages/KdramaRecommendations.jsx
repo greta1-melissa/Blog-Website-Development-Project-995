@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 
 const { FiArrowLeft, FiTv, FiStar, FiImage, FiMessageCircle, FiEdit3 } = FiIcons;
 
@@ -27,7 +27,6 @@ const KdramaRecommendations = () => {
       transition={{ duration: 0.6 }}
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
     >
-      {/* Header */}
       <div className="text-center mb-16">
         <Link to="/" className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium mb-6 transition-colors" >
           <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
@@ -40,7 +39,6 @@ const KdramaRecommendations = () => {
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
           This is my growing list of K-dramas that made me laugh, cry, think, and completely lose sleep.
-          Click on any drama to see my full thoughts and join the discussion in the comments!
         </p>
       </div>
 
@@ -51,19 +49,15 @@ const KdramaRecommendations = () => {
 
       <div className="grid grid-cols-1 gap-12">
         {kdramas.map((drama) => {
-          // Normalize image for list view
-          const displayImage = toDirectImageUrl(drama.image_url || drama.image);
+          const displayImage = getImageSrc(drama.image_url || drama.image);
           
           return (
             <div
               key={drama.id}
-              id={drama.slug} // Anchor for hash links
+              id={drama.slug}
               className="group block bg-white rounded-2xl shadow-sm border border-purple-50 overflow-hidden hover:shadow-lg transition-all duration-300 scroll-mt-24"
             >
-              {/* Card Layout: Vertical Stack (Image on Top) */}
               <div className="flex flex-col h-full">
-                
-                {/* Image Section - Top Area */}
                 <div className="w-full h-80 md:h-96 relative bg-purple-100">
                   {displayImage ? (
                     <img
@@ -73,16 +67,13 @@ const KdramaRecommendations = () => {
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                   ) : (
-                    // Fallback Gradient
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-indigo-200 flex items-center justify-center text-purple-400">
                       <SafeIcon icon={FiImage} className="text-6xl opacity-50" />
                     </div>
                   )}
-                  {/* Overlay for depth */}
                   <div className="absolute inset-0 bg-black/5" />
                 </div>
 
-                {/* Content Section */}
                 <div className="p-8 md:p-10 flex flex-col">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
                     <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="hover:text-purple-600 transition-colors">
@@ -101,7 +92,6 @@ const KdramaRecommendations = () => {
                     <p>{drama.synopsis_long || drama.synopsis_short}</p>
                   </div>
 
-                  {/* My 2 Cents Section */}
                   <div className="mt-auto bg-purple-50/50 rounded-xl p-6 border border-purple-100">
                     <h4 className="flex items-center text-sm font-bold text-purple-900 uppercase tracking-wide mb-3">
                       <SafeIcon icon={FiEdit3} className="mr-2 text-purple-600" />

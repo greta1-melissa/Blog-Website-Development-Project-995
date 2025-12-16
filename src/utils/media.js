@@ -3,13 +3,35 @@
  */
 
 /**
- * Converts a URL into a direct display URL.
- * Specifically handles Dropbox links to ensure they render directly (raw=1).
+ * Resolves a stored URL to a displayable source.
+ * Proxies Dropbox links through our API to avoid hotlinking issues.
  * 
- * @param {string} url - The raw URL string
- * @returns {string} - The normalized direct URL or empty string
+ * @param {string} storedUrl - The URL stored in the database
+ * @returns {string} - The resolved image source
  */
-export const toDirectImageUrl = (url) => {
+export const getImageSrc = (storedUrl) => {
+  if (!storedUrl) return "";
+  
+  const cleanUrl = String(storedUrl).trim();
+  if (!cleanUrl) return "";
+
+  // If it's a Dropbox link, route through our proxy
+  if (cleanUrl.includes('dropbox.com')) {
+    return `/api/media/dropbox?url=${encodeURIComponent(cleanUrl)}`;
+  }
+
+  // Otherwise return original (e.g., Unsplash, other CDN)
+  return cleanUrl;
+};
+
+/**
+ * Normalizes a Dropbox URL to ensure it has raw=1.
+ * Useful for saving clean URLs to the database from user input.
+ * 
+ * @param {string} url - The raw URL input
+ * @returns {string} - The normalized URL
+ */
+export const normalizeDropboxUrl = (url) => {
   if (!url) return "";
   
   let newUrl = String(url).trim();
@@ -18,15 +40,10 @@ export const toDirectImageUrl = (url) => {
   // Handle Dropbox links
   if (newUrl.includes('dropbox.com')) {
     // 1. Replace dl=0 or dl=1 with raw=1
-    if (newUrl.includes('dl=0')) {
-      newUrl = newUrl.replace('dl=0', 'raw=1');
-    } else if (newUrl.includes('dl=1')) {
-      newUrl = newUrl.replace('dl=1', 'raw=1');
-    } 
+    newUrl = newUrl.replace(/dl=[01]/g, 'raw=1');
+    
     // 2. Replace raw=0 with raw=1
-    else if (newUrl.includes('raw=0')) {
-      newUrl = newUrl.replace('raw=0', 'raw=1');
-    }
+    newUrl = newUrl.replace(/raw=0/g, 'raw=1');
     
     // 3. If raw=1 is still missing, append it
     if (!newUrl.includes('raw=1')) {
@@ -37,3 +54,6 @@ export const toDirectImageUrl = (url) => {
 
   return newUrl;
 };
+
+// Backward compatibility alias if needed
+export const toDirectImageUrl = normalizeDropboxUrl;

@@ -9,7 +9,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { BLOG_PLACEHOLDER } from '../config/assets';
-import { toDirectImageUrl } from '../utils/media.js';
+import { normalizeDropboxUrl } from '../utils/media.js';
 
 const { FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
 
@@ -48,7 +48,7 @@ const CreatePost = () => {
     const { name, value } = e.target;
     if (name === 'image') {
       // Automatically normalize image URLs on input
-      const processedUrl = toDirectImageUrl(value);
+      const processedUrl = normalizeDropboxUrl(value);
       setFormData({ ...formData, [name]: processedUrl });
       setImageError(false);
     } else {

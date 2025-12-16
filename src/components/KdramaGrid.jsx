@@ -4,19 +4,18 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
-import { toDirectImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowRight, FiMessageCircle } = FiIcons;
 
 const KdramaCard = ({ drama, index }) => {
-  // Normalize: check image_url, then image, then imageUrl
-  const normalizedImage = toDirectImageUrl(drama.image_url || drama.image || drama.imageUrl);
-  const [imgSrc, setImgSrc] = useState(normalizedImage || KDRAMA_PLACEHOLDER);
+  const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
-    setImgSrc(normalizedImage || KDRAMA_PLACEHOLDER);
-  }, [normalizedImage]);
+    const src = getImageSrc(drama.image_url || drama.image);
+    setImgSrc(src || KDRAMA_PLACEHOLDER);
+  }, [drama.image_url, drama.image]);
 
   return (
     <motion.div
@@ -34,7 +33,6 @@ const KdramaCard = ({ drama, index }) => {
           loading="lazy"
           onError={(e) => {
             e.currentTarget.src = KDRAMA_PLACEHOLDER;
-            setImgSrc(KDRAMA_PLACEHOLDER);
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
