@@ -33,6 +33,7 @@ export const KdramaProvider = ({ children }) => {
 
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
       // Use the shared utility to normalize images consistently
+      // Prioritize image_url
       const finalImageUrl = normalizeDropboxImageUrl(item.image_url || item.image || '');
       
       return {

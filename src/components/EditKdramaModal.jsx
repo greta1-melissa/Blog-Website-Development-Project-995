@@ -36,7 +36,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
         my_two_cents: drama.my_two_cents || '',
-        // Initialize with normalized URL
+        // Initialize with normalized URL from existing record
+        // This ensures subsequent saves preserve the image if not changed
         image_url: normalizeDropboxImageUrl(drama.image_url || drama.image || ''),
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
