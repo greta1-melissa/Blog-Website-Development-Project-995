@@ -6,7 +6,7 @@
  * Normalizes a Dropbox URL to ensure it is a direct image link.
  * - Replaces dl=0/1 with raw=1
  * - Adds raw=1 if missing
- * - Removes 'st' (security token?) parameters which expire
+ * - Removes 'st' (security token) parameters which expire
  * 
  * @param {string} url - The raw URL input
  * @returns {string} - The normalized URL
@@ -20,25 +20,24 @@ export const normalizeDropboxImageUrl = (url) => {
   try {
     const urlObj = new URL(stringUrl);
     
-    // 1. Remove 'st' parameter
+    // 1. Remove 'st' parameter (security token)
     urlObj.searchParams.delete('st');
     
-    // 2. Remove 'dl' parameter
+    // 2. Remove 'dl' parameter to avoid conflicts
     urlObj.searchParams.delete('dl');
     
-    // 3. Ensure 'raw=1'
+    // 3. Ensure 'raw=1' for direct rendering
     urlObj.searchParams.set('raw', '1');
     
     return urlObj.toString();
   } catch (e) {
-    // Fallback for simple string replacement if URL parsing fails (e.g. valid domain but partial url?)
-    // though dropbox URLs are usually absolute.
+    // Fallback for simple string replacement if URL parsing fails
     let newUrl = stringUrl;
     
     // Replace dl=0/1 with raw=1
     newUrl = newUrl.replace(/([?&])dl=[01]/g, '$1raw=1');
     
-    // Remove st=...
+    // Remove st=... parameter
     newUrl = newUrl.replace(/([?&])st=[^&]*&?/g, '$1');
     
     // Ensure raw=1 if not present

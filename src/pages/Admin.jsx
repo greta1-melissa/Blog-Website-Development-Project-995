@@ -423,7 +423,7 @@ const Admin = () => {
                             alt={drama.title}
                             className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm bg-gray-100"
                             onError={(e) => {
-                              console.error(`[Admin] Broken Image for Drama ID ${drama.id}:`, drama.image_url);
+                              console.error(`[Admin] Broken Image for Drama ID ${drama.id} (${drama.title}):`, drama.image_url);
                               e.currentTarget.src = KDRAMA_PLACEHOLDER;
                             }}
                           />

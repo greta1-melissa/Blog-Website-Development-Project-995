@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { normalizeDropboxUrl } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiHeart } = FiIcons;
@@ -36,7 +36,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
         my_two_cents: drama.my_two_cents || '',
-        image_url: normalizeDropboxUrl(drama.image_url || drama.image || ''),
+        // Initialize with normalized URL
+        image_url: normalizeDropboxImageUrl(drama.image_url || drama.image || ''),
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
         display_order: drama.display_order || 0
@@ -77,7 +78,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
 
     // Automatically normalize image_url if it's a Dropbox link
     if (name === 'image_url') {
-      finalValue = normalizeDropboxUrl(finalValue);
+      finalValue = normalizeDropboxImageUrl(finalValue);
       setImageError(false);
     }
     setFormData(prev => ({ ...prev, [name]: finalValue }));
@@ -115,7 +116,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         const result = await response.json();
         if (result.success) {
           // Result.url is already processed by the API to be raw=1
-          setFormData(prev => ({ ...prev, image_url: result.url }));
+          const freshUrl = normalizeDropboxImageUrl(result.url);
+          setFormData(prev => ({ ...prev, image_url: freshUrl }));
           setUploadStatus('Upload Complete!');
           return;
         } else {
@@ -324,7 +326,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                           alt="Preview"
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
                           onError={(e) => {
-                            console.error("[EditKdramaModal] Broken Preview Image:", formData.image_url);
+                            // Log warning but don't crash
+                            console.warn("[EditKdramaModal] Preview failed:", formData.image_url);
                             e.currentTarget.src = KDRAMA_PLACEHOLDER;
                           }}
                           onLoad={() => setImageError(false)}

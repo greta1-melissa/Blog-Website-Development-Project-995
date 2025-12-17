@@ -58,7 +58,7 @@ const KdramaDetail = () => {
 
   const handleImageError = (e) => {
     if (drama) {
-      console.error(`[KdramaDetail] Broken Image URL for drama ID ${drama.id}:`, drama.image_url || drama.image);
+      console.error(`[KdramaDetail] Broken Image URL for drama ID ${drama.id} (${drama.title}):`, drama.image_url || drama.image);
     }
     e.currentTarget.src = KDRAMA_PLACEHOLDER;
   };
