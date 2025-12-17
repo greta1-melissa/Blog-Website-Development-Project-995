@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowRight, FiMessageCircle } = FiIcons;
@@ -13,9 +13,14 @@ const KdramaCard = ({ drama, index }) => {
   const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
-    const src = getImageSrc(drama.image_url || drama.image);
+    const src = normalizeDropboxImageUrl(drama.image_url || drama.image);
     setImgSrc(src || KDRAMA_PLACEHOLDER);
   }, [drama.image_url, drama.image]);
+
+  const handleImageError = (e) => {
+    console.error(`[KdramaCard] Broken Image URL for drama ID ${drama.id}:`, drama.image_url || drama.image);
+    e.currentTarget.src = KDRAMA_PLACEHOLDER;
+  };
 
   return (
     <motion.div
@@ -31,9 +36,7 @@ const KdramaCard = ({ drama, index }) => {
           alt={drama.image_alt || drama.title}
           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
           loading="lazy"
-          onError={(e) => {
-            e.currentTarget.src = KDRAMA_PLACEHOLDER;
-          }}
+          onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -44,7 +47,6 @@ const KdramaCard = ({ drama, index }) => {
           ))}
         </div>
       </Link>
-      
       <div className="p-5 flex flex-col flex-grow">
         <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`}>
           <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight hover:text-purple-600 transition-colors line-clamp-2 min-h-[3rem]">

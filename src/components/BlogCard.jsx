@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
@@ -14,9 +14,14 @@ const BlogCard = ({ post, index }) => {
   const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
 
   useEffect(() => {
-    const src = getImageSrc(post.image || post.image_url);
+    const src = normalizeDropboxImageUrl(post.image || post.image_url);
     setImgSrc(src || BLOG_PLACEHOLDER);
   }, [post.image, post.image_url]);
+
+  const handleImageError = (e) => {
+    console.error(`[BlogCard] Broken Image URL for post ID ${post.id}:`, post.image || post.image_url);
+    e.currentTarget.src = BLOG_PLACEHOLDER;
+  };
 
   const getCategoryColor = (category) => {
     switch (category) {
@@ -41,9 +46,7 @@ const BlogCard = ({ post, index }) => {
           src={imgSrc}
           alt={post.title}
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out"
-          onError={(e) => {
-            e.currentTarget.src = BLOG_PLACEHOLDER;
-          }}
+          onError={handleImageError}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute top-4 left-4">
@@ -52,7 +55,7 @@ const BlogCard = ({ post, index }) => {
           </span>
         </div>
       </Link>
-      
+
       <div className="flex-1 p-6 flex flex-col">
         <div className="flex items-center text-xs text-gray-500 mb-4 space-x-3 font-medium">
           <span className="flex items-center text-purple-600 bg-purple-50 px-2 py-1 rounded-md">

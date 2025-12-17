@@ -5,7 +5,7 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
@@ -14,16 +14,22 @@ const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
   const [isFollowing, setIsFollowing] = useState(false);
-  
   const post = getPost(id);
   const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
 
   useEffect(() => {
     if (post) {
-      const src = getImageSrc(post.image || post.image_url);
+      const src = normalizeDropboxImageUrl(post.image || post.image_url);
       setImgSrc(src || BLOG_PLACEHOLDER);
     }
   }, [post]);
+
+  const handleImageError = (e) => {
+    if (post) {
+      console.error(`[BlogPost] Broken Image URL for post ID ${post.id}:`, post.image || post.image_url);
+    }
+    e.currentTarget.src = BLOG_PLACEHOLDER;
+  };
 
   useEffect(() => {
     if (post) {
@@ -80,11 +86,9 @@ const BlogPost = () => {
   };
 
   const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
-  const cleanHtmlContent = isHtml 
-    ? post.content
-        .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
-        .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')
-    : post.content;
+  const cleanHtmlContent = isHtml ? post.content
+    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
+    .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '') : post.content;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
@@ -103,9 +107,7 @@ const BlogPost = () => {
             src={imgSrc}
             alt={post.title}
             className="w-full h-64 md:h-96 object-cover"
-            onError={(e) => {
-              e.currentTarget.src = BLOG_PLACEHOLDER;
-            }}
+            onError={handleImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
           <div className="absolute top-6 left-6">
@@ -139,7 +141,7 @@ const BlogPost = () => {
               {post.title}
             </span>
           </h1>
-          
+
           <div className="w-full bg-purple-100 rounded-full h-2 mb-6">
             <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full w-0 transition-all duration-300" id="reading-progress"></div>
           </div>
@@ -230,7 +232,6 @@ const BlogPost = () => {
           </div>
         </motion.div>
       </motion.article>
-      
       <script dangerouslySetInnerHTML={{
         __html: `
         window.addEventListener('scroll', function() {

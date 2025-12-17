@@ -3,57 +3,70 @@
  */
 
 /**
+ * Normalizes a Dropbox URL to ensure it is a direct image link.
+ * - Replaces dl=0/1 with raw=1
+ * - Adds raw=1 if missing
+ * - Removes 'st' (security token?) parameters which expire
+ * 
+ * @param {string} url - The raw URL input
+ * @returns {string} - The normalized URL
+ */
+export const normalizeDropboxImageUrl = (url) => {
+  if (!url) return "";
+  const stringUrl = String(url).trim();
+  
+  if (!stringUrl.includes('dropbox.com')) return stringUrl;
+
+  try {
+    const urlObj = new URL(stringUrl);
+    
+    // 1. Remove 'st' parameter
+    urlObj.searchParams.delete('st');
+    
+    // 2. Remove 'dl' parameter
+    urlObj.searchParams.delete('dl');
+    
+    // 3. Ensure 'raw=1'
+    urlObj.searchParams.set('raw', '1');
+    
+    return urlObj.toString();
+  } catch (e) {
+    // Fallback for simple string replacement if URL parsing fails (e.g. valid domain but partial url?)
+    // though dropbox URLs are usually absolute.
+    let newUrl = stringUrl;
+    
+    // Replace dl=0/1 with raw=1
+    newUrl = newUrl.replace(/([?&])dl=[01]/g, '$1raw=1');
+    
+    // Remove st=...
+    newUrl = newUrl.replace(/([?&])st=[^&]*&?/g, '$1');
+    
+    // Ensure raw=1 if not present
+    if (!newUrl.includes('raw=1')) {
+      const separator = newUrl.includes('?') ? '&' : '?';
+      newUrl = `${newUrl}${separator}raw=1`;
+    }
+    
+    // Cleanup trailing & or ?
+    if (newUrl.endsWith('&') || newUrl.endsWith('?')) {
+      newUrl = newUrl.slice(0, -1);
+    }
+    
+    return newUrl;
+  }
+};
+
+/**
  * Resolves a stored URL to a displayable source.
- * Proxies Dropbox links through our API to avoid hotlinking issues.
+ * Uses the normalized direct Dropbox URL.
  * 
  * @param {string} storedUrl - The URL stored in the database
  * @returns {string} - The resolved image source
  */
 export const getImageSrc = (storedUrl) => {
-  if (!storedUrl) return "";
-  
-  const cleanUrl = String(storedUrl).trim();
-  if (!cleanUrl) return "";
-
-  // If it's a Dropbox link, route through our proxy
-  if (cleanUrl.includes('dropbox.com')) {
-    return `/api/media/dropbox?url=${encodeURIComponent(cleanUrl)}`;
-  }
-
-  // Otherwise return original (e.g., Unsplash, other CDN)
-  return cleanUrl;
+  return normalizeDropboxImageUrl(storedUrl);
 };
 
-/**
- * Normalizes a Dropbox URL to ensure it has raw=1.
- * Useful for saving clean URLs to the database from user input.
- * 
- * @param {string} url - The raw URL input
- * @returns {string} - The normalized URL
- */
-export const normalizeDropboxUrl = (url) => {
-  if (!url) return "";
-  
-  let newUrl = String(url).trim();
-  if (!newUrl) return "";
-
-  // Handle Dropbox links
-  if (newUrl.includes('dropbox.com')) {
-    // 1. Replace dl=0 or dl=1 with raw=1
-    newUrl = newUrl.replace(/dl=[01]/g, 'raw=1');
-    
-    // 2. Replace raw=0 with raw=1
-    newUrl = newUrl.replace(/raw=0/g, 'raw=1');
-    
-    // 3. If raw=1 is still missing, append it
-    if (!newUrl.includes('raw=1')) {
-      const separator = newUrl.includes('?') ? '&' : '?';
-      newUrl = `${newUrl}${separator}raw=1`;
-    }
-  }
-
-  return newUrl;
-};
-
-// Explicitly export alias to prevent build errors in files we haven't touched yet
-export const toDirectImageUrl = normalizeDropboxUrl;
+// Export aliases for consistency across the app
+export const normalizeDropboxUrl = normalizeDropboxImageUrl;
+export const toDirectImageUrl = normalizeDropboxImageUrl;

@@ -8,7 +8,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
@@ -22,7 +22,7 @@ const Home = () => {
     if (!posts || posts.length === 0) return [];
     let selection = posts.filter(p => p.isHandPicked);
     selection.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     if (selection.length < 3) {
       const selectedIds = new Set(selection.map(p => p.id));
       const fillers = posts
@@ -45,6 +45,8 @@ const Home = () => {
     year: "2024"
   };
 
+  const currentDramaImg = normalizeDropboxImageUrl(currentKDrama.image);
+
   return (
     <div className="min-h-screen pb-20 bg-primary-50">
       {/* Hero Section */}
@@ -64,7 +66,8 @@ const Home = () => {
               💜 Welcome to the chaos & charm
             </span>
             <h1 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 mb-6 leading-tight">
-              Life, Love, and a <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-400">Little Bit of BTS</span>
+              Life, Love, and a <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-400">Little Bit of BTS</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
               A cozy corner for moms navigating parenting, wellness, and the joy of K-culture. Grab a coffee (or tea) and stay a while.
@@ -83,13 +86,16 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
             >
-              <video 
-                src={FEATURED_STORY_VIDEO_URL} 
-                autoPlay loop muted playsInline preload="auto"
+              <video
+                src={FEATURED_STORY_VIDEO_URL}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/40 to-transparent" />
-              
               <div className="absolute bottom-0 left-0 p-8 md:p-10 text-white relative z-10">
                 <div className="flex items-center space-x-3 mb-3">
                   <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide shadow-lg shadow-purple-900/20">
@@ -131,10 +137,14 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group border border-purple-800 min-h-[240px]"
             >
-              <img 
-                src={getImageSrc(currentKDrama.image)} 
-                alt="K-Drama" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" 
+              <img
+                src={currentDramaImg}
+                alt="K-Drama"
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
+                onError={(e) => {
+                  console.error('[Home] Broken Image for Watching Widget:', currentKDrama.image);
+                  e.currentTarget.style.display = 'none'; // Basic fallback: hide image
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
@@ -187,7 +197,8 @@ const Home = () => {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center space-x-2 bg-purple-100 text-purple-800 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide mb-4">
-            <SafeIcon icon={FiHeart} /> <span>Curated with Love</span>
+            <SafeIcon icon={FiHeart} />
+            <span>Curated with Love</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-6">
             K-Drama Recommendations <span className="text-purple-600">to Date</span>
@@ -200,7 +211,10 @@ const Home = () => {
         <KdramaGrid />
 
         <div className="text-center mt-12">
-          <Link to="/kdrama-recommendations" className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all" >
+          <Link
+            to="/kdrama-recommendations"
+            className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all"
+          >
             View All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
           </Link>
         </div>
@@ -230,25 +244,26 @@ const Home = () => {
           className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          
           <div className="relative z-10 max-w-2xl mx-auto">
             <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
               {isFooterInView && (
-                <video 
-                  src={ANIMATED_LOGO_VIDEO_URL} 
-                  autoPlay loop muted playsInline 
-                  className="w-full h-full object-cover transform scale-110" 
+                <video
+                  src={ANIMATED_LOGO_VIDEO_URL}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover transform scale-110"
                 />
               )}
             </div>
-            
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
               Join the Bangtan Mom Community
             </h2>
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Your email address" 
+              <input
+                type="email"
+                placeholder="Your email address"
                 className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
               />
               <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">

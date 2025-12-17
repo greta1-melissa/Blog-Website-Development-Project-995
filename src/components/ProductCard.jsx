@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
@@ -14,9 +14,14 @@ const ProductCard = ({ product, index }) => {
   const [imgSrc, setImgSrc] = useState(PLACEHOLDER_IMAGE);
 
   useEffect(() => {
-    const src = getImageSrc(product.image || product.image_url);
+    const src = normalizeDropboxImageUrl(product.image || product.image_url);
     setImgSrc(src || PLACEHOLDER_IMAGE);
   }, [product.image, product.image_url]);
+
+  const handleImageError = (e) => {
+    console.error(`[ProductCard] Broken Image URL for product ID ${product.id}:`, product.image || product.image_url);
+    e.currentTarget.src = PLACEHOLDER_IMAGE;
+  };
 
   const getRatingStars = (rating = 5) => {
     const stars = [];
@@ -54,9 +59,7 @@ const ProductCard = ({ product, index }) => {
             src={imgSrc}
             alt={product.title}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              e.currentTarget.src = PLACEHOLDER_IMAGE;
-            }}
+            onError={handleImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute top-4 left-4">
@@ -83,7 +86,6 @@ const ProductCard = ({ product, index }) => {
             {getRatingStars(4)}
           </div>
         </div>
-
         <Link to={`/post/${product.id}`}>
           <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
             {product.title}
@@ -92,7 +94,6 @@ const ProductCard = ({ product, index }) => {
         <p className="text-gray-600 mb-4 leading-relaxed line-clamp-3">
           {stripHtml(product.content).substring(0, 150)}...
         </p>
-
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
             {formatDate(product.date)}

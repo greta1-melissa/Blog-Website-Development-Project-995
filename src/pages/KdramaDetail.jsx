@@ -6,7 +6,7 @@ import { useForum } from '../contexts/ForumContext';
 import { useKdrama } from '../contexts/KdramaContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { getImageSrc } from '../utils/media.js';
+import { normalizeDropboxImageUrl } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiMessageCircle, FiHeart, FiSend, FiUser, FiClock, FiThumbsUp } = FiIcons;
@@ -30,7 +30,7 @@ const KdramaDetail = () => {
       const found = getKdramaBySlug(id);
       setDrama(found);
       if (found) {
-        const src = getImageSrc(found.image_url || found.image);
+        const src = normalizeDropboxImageUrl(found.image_url || found.image);
         setImgSrc(src || KDRAMA_PLACEHOLDER);
       }
     }
@@ -38,9 +38,9 @@ const KdramaDetail = () => {
 
   useEffect(() => {
     if (drama) {
-      const src = getImageSrc(drama.image_url || drama.image);
+      const src = normalizeDropboxImageUrl(drama.image_url || drama.image);
       setImgSrc(src || KDRAMA_PLACEHOLDER);
-      
+
       const existingThread = getThreadByTitle(drama.title);
       if (existingThread) {
         setActiveThread(existingThread);
@@ -56,9 +56,17 @@ const KdramaDetail = () => {
     }
   }, [activeThread, getRepliesByThread]);
 
+  const handleImageError = (e) => {
+    if (drama) {
+      console.error(`[KdramaDetail] Broken Image URL for drama ID ${drama.id}:`, drama.image_url || drama.image);
+    }
+    e.currentTarget.src = KDRAMA_PLACEHOLDER;
+  };
+
   const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
+
     if (!isAuthenticated) {
       navigate('/login');
       return;
@@ -67,6 +75,7 @@ const KdramaDetail = () => {
     setIsSubmitting(true);
     try {
       let threadId = activeThread?.id;
+
       if (!threadId) {
         threadId = await createThread(2, {
           title: drama.title,
@@ -119,7 +128,9 @@ const KdramaDetail = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-bold mb-4">Drama Not Found</h1>
-        <Link to="/kdrama-recommendations" className="text-purple-600 hover:underline">Back to List</Link>
+        <Link to="/kdrama-recommendations" className="text-purple-600 hover:underline">
+          Back to List
+        </Link>
       </div>
     );
   }
@@ -132,9 +143,7 @@ const KdramaDetail = () => {
             src={imgSrc}
             alt={drama.image_alt || drama.title}
             className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.src = KDRAMA_PLACEHOLDER;
-            }}
+            onError={handleImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
         </div>
@@ -203,8 +212,8 @@ const KdramaDetail = () => {
                       <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
                     </div>
                     <div className="flex items-center gap-4 mt-2 ml-2">
-                      <button 
-                        onClick={() => handleLikeReply(reply.id)} 
+                      <button
+                        onClick={() => handleLikeReply(reply.id)}
                         disabled={!isAuthenticated}
                         className={`text-xs font-medium flex items-center transition-colors ${isAuthenticated ? 'text-gray-500 hover:text-purple-600' : 'text-gray-400 cursor-default'}`}
                       >
@@ -257,7 +266,10 @@ const KdramaDetail = () => {
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 text-center border border-purple-100">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Join the Conversation</h3>
               <p className="text-gray-600 mb-4">Log in to share your thoughts with other fans!</p>
-              <Link to="/login" className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md" >
+              <Link
+                to="/login"
+                className="inline-block bg-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-md"
+              >
                 Sign In to Comment
               </Link>
             </div>
