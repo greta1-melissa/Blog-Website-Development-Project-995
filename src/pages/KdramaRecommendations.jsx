@@ -5,6 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
 import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiTv, FiStar, FiImage, FiMessageCircle, FiEdit3 } = FiIcons;
 
@@ -58,17 +59,16 @@ const KdramaRecommendations = () => {
             <div key={drama.id} id={drama.slug} className="group block bg-white rounded-2xl shadow-sm border border-purple-50 overflow-hidden hover:shadow-lg transition-all duration-300 scroll-mt-24">
               <div className="flex flex-col h-full">
                 <div className="w-full h-80 md:h-96 relative bg-purple-100">
-                  {displayImage ? (
-                    <img
-                      src={displayImage}
-                      alt={`${drama.title} Poster`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                          console.error(`[KdramaRecommendations] Broken Image for ${drama.title} (ID: ${drama.id}):`, displayImage);
-                          e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : (
+                  <img
+                    src={displayImage || KDRAMA_PLACEHOLDER}
+                    alt={`${drama.title} Poster`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error(`[KdramaRecommendations] Broken Image for ${drama.title} (ID: ${drama.id}):`, displayImage);
+                      e.currentTarget.src = KDRAMA_PLACEHOLDER;
+                    }}
+                  />
+                  {!displayImage && (
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-indigo-200 flex items-center justify-center text-purple-400">
                       <SafeIcon icon={FiImage} className="text-6xl opacity-50" />
                     </div>

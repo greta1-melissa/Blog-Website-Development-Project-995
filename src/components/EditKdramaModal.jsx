@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { normalizeDropboxUrl } from '../utils/media.js';
+import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiHeart } = FiIcons;
 
@@ -31,11 +32,11 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       setFormData({
         title: drama.title || '',
         slug: drama.slug || '',
-        tags: Array.isArray(drama.tags) ? drama.tags.join(', ') : (drama.tags || ''),
+        tags: Array.isArray(drama.tags) ? drama.tags.join(',') : (drama.tags || ''),
         synopsis_short: drama.synopsis_short || drama.synopsis || '',
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
         my_two_cents: drama.my_two_cents || '',
-        image_url: drama.image_url || drama.image || '',
+        image_url: normalizeDropboxUrl(drama.image_url || drama.image || ''),
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
         display_order: drama.display_order || 0
@@ -73,13 +74,12 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let finalValue = type === 'checkbox' ? checked : value;
-    
+
     // Automatically normalize image_url if it's a Dropbox link
     if (name === 'image_url') {
       finalValue = normalizeDropboxUrl(finalValue);
       setImageError(false);
     }
-    
     setFormData(prev => ({ ...prev, [name]: finalValue }));
   };
 
@@ -95,10 +95,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     try {
       const data = new FormData();
       data.append('file', file);
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
-      
+
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data,
@@ -107,9 +107,9 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         console.warn("Fetch failed (Network/Timeout):", err);
         throw new Error("Network error or timeout connecting to upload server.");
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       const contentType = response?.headers?.get("content-type");
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
@@ -121,16 +121,15 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         } else {
           throw new Error(result.message || "Upload failed on server.");
         }
-      } 
-      
+      }
+
       const errorText = await response.text();
       console.error("Upload Error Response:", errorText);
       throw new Error(`Server returned status ${response.status}. Details: ${errorText.substring(0, 100)}`);
-      
+
     } catch (error) {
       console.error("Upload Handler Error:", error);
       setUploadStatus('Upload Failed');
-      
       if (window.confirm(`Cloud upload failed: ${error.message}\n\nWould you like to use local storage (base64) instead? Note: This increases page size significantly.`)) {
         try {
           const base64 = await new Promise((resolve, reject) => {
@@ -156,7 +155,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSaving) return;
-    
+
     setIsSaving(true);
     setErrorMessage('');
 
@@ -276,10 +275,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Display Order</label>
-                    <input 
-                      type="number" 
-                      name="display_order" 
-                      value={formData.display_order} 
+                    <input
+                      type="number"
+                      name="display_order"
+                      value={formData.display_order}
                       onChange={handleChange}
                       className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                     />
@@ -304,18 +303,10 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                       />
                     </div>
                     <div className="relative">
-                      <input 
-                        type="file" 
-                        id="kdrama-file-upload" 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                        accept="image/*" 
-                      />
-                      <label 
-                        htmlFor="kdrama-file-upload" 
-                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${
-                          uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
-                        }`}
+                      <input type="file" id="kdrama-file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
+                      <label
+                        htmlFor="kdrama-file-upload"
+                        className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors text-sm bg-white ${uploadStatus.includes('Failed') ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
                       >
                         {isUploading ? (
                           <span className="animate-pulse">Uploading...</span>
@@ -328,21 +319,24 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                     </div>
                     {formData.image_url && (
                       <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
-                        <img 
-                          src={formData.image_url} 
-                          alt="Preview" 
+                        <img
+                          src={formData.image_url}
+                          alt="Preview"
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
-                          onError={() => setImageError(true)}
+                          onError={(e) => {
+                            console.error("[EditKdramaModal] Broken Preview Image:", formData.image_url);
+                            e.currentTarget.src = KDRAMA_PLACEHOLDER;
+                          }}
                           onLoad={() => setImageError(false)}
                         />
                       </div>
                     )}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Image Alt Text</label>
-                      <input 
-                        type="text" 
-                        name="image_alt" 
-                        value={formData.image_alt} 
+                      <input
+                        type="text"
+                        name="image_alt"
+                        value={formData.image_alt}
                         onChange={handleChange}
                         className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm bg-white"
                         placeholder="Description for accessibility"
@@ -411,13 +405,11 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
               >
                 {isSaving ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Saving...
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> Saving...
                   </>
                 ) : (
                   <>
-                    <SafeIcon icon={FiSave} className="mr-2" />
-                    Save Drama
+                    <SafeIcon icon={FiSave} className="mr-2" /> Save Drama
                   </>
                 )}
               </button>
