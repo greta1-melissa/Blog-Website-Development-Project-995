@@ -1,6 +1,8 @@
 /**
  * Cloudflare Pages Function to handle file uploads to Dropbox.
  * Route: /api/upload-to-dropbox
+ * 
+ * Uses Refresh Token flow for continuous authentication.
  */
 export async function onRequest(context) {
   const { request, env } = context;
@@ -24,16 +26,17 @@ export async function onRequest(context) {
     });
   }
 
-  try {
-    // 3. Environment Variable Validation
-    if (!env.DROPBOX_ACCESS_TOKEN) {
-      console.error("Missing DROPBOX_ACCESS_TOKEN");
-      return new Response(JSON.stringify({ success: false, message: 'Configuration Error: Missing DROPBOX_ACCESS_TOKEN on server.' }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+  // 3. Auth Config Validation
+  const { DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN } = env;
 
+  if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET || !DROPBOX_REFRESH_TOKEN) {
+    return new Response(JSON.stringify({ success: false, message: 'Server Config Error: Missing Dropbox Credentials' }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
     // 4. File Parsing
     const formData = await request.formData();
     const file = formData.get('file');
@@ -45,15 +48,34 @@ export async function onRequest(context) {
       });
     }
 
+    // 5. Get Access Token (Refresh Token Flow)
+    const tokenParams = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: DROPBOX_REFRESH_TOKEN,
+      client_id: DROPBOX_APP_KEY,
+      client_secret: DROPBOX_APP_SECRET,
+    });
+
+    const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
+      method: 'POST',
+      body: tokenParams,
+    });
+
+    if (!tokenRes.ok) {
+      console.error('Dropbox Token Refresh Failed');
+      throw new Error('Failed to authenticate with Dropbox');
+    }
+
+    const { access_token } = await tokenRes.json();
+
+    // 6. Upload File
     const filename = file.name || "upload.png";
     const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
     const timestamp = Date.now();
-    // Use a clean path. If token is App Folder scoped, this is relative to the app folder.
     const uploadPath = `/uploads/${timestamp}_${safeFilename}`;
     
     const arrayBuffer = await file.arrayBuffer();
 
-    // 5. Dropbox Upload
     const dbxArgs = {
       path: uploadPath,
       mode: 'add',
@@ -65,7 +87,7 @@ export async function onRequest(context) {
     const dbxResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.DROPBOX_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${access_token}`,
         'Dropbox-API-Arg': JSON.stringify(dbxArgs),
         'Content-Type': 'application/octet-stream'
       },
@@ -83,14 +105,14 @@ export async function onRequest(context) {
 
     const dbxData = await dbxResponse.json();
 
-    // 6. Create or Get Shared Link
+    // 7. Create or Get Shared Link
     let publicUrl = '';
     
     // Attempt to create a new link
     const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${env.DROPBOX_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ path: dbxData.path_lower })
@@ -106,7 +128,7 @@ export async function onRequest(context) {
         const listLinksResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.DROPBOX_ACCESS_TOKEN}`,
+            'Authorization': `Bearer ${access_token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ path: dbxData.path_lower })
@@ -128,8 +150,7 @@ export async function onRequest(context) {
       });
     }
 
-    // 7. Transform URL for Direct Display (raw=1)
-    // Replace dl=0 or raw=0 with raw=1, or append it
+    // 8. Transform URL for Direct Display (raw=1)
     let directUrl = publicUrl;
     if (directUrl.includes('dl=0')) {
       directUrl = directUrl.replace('dl=0', 'raw=1');
@@ -140,11 +161,11 @@ export async function onRequest(context) {
       directUrl = `${directUrl}${separator}raw=1`;
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      path: dbxData.path_lower,
-      url: directUrl,
-      name: dbxData.name
+    return new Response(JSON.stringify({ 
+      success: true, 
+      path: dbxData.path_lower, 
+      url: directUrl, 
+      name: dbxData.name 
     }), {
       headers: { 'Content-Type': 'application/json' }
     });

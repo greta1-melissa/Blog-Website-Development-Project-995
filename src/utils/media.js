@@ -55,5 +55,5 @@ export const normalizeDropboxUrl = (url) => {
   return newUrl;
 };
 
-// Backward compatibility alias if needed
+// Explicitly export alias to prevent build errors in files we haven't touched yet
 export const toDirectImageUrl = normalizeDropboxUrl;
