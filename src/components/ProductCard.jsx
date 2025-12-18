@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
@@ -14,12 +14,12 @@ const ProductCard = ({ product, index }) => {
   const [imgSrc, setImgSrc] = useState(PLACEHOLDER_IMAGE);
 
   useEffect(() => {
-    const src = normalizeDropboxImageUrl(product.image || product.image_url);
+    const src = getImageSrc(product.image || product.image_url);
     setImgSrc(src || PLACEHOLDER_IMAGE);
   }, [product.image, product.image_url]);
 
   const handleImageError = (e) => {
-    console.error(`[ProductCard] Broken Image URL for product ID ${product.id}:`, product.image || product.image_url);
+    console.warn(`[ProductCard] Image load failed for product ID ${product.id}`);
     e.currentTarget.src = PLACEHOLDER_IMAGE;
   };
 

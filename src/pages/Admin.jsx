@@ -10,7 +10,7 @@ import EditKdramaModal from '../components/EditKdramaModal';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiBarChart2, FiUsers, FiFileText, FiTv, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiActivity, FiStar, FiCheckCircle, FiClock, FiFile } = FiIcons;
@@ -47,7 +47,7 @@ const Admin = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [editingPost, setEditingPost] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState(null); // Track which ID is being deleted
+  const [deletingId, setDeletingId] = useState(null);
 
   // K-Drama State
   const [kdramaSearch, setKdramaSearch] = useState('');
@@ -66,7 +66,6 @@ const Admin = () => {
 
   const filteredPosts = useMemo(() => {
     const safePosts = Array.isArray(posts) ? posts : [];
-    // Deduplicate posts by ID just in case
     const seen = new Set();
     const uniquePosts = [];
     safePosts.forEach(post => {
@@ -80,7 +79,6 @@ const Admin = () => {
       const postTitle = post.title || '';
       const matchesSearch = searchTerm === '' || postTitle.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
-      // Status filtering logic
       const postStatus = post.status || 'published';
       const matchesStatus = filterStatus === 'all' || postStatus === filterStatus;
 
@@ -97,7 +95,7 @@ const Admin = () => {
 
   // Handlers for Blog Posts
   const handleDeletePost = async (postId) => {
-    if (deletingId) return; // Prevent double clicks
+    if (deletingId) return;
     if (window.confirm('Are you sure you want to delete this post? This cannot be undone.')) {
       setDeletingId(postId);
       try {
@@ -122,7 +120,7 @@ const Admin = () => {
       await updatePost(post.id, { isHandPicked: !post.isHandPicked });
     } catch (error) {
       console.error('Failed to update featured flag:', error);
-      alert('Sorry, we could not update the featured status on the server. Please check NoCodeBackend and try again.');
+      alert('Sorry, we could not update the featured status on the server.');
     }
   };
 
@@ -321,7 +319,7 @@ const Admin = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img
-                            src={normalizeDropboxImageUrl(post.image || post.image_url) || 'https://via.placeholder.com/150'}
+                            src={getImageSrc(post.image || post.image_url) || 'https://via.placeholder.com/150'}
                             alt={post.title}
                             className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm"
                             onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/150'}
@@ -419,7 +417,7 @@ const Admin = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img
-                            src={normalizeDropboxImageUrl(drama.image_url || drama.image) || KDRAMA_PLACEHOLDER}
+                            src={getImageSrc(drama.image_url || drama.image) || KDRAMA_PLACEHOLDER}
                             alt={drama.title}
                             className="w-10 h-10 rounded-lg object-cover mr-3 shadow-sm bg-gray-100"
                             onError={(e) => {

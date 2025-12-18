@@ -5,7 +5,7 @@ import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
@@ -19,14 +19,14 @@ const BlogPost = () => {
 
   useEffect(() => {
     if (post) {
-      const src = normalizeDropboxImageUrl(post.image || post.image_url);
+      const src = getImageSrc(post.image || post.image_url);
       setImgSrc(src || BLOG_PLACEHOLDER);
     }
   }, [post]);
 
   const handleImageError = (e) => {
     if (post) {
-      console.error(`[BlogPost] Broken Image URL for post ID ${post.id}:`, post.image || post.image_url);
+      console.warn(`[BlogPost] Image load failed for post ID ${post.id}`);
     }
     e.currentTarget.src = BLOG_PLACEHOLDER;
   };
@@ -223,15 +223,14 @@ const BlogPost = () => {
             <p className="text-gray-600 mb-6">
               Discover more stories, tips, and insights from our blog
             </p>
-            <Link
-              to="/"
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            <Link to="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to All Posts
             </Link>
           </div>
         </motion.div>
       </motion.article>
+
       <script dangerouslySetInnerHTML={{
         __html: `
         window.addEventListener('scroll', function() {

@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
@@ -14,12 +14,13 @@ const BlogCard = ({ post, index }) => {
   const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
 
   useEffect(() => {
-    const src = normalizeDropboxImageUrl(post.image || post.image_url);
+    // Use getImageSrc for proxying
+    const src = getImageSrc(post.image || post.image_url);
     setImgSrc(src || BLOG_PLACEHOLDER);
   }, [post.image, post.image_url]);
 
   const handleImageError = (e) => {
-    console.error(`[BlogCard] Broken Image URL for post ID ${post.id}:`, post.image || post.image_url);
+    console.warn(`[BlogCard] Image load failed for post ID ${post.id}. URL: ${post.image || post.image_url}`);
     e.currentTarget.src = BLOG_PLACEHOLDER;
   };
 
@@ -55,7 +56,6 @@ const BlogCard = ({ post, index }) => {
           </span>
         </div>
       </Link>
-
       <div className="flex-1 p-6 flex flex-col">
         <div className="flex items-center text-xs text-gray-500 mb-4 space-x-3 font-medium">
           <span className="flex items-center text-purple-600 bg-purple-50 px-2 py-1 rounded-md">
@@ -66,17 +66,14 @@ const BlogCard = ({ post, index }) => {
             <SafeIcon icon={FiClock} className="mr-1 text-purple-400" /> {post.readTime}
           </span>
         </div>
-
         <Link to={`/post/${post.id}`} className="block mb-3">
           <h3 className="text-xl font-serif font-bold text-gray-900 group-hover:text-purple-600 transition-colors leading-tight">
             {post.title}
           </h3>
         </Link>
-
         <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
           {stripHtml(post.content).substring(0, 120)}...
         </p>
-
         <div className="pt-4 border-t border-purple-50 flex items-center justify-between mt-auto">
           <span className="text-xs text-gray-400 font-medium">{formatDate(post.date)}</span>
           <Link

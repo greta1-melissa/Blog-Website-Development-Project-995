@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useKdrama } from '../contexts/KdramaContext';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowRight, FiMessageCircle } = FiIcons;
@@ -13,12 +13,12 @@ const KdramaCard = ({ drama, index }) => {
   const [imgSrc, setImgSrc] = useState(KDRAMA_PLACEHOLDER);
 
   useEffect(() => {
-    const src = normalizeDropboxImageUrl(drama.image_url || drama.image);
+    const src = getImageSrc(drama.image_url || drama.image);
     setImgSrc(src || KDRAMA_PLACEHOLDER);
   }, [drama.image_url, drama.image]);
 
   const handleImageError = (e) => {
-    console.error(`[KdramaCard] Broken Image URL for drama ID ${drama.id}:`, drama.image_url || drama.image);
+    console.warn(`[KdramaCard] Image load failed for drama "${drama.title}"`);
     e.currentTarget.src = KDRAMA_PLACEHOLDER;
   };
 

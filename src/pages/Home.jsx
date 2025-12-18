@@ -8,7 +8,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
 import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
@@ -45,7 +45,7 @@ const Home = () => {
     year: "2024"
   };
 
-  const currentDramaImg = normalizeDropboxImageUrl(currentKDrama.image);
+  const currentDramaImg = getImageSrc(currentKDrama.image);
 
   return (
     <div className="min-h-screen pb-20 bg-primary-50">
