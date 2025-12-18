@@ -3,7 +3,7 @@
  * Route: /api/media/dropbox?url=...
  * 
  * Proxies Dropbox shared links via server-side API calls to avoid
- * hotlinking limits and CORS issues.
+ * hotlinking limits, CORS issues, and link rot.
  */
 export async function onRequest(context) {
   const { request, env } = context;
@@ -24,7 +24,7 @@ export async function onRequest(context) {
 
   try {
     // 2. Get Access Token (Refresh Token Flow)
-    // Use explicit headers and string body for reliability
+    // CRITICAL FIX: Use explicit headers and string body for reliable OAuth call
     const tokenParams = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: DROPBOX_REFRESH_TOKEN,
@@ -49,14 +49,27 @@ export async function onRequest(context) {
     const tokenData = await tokenRes.json();
     const access_token = tokenData.access_token;
 
-    // 3. Fetch File Content
+    // 3. Clean the Target URL
+    // Dropbox API get_shared_link_file expects the clean shared link (with rlkey), 
+    // but modifiers like raw=1 or dl=0 in the 'url' arg can sometimes cause issues.
+    let cleanUrl = targetUrl;
+    try {
+      const u = new URL(targetUrl);
+      // Remove modifiers that are for browser behavior, but keep rlkey/st for access
+      u.searchParams.delete('dl');
+      u.searchParams.delete('raw');
+      cleanUrl = u.toString();
+    } catch (e) {
+      console.warn('[Dropbox Proxy] Failed to clean URL, using original:', e);
+    }
+
+    // 4. Fetch File Content
     // Use get_shared_link_file to download directly from the link
-    // Documentation: https://www.dropbox.com/developers/documentation/http/documentation#sharing-get_shared_link_file
     const fileRes = await fetch('https://content.dropboxapi.com/2/sharing/get_shared_link_file', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${access_token}`,
-        'Dropbox-API-Arg': JSON.stringify({ url: targetUrl }),
+        'Dropbox-API-Arg': JSON.stringify({ url: cleanUrl }),
         'Content-Type': 'application/octet-stream' // Required by content.dropboxapi.com endpoints
       },
       // Body is intentionally empty for this endpoint
@@ -64,7 +77,7 @@ export async function onRequest(context) {
 
     if (!fileRes.ok) {
       const errorText = await fileRes.text();
-      console.error(`[Dropbox Proxy] Fetch failed for URL: ${targetUrl} (Status: ${fileRes.status})`, errorText.substring(0, 300));
+      console.error(`[Dropbox Proxy] Fetch failed for URL: ${cleanUrl} (Status: ${fileRes.status})`, errorText.substring(0, 300));
       
       if (fileRes.status === 404 || fileRes.status === 409) {
         return new Response('Image not found on Dropbox', { status: 404 });
@@ -72,7 +85,7 @@ export async function onRequest(context) {
       return new Response(`Error fetching image from Dropbox (Status: ${fileRes.status})`, { status: 502 });
     }
 
-    // 4. Stream Response with Caching
+    // 5. Stream Response with Caching
     const originalHeaders = new Headers(fileRes.headers);
     const newHeaders = new Headers();
 

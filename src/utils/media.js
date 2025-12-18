@@ -15,7 +15,8 @@ export const isDropboxUrl = (url) => {
 /**
  * Normalizes a Dropbox URL to ensure it is a direct image link for storage.
  * - Replaces dl=0/1 with raw=1 (standardization)
- * - Removes 'st' (security token) parameters which expire
+ * - Removes 'st' (security token) parameters which expire short-term
+ * - KEEPS 'rlkey' (resource key) which is critical for scoped links
  * 
  * use this BEFORE saving to database.
  * 
@@ -32,6 +33,7 @@ export const normalizeDropboxImageUrl = (url) => {
     const urlObj = new URL(stringUrl);
     
     // 1. Remove 'st' parameter (security token) - Critical for persistence
+    // Note: Do NOT remove 'rlkey', it is required for private/scoped links
     urlObj.searchParams.delete('st');
     
     // 2. Remove 'dl' parameter to avoid conflicts
@@ -81,6 +83,8 @@ export const getImageSrc = (storedUrl) => {
   
   // If it's a Dropbox URL, route it through our proxy
   if (isDropboxUrl(stringUrl)) {
+    // We encode the full stored URL (which includes raw=1, rlkey, etc.)
+    // The proxy function will clean it up as needed
     return `/api/media/dropbox?url=${encodeURIComponent(stringUrl)}`;
   }
   
