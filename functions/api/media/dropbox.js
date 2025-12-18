@@ -24,6 +24,7 @@ export async function onRequest(context) {
 
   try {
     // 2. Get Access Token (Refresh Token Flow)
+    // Use explicit headers and string body for reliability
     const tokenParams = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: DROPBOX_REFRESH_TOKEN,
@@ -33,35 +34,42 @@ export async function onRequest(context) {
 
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
       method: 'POST',
-      body: tokenParams,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: tokenParams.toString(),
     });
 
     if (!tokenRes.ok) {
       const err = await tokenRes.text();
-      console.error('[Dropbox Proxy] Token Refresh Failed:', err);
-      return new Response('Failed to authenticate with Dropbox', { status: 502 });
+      console.error(`[Dropbox Proxy] Token Refresh Failed (Status: ${tokenRes.status}):`, err.substring(0, 300));
+      return new Response(`Failed to authenticate with Dropbox (Status: ${tokenRes.status})`, { status: 502 });
     }
 
-    const { access_token } = await tokenRes.json();
+    const tokenData = await tokenRes.json();
+    const access_token = tokenData.access_token;
 
     // 3. Fetch File Content
     // Use get_shared_link_file to download directly from the link
+    // Documentation: https://www.dropbox.com/developers/documentation/http/documentation#sharing-get_shared_link_file
     const fileRes = await fetch('https://content.dropboxapi.com/2/sharing/get_shared_link_file', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${access_token}`,
         'Dropbox-API-Arg': JSON.stringify({ url: targetUrl }),
+        'Content-Type': 'application/octet-stream' // Required by content.dropboxapi.com endpoints
       },
+      // Body is intentionally empty for this endpoint
     });
 
     if (!fileRes.ok) {
       const errorText = await fileRes.text();
-      console.error(`[Dropbox Proxy] Fetch failed for URL: ${targetUrl}`, errorText);
+      console.error(`[Dropbox Proxy] Fetch failed for URL: ${targetUrl} (Status: ${fileRes.status})`, errorText.substring(0, 300));
       
       if (fileRes.status === 404 || fileRes.status === 409) {
         return new Response('Image not found on Dropbox', { status: 404 });
       }
-      return new Response('Error fetching image from Dropbox', { status: 502 });
+      return new Response(`Error fetching image from Dropbox (Status: ${fileRes.status})`, { status: 502 });
     }
 
     // 4. Stream Response with Caching
@@ -86,6 +94,6 @@ export async function onRequest(context) {
 
   } catch (err) {
     console.error('[Dropbox Proxy] Internal Server Error:', err);
-    return new Response('Internal Server Error', { status: 500 });
+    return new Response('Internal Server Error: ' + err.message, { status: 500 });
   }
 }
