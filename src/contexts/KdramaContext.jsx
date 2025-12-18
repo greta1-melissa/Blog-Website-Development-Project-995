@@ -30,11 +30,10 @@ export const KdramaProvider = ({ children }) => {
 
   const normalizeData = (data) => {
     if (!Array.isArray(data)) return [];
-
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
-      // Use the shared utility to normalize images consistently
-      // Prioritize image_url
-      const finalImageUrl = normalizeDropboxImageUrl(item.image_url || item.image || '');
+      // Prioritize image_url, fallback to image
+      const rawImage = item.image_url || item.image || '';
+      const finalImageUrl = normalizeDropboxImageUrl(rawImage);
       
       return {
         ...item,
@@ -45,8 +44,8 @@ export const KdramaProvider = ({ children }) => {
         synopsis_short: item.synopsis_short || item.synopsis || '',
         synopsis_long: item.synopsis_long || item.synopsis || '',
         my_two_cents: item.my_two_cents || '',
-        image_url: finalImageUrl,
-        image: finalImageUrl, // Keeps legacy sync
+        image: finalImageUrl,      // Local Compat
+        image_url: finalImageUrl,  // DB Column
         is_featured_on_home: item.is_featured_on_home === true || item.is_featured_on_home === 'true',
         display_order: parseInt(item.display_order) || (index + 1),
         updated_at: item.updated_at || new Date().toISOString()
@@ -65,10 +64,9 @@ export const KdramaProvider = ({ children }) => {
     try {
       const serverData = await ncbGet(TABLE_NAME);
       let currentData = [];
-
+      
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         currentData = normalizeData(serverData);
-        
         // Merge missing seed data mainly for display if server is partial
         const serverSlugs = new Set(currentData.map(d => String(d.slug)));
         initialSeedData.forEach(seedItem => {
@@ -103,7 +101,7 @@ export const KdramaProvider = ({ children }) => {
     const payload = {
       ...dramaData,
       image: normalizedImage,
-      image_url: normalizedImage,
+      image_url: normalizedImage, // Explicitly set column name
       created_at: new Date().toISOString()
     };
 
@@ -114,21 +112,20 @@ export const KdramaProvider = ({ children }) => {
     setKdramas(prev => normalizeData([...prev, { ...payload, id: tempId }]).sort((a, b) => a.display_order - b.display_order));
 
     try {
+      console.log(`[KdramaContext] Creating drama. Payload:`, payload);
       const saved = await ncbCreate(TABLE_NAME, payload);
       if (!saved || saved.error) throw new Error(saved?.error || "Create failed");
-      
+
       const realId = saved.id || saved._id;
       setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...saved, id: realId } : d));
       return realId;
     } catch (e) {
+      console.error("Create failed:", e);
       setKdramas(prev => prev.filter(d => d.id !== tempId));
       throw e;
     }
   };
 
-  // -------------------------------------------------------------------------
-  // SAFE UPSERT LOGIC
-  // -------------------------------------------------------------------------
   const updateKdrama = async (id, updates) => {
     const previousState = [...kdramas];
     const itemToUpdate = kdramas.find(k => k.id === id);
@@ -138,11 +135,19 @@ export const KdramaProvider = ({ children }) => {
       throw new Error("Cannot update: Record has no slug.");
     }
 
-    // Normalize incoming image URL
-    const newImageUrl = normalizeDropboxImageUrl(updates.image_url || updates.image);
-    // Use new URL if present, otherwise fall back to existing. 
-    // This prevents overwriting with blank if the user didn't change the image field.
-    const finalImageUrl = newImageUrl || itemToUpdate.image_url || itemToUpdate.image;
+    // CRITICAL: Prevent image overwrite with blank
+    // If updates.image_url is provided, use it.
+    // If not, revert to existing itemToUpdate.image_url
+    // Only allow blank if explicitly passed as empty string (user deleted it)
+    let finalImageUrl = itemToUpdate.image_url || itemToUpdate.image;
+    
+    if (updates.image_url !== undefined) {
+      finalImageUrl = updates.image_url;
+    } else if (updates.image !== undefined) {
+      finalImageUrl = updates.image;
+    }
+    
+    finalImageUrl = normalizeDropboxImageUrl(finalImageUrl);
 
     const preparedUpdates = {
       ...updates,
@@ -158,14 +163,15 @@ export const KdramaProvider = ({ children }) => {
     });
 
     try {
-      // 2. FETCH FIRST: Check if record exists on server by SLUG
+      // 2. FETCH FIRST: Check if record exists on server by SLUG (or ID)
       const allRecords = await ncbGet(TABLE_NAME);
-      const existingRecord = allRecords.find(r => r.slug === targetSlug);
+      const existingRecord = allRecords.find(r => r.slug === targetSlug || String(r.id) === String(id));
 
       if (existingRecord) {
         // A. FOUND: Update using REAL Server ID
-        console.log(`[KdramaContext] Upsert: Found ${targetSlug} (ID: ${existingRecord.id}). Updating...`);
         const realId = existingRecord.id;
+        console.log(`[KdramaContext] Updating ID: ${realId} with payload:`, preparedUpdates);
+        
         await ncbUpdate(TABLE_NAME, realId, preparedUpdates);
         
         // Sync local ID if it was different
@@ -174,11 +180,10 @@ export const KdramaProvider = ({ children }) => {
         }
       } else {
         // B. NOT FOUND: Create new record
-        console.log(`[KdramaContext] Upsert: ${targetSlug} not found. Creating...`);
-        // Remove 'id' if it's junk/temp/slug
+        console.log(`[KdramaContext] Record not found on server. Creating new...`);
         const { id: _, ...createPayload } = { ...itemToUpdate, ...preparedUpdates };
-        
         const saved = await ncbCreate(TABLE_NAME, createPayload);
+        
         if (!saved || saved.error) throw new Error(saved?.error || "Create failed during upsert");
         
         const newRealId = saved.id || saved._id;
@@ -210,7 +215,16 @@ export const KdramaProvider = ({ children }) => {
   const featuredKdramas = useMemo(() => kdramas.filter(d => d.is_featured_on_home).slice(0, 4), [kdramas]);
 
   return (
-    <KdramaContext.Provider value={{ kdramas, featuredKdramas, isLoading, addKdrama, updateKdrama, deleteKdrama, getKdramaBySlug, fetchKdramas }}>
+    <KdramaContext.Provider value={{
+      kdramas,
+      featuredKdramas,
+      isLoading,
+      addKdrama,
+      updateKdrama,
+      deleteKdrama,
+      getKdramaBySlug,
+      fetchKdramas
+    }}>
       {children}
     </KdramaContext.Provider>
   );

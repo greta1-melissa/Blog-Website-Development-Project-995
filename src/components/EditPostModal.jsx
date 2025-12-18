@@ -11,7 +11,7 @@ const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiCh
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const [sections, setSections] = useState({ seo: false, schedule: true });
-  
+
   const toggleSection = (section) => {
     setSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -41,7 +41,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         title: post.title || '',
         content: post.content || '',
         category: post.category || '',
-        image: post.image || '',
+        // CRITICAL FIX: Check both image_url and image to prevent blank overwrite
+        image: post.image_url || post.image || '', 
         focusKeyword: post.focusKeyword || '',
         seoTitle: post.seoTitle || post.title || '',
         metaDescription: post.metaDescription || '',
@@ -83,12 +84,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       const data = new FormData();
       data.append('file', file);
       
-      // Upload to Cloudflare Function
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data
       });
-      
+
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
@@ -103,7 +103,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       
       const errorText = await response.text();
       throw new Error(`Server Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
-      
+
     } catch (error) {
       console.warn("Upload failed:", error);
       setUploadStatus('Upload Failed');
@@ -138,9 +138,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       finalStatus = 'published';
     }
 
+    // Ensure we send image_url property
     const updatedData = {
       ...formData,
       image: formData.image || BLOG_PLACEHOLDER,
+      image_url: formData.image || BLOG_PLACEHOLDER, // Add explicit column
       date: finalDate,
       status: finalStatus
     };
@@ -169,7 +171,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       ['link', 'clean']
     ],
   };
@@ -232,7 +234,13 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
                     <div className="rounded-lg overflow-hidden border border-gray-300">
-                      <ReactQuill theme="snow" value={formData.content} onChange={handleContentChange} modules={quillModules} className="bg-white min-h-[300px]" />
+                      <ReactQuill
+                        theme="snow"
+                        value={formData.content}
+                        onChange={handleContentChange}
+                        modules={quillModules}
+                        className="bg-white min-h-[300px]"
+                      />
                     </div>
                   </div>
                 </div>
@@ -360,15 +368,15 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         />
                       </div>
                       <div className="relative">
-                        <input 
-                          type="file" 
-                          id="edit-file-upload" 
-                          onChange={handleFileUpload} 
-                          className="hidden" 
-                          accept="image/*" 
+                        <input
+                          type="file"
+                          id="edit-file-upload"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          accept="image/*"
                         />
                         <label 
-                          htmlFor="edit-file-upload" 
+                          htmlFor="edit-file-upload"
                           className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap text-sm bg-white ${
                             uploadStatus === 'Upload Failed' 
                               ? 'border-red-300 text-red-600' 
@@ -385,6 +393,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         </label>
                       </div>
                     </div>
+                    
                     {formData.image && (
                       <div className="relative h-32 w-full bg-white rounded-lg overflow-hidden border border-gray-200">
                         <img 

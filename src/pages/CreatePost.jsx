@@ -17,6 +17,7 @@ const CreatePost = () => {
   const navigate = useNavigate();
   const { addPost } = useBlog();
   const { user } = useAuth();
+  
   const [sections, setSections] = useState({ seo: true, schedule: true });
 
   const toggleSection = (section) => {
@@ -78,7 +79,7 @@ const CreatePost = () => {
         method: 'POST',
         body: data
       });
-      
+
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
@@ -94,7 +95,7 @@ const CreatePost = () => {
       
       const errorText = await response.text();
       throw new Error(`Upload Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
-      
+
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadStatus('Upload Failed');
@@ -118,7 +119,7 @@ const CreatePost = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
-    
+
     if (!formData.title || !formData.content) {
       alert('Please fill in at least the Title and Content to save.');
       return;
@@ -142,9 +143,11 @@ const CreatePost = () => {
       finalStatus = 'draft';
     }
 
+    // Ensure image_url is included in the payload
     const postData = {
       ...formData,
       image: formData.image || BLOG_PLACEHOLDER,
+      image_url: formData.image || BLOG_PLACEHOLDER, // Explicit DB column
       author: user?.name || 'BangtanMom',
       date: finalDate,
       status: finalStatus
@@ -175,7 +178,7 @@ const CreatePost = () => {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       ['link', 'clean']
     ],
   };
@@ -232,9 +235,9 @@ const CreatePost = () => {
                   Content *
                 </label>
                 <div className="rounded-lg overflow-hidden border border-gray-300">
-                  <ReactQuill 
-                    theme="snow" 
-                    value={formData.content} 
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.content}
                     onChange={handleContentChange}
                     modules={quillModules}
                     className="bg-white min-h-[400px]"
@@ -246,18 +249,13 @@ const CreatePost = () => {
 
             {/* SEO Section */}
             <div className="bg-white rounded-xl shadow-sm border border-purple-50 overflow-hidden">
-              <button 
-                type="button" 
-                onClick={() => toggleSection('seo')}
-                className="w-full flex items-center justify-between p-6 bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
+              <button type="button" onClick={() => toggleSection('seo')} className="w-full flex items-center justify-between p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
                 <div className="flex items-center">
                   <SafeIcon icon={FiSearch} className="text-purple-600 mr-2" />
                   <h3 className="text-lg font-bold text-gray-900">SEO Optimization</h3>
                 </div>
                 <SafeIcon icon={sections.seo ? FiChevronUp : FiChevronDown} className="text-gray-500" />
               </button>
-              
               <AnimatePresence>
                 {sections.seo && (
                   <motion.div
@@ -321,7 +319,6 @@ const CreatePost = () => {
                 <SafeIcon icon={FiCalendar} className="mr-2" />
                 <h3 className="font-bold">Publishing</h3>
               </div>
-              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,19 +422,20 @@ const CreatePost = () => {
                     placeholder="Image URL..."
                   />
                 </div>
-                
                 <div className="relative">
-                  <input 
-                    type="file" 
-                    id="file-upload" 
+                  <input
+                    type="file"
+                    id="file-upload"
                     onChange={handleFileUpload}
-                    className="hidden" 
+                    className="hidden"
                     accept="image/*"
                   />
                   <label 
                     htmlFor="file-upload"
                     className={`flex items-center justify-center w-full px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors font-medium text-sm ${
-                      uploadStatus.includes('Failed') ? 'border-red-300 text-red-600 bg-red-50' : 'border-purple-300 text-purple-600 hover:bg-purple-50'
+                      uploadStatus.includes('Failed') 
+                        ? 'border-red-300 text-red-600 bg-red-50' 
+                        : 'border-purple-300 text-purple-600 hover:bg-purple-50'
                     }`}
                   >
                     {isUploading ? (
@@ -449,7 +447,7 @@ const CreatePost = () => {
                     )}
                   </label>
                 </div>
-
+                
                 {formData.image && (
                   <div className="relative rounded-lg overflow-hidden h-32 w-full border border-gray-200 bg-gray-50">
                     <img 
