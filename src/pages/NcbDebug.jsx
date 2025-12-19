@@ -3,12 +3,16 @@ import { getNcbStatus, ncbCreate, ncbDelete, ncbReadAll } from '../services/noco
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { FiCheckCircle, FiXCircle, FiRefreshCw, FiServer, FiGlobe, FiDatabase, FiAlertTriangle, FiCloudLightning, FiTrash2, FiPlus, FiFileText, FiTv, FiEdit } = FiIcons;
+const { 
+  FiCheckCircle, FiXCircle, FiRefreshCw, FiServer, FiGlobe, 
+  FiDatabase, FiAlertTriangle, FiCloudLightning, FiTrash2, 
+  FiPlus, FiFileText, FiTv, FiEdit 
+} = FiIcons;
 
 const NcbDebug = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Existing Tests State
   const [writeTestStatus, setWriteTestStatus] = useState(null);
   const [writeError, setWriteError] = useState('');
@@ -32,6 +36,7 @@ const NcbDebug = () => {
     setUpdatePostResult(null);
     setUpdateKdramaResult(null);
     setCleanupResult(null);
+
     const result = await getNcbStatus();
     setStatus(result);
     setLoading(false);
@@ -46,7 +51,9 @@ const NcbDebug = () => {
     try {
       const options = {
         method,
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json'
+        }
       };
       if (body) options.body = JSON.stringify(body);
 
@@ -58,23 +65,13 @@ const NcbDebug = () => {
       } catch (e) {
         json = text; // Fallback to text if not JSON
       }
-
-      return {
-        success: res.ok,
-        status: res.status,
-        body: json
-      };
+      return { success: res.ok, status: res.status, body: json };
     } catch (e) {
-      return {
-        success: false,
-        status: 'NET_ERR',
-        body: e.message
-      };
+      return { success: false, status: 'NET_ERR', body: e.message };
     }
   };
 
   // --- Existing Integrated Tests ---
-
   const runProxyTest = async () => {
     setProxyTestResult({ status: 'loading', message: 'Testing proxy via /api/ncb...' });
     try {
@@ -94,6 +91,7 @@ const NcbDebug = () => {
     setWriteError('');
     try {
       const timestamp = Date.now();
+      
       // 1. Test Posts
       const postPayload = {
         title: "Debug Post",
@@ -101,22 +99,21 @@ const NcbDebug = () => {
         content: "Debug content",
         status: "draft",
         image_url: "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        category: "General",
+        author: "DebugUser",
+        date: new Date().toISOString().split('T')[0]
       };
       await ncbCreate('posts', postPayload);
-      
+
       // 2. Test Kdrama
       const kdramaPayload = {
         title: "Debug Drama",
         slug: `debug-drama-${timestamp}`,
         synopsis_short: "Debug synopsis",
         image_url: "",
-        tags: ["Debug"], 
-        is_featured_on_home: false,
-        display_order: 9999,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        tags: "Debug",
+        my_two_cents: "Notes",
+        synopsis_long: "Long desc"
       };
       const createdDrama = await ncbCreate('kdrama_recommendations', kdramaPayload);
       if (createdDrama?.id) await ncbDelete('kdrama_recommendations', createdDrama.id);
@@ -130,7 +127,6 @@ const NcbDebug = () => {
   };
 
   // --- New Granular Tests ---
-
   const runReadPostsTest = async () => {
     setReadPostsResult({ loading: true });
     const instance = status?.instance || '';
@@ -144,15 +140,19 @@ const NcbDebug = () => {
     const instance = status?.instance || '';
     const url = `/api/ncb/create/posts?Instance=${instance}`;
     const timestamp = Date.now();
+    
+    // UPDATED: Only essentials, no created_at/updated_at unless required by schema
     const payload = {
       title: "Debug Post",
       slug: `debug-post-${timestamp}`,
-      content: "Debug content",
+      content: "Debug content body",
       status: "draft",
-      image_url: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      category: "General",
+      author: "DebugUser",
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      image_url: ""
     };
+    
     const result = await runRawTest(url, 'POST', payload);
     setCreatePostResult({ ...result, payloadUsed: payload });
   };
@@ -162,17 +162,18 @@ const NcbDebug = () => {
     const instance = status?.instance || '';
     const url = `/api/ncb/create/kdrama_recommendations?Instance=${instance}`;
     const timestamp = Date.now();
+    
+    // UPDATED: Only essentials, no created_at/updated_at
     const payload = {
       title: "Debug K-Drama",
       slug: `debug-kdrama-${timestamp}`,
-      tags: "", 
+      tags: "Debug,Test", 
       synopsis_short: "Debug synopsis short",
       synopsis_long: "Debug synopsis long",
       my_two_cents: "Debug notes",
-      image_url: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      image_url: ""
     };
+    
     const result = await runRawTest(url, 'POST', payload);
     setCreateKdramaResult({ ...result, payloadUsed: payload });
   };
@@ -182,10 +183,8 @@ const NcbDebug = () => {
     try {
       // 1. Find existing debug record or create one
       const records = await ncbReadAll('posts', { limit: 100 });
-      let target = Array.isArray(records) 
-        ? records.filter(r => r.slug && r.slug.startsWith('debug-post-')).sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0]
-        : null;
-
+      let target = Array.isArray(records) ? records.filter(r => r.slug && r.slug.startsWith('debug-post-')).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] : null;
+      
       if (!target) {
         const timestamp = Date.now();
         const payload = {
@@ -193,23 +192,24 @@ const NcbDebug = () => {
           slug: `debug-post-${timestamp}`,
           content: "Initial content",
           status: "draft",
-          image_url: "",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          category: "General",
+          author: "Debug",
+          date: new Date().toISOString().split('T')[0],
+          image_url: ""
         };
         target = await ncbCreate('posts', payload);
       }
-
+      
       const id = target.id || target._id;
       if (!id) throw new Error("Could not acquire target ID for update.");
 
       // 2. Perform Update
       const instance = status?.instance || '';
       const url = `/api/ncb/update/posts/${id}?Instance=${instance}`;
+      
       const updatePayload = {
         title: `${target.title} (edited)`,
-        content: `${target.content || ''}\nUpdated at ${new Date().toISOString()}`,
-        updated_at: new Date().toISOString()
+        content: `${target.content || ''}\nUpdated at ${new Date().toISOString()}`
       };
       
       const result = await runRawTest(url, 'PUT', updatePayload);
@@ -225,10 +225,8 @@ const NcbDebug = () => {
     try {
       // 1. Find existing debug record or create one
       const records = await ncbReadAll('kdrama_recommendations', { limit: 100 });
-      let target = Array.isArray(records) 
-        ? records.filter(r => r.slug && r.slug.startsWith('debug-kdrama-')).sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0]
-        : null;
-
+      let target = Array.isArray(records) ? records.filter(r => r.slug && r.slug.startsWith('debug-kdrama-')).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] : null;
+      
       if (!target) {
         const timestamp = Date.now();
         const payload = {
@@ -237,22 +235,21 @@ const NcbDebug = () => {
           synopsis_short: "Initial synopsis",
           my_two_cents: "Initial thoughts",
           image_url: "",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          tags: "Debug"
         };
         target = await ncbCreate('kdrama_recommendations', payload);
       }
-
+      
       const id = target.id || target._id;
       if (!id) throw new Error("Could not acquire target ID for update.");
 
       // 2. Perform Update
       const instance = status?.instance || '';
       const url = `/api/ncb/update/kdrama_recommendations/${id}?Instance=${instance}`;
+      
       const updatePayload = {
         my_two_cents: `${target.my_two_cents || ''} (edited)`,
-        synopsis_short: `${target.synopsis_short || ''} - Updated at ${new Date().toISOString()}`,
-        updated_at: new Date().toISOString()
+        synopsis_short: `${target.synopsis_short || ''} - Updated at ${new Date().toISOString()}`
       };
       
       const result = await runRawTest(url, 'PUT', updatePayload);
@@ -268,21 +265,22 @@ const NcbDebug = () => {
     try {
       let deletedCount = 0;
       const logs = [];
-
+      
       // Helper to find and delete
       const cleanTable = async (table, prefix) => {
         logs.push(`Reading ${table}...`);
-        const records = await ncbReadAll(table, { limit: 100 }); 
+        const records = await ncbReadAll(table, { limit: 100 });
+        
         if (!Array.isArray(records)) {
           logs.push(`Failed to read ${table}`);
           return;
         }
-        
+
         const targets = records.filter(r => r.slug && r.slug.startsWith(prefix));
         targets.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
         if (targets.length > 0) {
-          const target = targets[0]; 
+          const target = targets[0];
           logs.push(`Deleting ${table} record: ${target.slug} (${target.id})`);
           const success = await ncbDelete(table, target.id);
           if (success) {
@@ -299,25 +297,19 @@ const NcbDebug = () => {
       await cleanTable('posts', 'debug-post-');
       await cleanTable('kdrama_recommendations', 'debug-kdrama-');
 
-      setCleanupResult({
-        success: true,
-        status: 200,
-        body: { message: `Cleanup complete. Deleted ${deletedCount} records.`, logs }
+      setCleanupResult({ 
+        success: true, 
+        status: 200, 
+        body: { message: `Cleanup complete. Deleted ${deletedCount} records.`, logs } 
       });
-
     } catch (e) {
-      setCleanupResult({
-        success: false,
-        status: 'ERR',
-        body: { error: e.message }
-      });
+      setCleanupResult({ success: false, status: 'ERR', body: { error: e.message } });
     }
   };
 
   const ResultBox = ({ result }) => {
     if (!result) return null;
     if (result.loading) return <div className="mt-2 text-sm text-gray-500 animate-pulse">Running test...</div>;
-    
     const isSuccess = result.success;
     return (
       <div className={`mt-3 p-3 rounded-md text-xs font-mono overflow-x-auto border ${isSuccess ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'}`}>
@@ -325,6 +317,17 @@ const NcbDebug = () => {
           <span>Status: {result.status}</span>
           <span>{isSuccess ? 'PASS' : 'FAIL'}</span>
         </div>
+        
+        {result.payloadUsed && (
+          <div className="mb-2">
+            <span className="font-bold block text-gray-500 mb-1">Request Payload:</span>
+            <pre className="bg-white/50 p-2 rounded whitespace-pre-wrap text-[10px] mb-2">
+              {JSON.stringify(result.payloadUsed, null, 2)}
+            </pre>
+            <span className="font-bold block text-gray-500 mb-1">Response Body:</span>
+          </div>
+        )}
+
         <pre className="whitespace-pre-wrap">
           {typeof result.body === 'object' ? JSON.stringify(result.body, null, 2) : result.body}
         </pre>
@@ -368,6 +371,7 @@ const NcbDebug = () => {
         <div className="p-6">
           {status ? (
             <div className="space-y-8">
+              
               {/* Config Section */}
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proxy Configuration</h3>
@@ -389,8 +393,7 @@ const NcbDebug = () => {
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-700 font-medium flex items-center">
-                        <SafeIcon icon={FiCloudLightning} className="mr-2 text-blue-500" />
-                        Read K-Dramas
+                        <SafeIcon icon={FiCloudLightning} className="mr-2 text-blue-500" /> Read K-Dramas
                       </span>
                       <button onClick={runProxyTest} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold hover:bg-blue-200">
                         Run
@@ -402,12 +405,12 @@ const NcbDebug = () => {
                       </div>
                     )}
                   </div>
+
                   {/* Proxy Write */}
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-700 font-medium flex items-center">
-                        <SafeIcon icon={FiDatabase} className="mr-2 text-purple-500" />
-                        Write (Create/Delete)
+                        <SafeIcon icon={FiDatabase} className="mr-2 text-purple-500" /> Write (Create/Delete)
                       </span>
                       <button onClick={runWriteTest} disabled={writeTestStatus === 'testing'} className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold hover:bg-purple-200">
                         {writeTestStatus === 'testing' ? '...' : 'Run'}

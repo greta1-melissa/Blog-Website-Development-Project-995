@@ -106,6 +106,22 @@ export async function onRequest(context) {
       });
     }
 
+    // FIX: Handle Null Body Status Codes (204, 304, etc.)
+    // These status codes MUST NOT have a body, or fetch will throw an error.
+    if (
+      response.status === 204 ||
+      response.status === 304 ||
+      response.status === 205 ||
+      response.status === 101 ||
+      !response.body
+    ) {
+      return new Response(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
+    }
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
