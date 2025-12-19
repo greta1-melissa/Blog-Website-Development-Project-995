@@ -93,6 +93,8 @@ const NcbDebug = () => {
       const timestamp = Date.now();
       
       // 1. Test Posts - Using updated schema
+      // Removed: slug, status, image_url
+      // Added: readtime, ishandpicked, image
       const postPayload = {
         title: "Debug Post",
         content: "Debug content",
@@ -142,7 +144,7 @@ const NcbDebug = () => {
     
     // UPDATED: EXACT SCHEMA MATCH
     // Removed: slug, status, image_url
-    // Added: readtime, ishandpicked
+    // Added: readtime, ishandpicked, image
     const payload = {
       title: "Debug Post",
       content: "Debug content body",
