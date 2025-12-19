@@ -101,11 +101,13 @@ export const BlogProvider = ({ children }) => {
     const rawImage = post.image_url || post.image || '';
     // Apply dropbox normalization
     const finalImage = normalizeDropboxImageUrl(rawImage);
-    
+
     return {
       ...post,
-      image: finalImage,    // Keep for legacy compatibility
-      image_url: finalImage, // The DB column
+      image: finalImage,
+      // Keep for legacy compatibility
+      image_url: finalImage, 
+      // The DB column
       isLocalOnly: post.isLocalOnly === true,
       status: ['draft', 'scheduled', 'published'].includes(post.status) ? post.status : 'published'
     };
@@ -116,8 +118,8 @@ export const BlogProvider = ({ children }) => {
     try {
       const serverData = await ncbGet('posts');
       const localData = getLocalPosts() || [];
-      
       let finalPosts = [];
+
       const safeServerData = Array.isArray(serverData) ? serverData : [];
       const serverIds = new Set(safeServerData.map(p => String(p.id)));
 
@@ -183,8 +185,8 @@ export const BlogProvider = ({ children }) => {
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     const postDate = postData.date || new Date().toISOString().split('T')[0];
-    
     let status = postData.status;
+
     if (!status) {
       const isFuture = new Date(postDate) > new Date();
       status = isFuture ? 'scheduled' : 'published';
@@ -193,6 +195,7 @@ export const BlogProvider = ({ children }) => {
     // CRITICAL: Ensure image_url is set for DB persistence
     const finalImage = normalizeDropboxImageUrl(postData.image || postData.image_url);
 
+    // Internal state object (camelCase for React)
     const newPost = {
       ...postData,
       id: tempId,
@@ -204,18 +207,32 @@ export const BlogProvider = ({ children }) => {
       seoTitle: postData.seoTitle || postData.title,
       metaDescription: postData.metaDescription || (postData.content || "").substring(0, 160),
       focusKeyword: postData.focusKeyword || '',
-      image: finalImage,      // Local compat
-      image_url: finalImage,  // DB Column
+      image: finalImage,
+      // Local compat
+      image_url: finalImage,
+      // DB Column
       isLocalOnly: true
     };
-
+    
     setPosts(prev => [newPost, ...prev]);
 
     try {
-      const { id, isLocalOnly, ...postPayload } = newPost;
-      console.log("[BlogContext] Create Payload:", postPayload);
-      
-      const savedPost = await ncbCreate('posts', postPayload);
+      // Construct DB-specific payload (lowercase/mapped keys)
+      // Removed: slug, status, image_url
+      // Added: readtime, ishandpicked
+      const dbPayload = {
+        title: newPost.title,
+        content: newPost.content,
+        category: newPost.category,
+        image: newPost.image, // Use 'image', not 'image_url'
+        author: newPost.author,
+        date: newPost.date,
+        readtime: newPost.readTime, // Map camelCase to lowercase
+        ishandpicked: newPost.isHandPicked ? 1 : 0 // Map boolean to integer
+      };
+
+      console.log("[BlogContext] Create Payload:", dbPayload);
+      const savedPost = await ncbCreate('posts', dbPayload);
       
       if (!savedPost || (!savedPost.id && !savedPost._id)) {
         throw new Error("Database did not return a valid post with an ID.");

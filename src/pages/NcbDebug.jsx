@@ -92,16 +92,16 @@ const NcbDebug = () => {
     try {
       const timestamp = Date.now();
       
-      // 1. Test Posts
+      // 1. Test Posts - Using updated schema
       const postPayload = {
         title: "Debug Post",
-        slug: `debug-post-${timestamp}`,
         content: "Debug content",
-        status: "draft",
-        image_url: "",
         category: "General",
+        image: "",
         author: "DebugUser",
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        readtime: "1 min read",
+        ishandpicked: 0
       };
       await ncbCreate('posts', postPayload);
 
@@ -139,18 +139,19 @@ const NcbDebug = () => {
     setCreatePostResult({ loading: true });
     const instance = status?.instance || '';
     const url = `/api/ncb/create/posts?Instance=${instance}`;
-    const timestamp = Date.now();
     
-    // UPDATED: Only essentials, no created_at/updated_at unless required by schema
+    // UPDATED: EXACT SCHEMA MATCH
+    // Removed: slug, status, image_url
+    // Added: readtime, ishandpicked
     const payload = {
       title: "Debug Post",
-      slug: `debug-post-${timestamp}`,
       content: "Debug content body",
-      status: "draft",
       category: "General",
-      author: "DebugUser",
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      image_url: ""
+      image: "",
+      author: "BangtanMom",
+      date: new Date().toISOString().split('T')[0],
+      readtime: "1 min read",
+      ishandpicked: 0
     };
     
     const result = await runRawTest(url, 'POST', payload);
@@ -182,20 +183,20 @@ const NcbDebug = () => {
     setUpdatePostResult({ loading: true });
     try {
       // 1. Find existing debug record or create one
+      // Note: We search by title since slug might not be in DB anymore
       const records = await ncbReadAll('posts', { limit: 100 });
-      let target = Array.isArray(records) ? records.filter(r => r.slug && r.slug.startsWith('debug-post-')).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] : null;
+      let target = Array.isArray(records) ? records.filter(r => r.title === "Debug Post").sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0] : null;
       
       if (!target) {
-        const timestamp = Date.now();
         const payload = {
-          title: "Debug Post For Update",
-          slug: `debug-post-${timestamp}`,
+          title: "Debug Post",
           content: "Initial content",
-          status: "draft",
           category: "General",
           author: "Debug",
           date: new Date().toISOString().split('T')[0],
-          image_url: ""
+          image: "",
+          readtime: "1 min read",
+          ishandpicked: 0
         };
         target = await ncbCreate('posts', payload);
       }
@@ -208,8 +209,8 @@ const NcbDebug = () => {
       const url = `/api/ncb/update/posts/${id}?Instance=${instance}`;
       
       const updatePayload = {
-        title: `${target.title} (edited)`,
-        content: `${target.content || ''}\nUpdated at ${new Date().toISOString()}`
+        title: "Debug Post (Edited)",
+        content: `Updated at ${new Date().toISOString()}`
       };
       
       const result = await runRawTest(url, 'PUT', updatePayload);
@@ -267,7 +268,7 @@ const NcbDebug = () => {
       const logs = [];
       
       // Helper to find and delete
-      const cleanTable = async (table, prefix) => {
+      const cleanTable = async (table, filterFn) => {
         logs.push(`Reading ${table}...`);
         const records = await ncbReadAll(table, { limit: 100 });
         
@@ -276,12 +277,11 @@ const NcbDebug = () => {
           return;
         }
 
-        const targets = records.filter(r => r.slug && r.slug.startsWith(prefix));
-        targets.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
+        const targets = records.filter(filterFn);
+        // Sort newest first
         if (targets.length > 0) {
           const target = targets[0];
-          logs.push(`Deleting ${table} record: ${target.slug} (${target.id})`);
+          logs.push(`Deleting ${table} record ID: ${target.id}`);
           const success = await ncbDelete(table, target.id);
           if (success) {
             deletedCount++;
@@ -294,8 +294,8 @@ const NcbDebug = () => {
         }
       };
 
-      await cleanTable('posts', 'debug-post-');
-      await cleanTable('kdrama_recommendations', 'debug-kdrama-');
+      await cleanTable('posts', r => r.title === "Debug Post" || (r.slug && r.slug.startsWith('debug-post-')));
+      await cleanTable('kdrama_recommendations', r => r.slug && r.slug.startsWith('debug-kdrama-'));
 
       setCleanupResult({ 
         success: true, 
