@@ -93,6 +93,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
+          // Use result.url (Original Link) for storage
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;

@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Function to handle file uploads to Dropbox.
  * Route: /api/upload-to-dropbox
- * 
+ *
  * Uses Refresh Token flow for continuous authentication.
  */
 export async function onRequest(context) {
@@ -49,6 +49,7 @@ export async function onRequest(context) {
     }
 
     // 5. Get Access Token (Refresh Token Flow)
+    // FIX: Added headers and toString() for body
     const tokenParams = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: DROPBOX_REFRESH_TOKEN,
@@ -58,12 +59,16 @@ export async function onRequest(context) {
 
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
       method: 'POST',
-      body: tokenParams,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: tokenParams.toString(),
     });
 
     if (!tokenRes.ok) {
-      console.error('Dropbox Token Refresh Failed');
-      throw new Error('Failed to authenticate with Dropbox');
+      const errText = await tokenRes.text();
+      console.error('Dropbox Token Refresh Failed:', errText.substring(0, 200));
+      throw new Error(`Failed to authenticate with Dropbox: ${tokenRes.status}`);
     }
 
     const { access_token } = await tokenRes.json();
@@ -73,7 +78,6 @@ export async function onRequest(context) {
     const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
     const timestamp = Date.now();
     const uploadPath = `/uploads/${timestamp}_${safeFilename}`;
-    
     const arrayBuffer = await file.arrayBuffer();
 
     const dbxArgs = {
@@ -107,7 +111,7 @@ export async function onRequest(context) {
 
     // 7. Create or Get Shared Link
     let publicUrl = '';
-    
+
     // Attempt to create a new link
     const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
@@ -150,8 +154,10 @@ export async function onRequest(context) {
       });
     }
 
-    // 8. Transform URL for Direct Display (raw=1)
+    // 8. Prepare Response
+    // We return the ORIGINAL url (for saving) and a directUrl (just in case)
     let directUrl = publicUrl;
+    // Replace dl=0 or raw=0 with raw=1 for the direct variant
     if (directUrl.includes('dl=0')) {
       directUrl = directUrl.replace('dl=0', 'raw=1');
     } else if (directUrl.includes('raw=0')) {
@@ -161,11 +167,12 @@ export async function onRequest(context) {
       directUrl = `${directUrl}${separator}raw=1`;
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      path: dbxData.path_lower, 
-      url: directUrl, 
-      name: dbxData.name 
+    return new Response(JSON.stringify({
+      success: true,
+      path: dbxData.path_lower,
+      url: publicUrl,       // Save this one (contains st/rlkey)
+      directUrl: directUrl, // Use this if direct access is needed
+      name: dbxData.name
     }), {
       headers: { 'Content-Type': 'application/json' }
     });

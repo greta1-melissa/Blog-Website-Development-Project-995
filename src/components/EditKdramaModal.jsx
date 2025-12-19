@@ -37,7 +37,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         synopsis_long: drama.synopsis_long || drama.synopsis || '',
         my_two_cents: drama.my_two_cents || '',
         // Initialize with normalized URL from existing record
-        // This ensures subsequent saves preserve the image if not changed
         image_url: normalizeDropboxImageUrl(drama.image_url || drama.image || ''),
         image_alt: drama.image_alt || drama.title || '',
         is_featured_on_home: drama.is_featured_on_home || false,
@@ -116,9 +115,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       if (response?.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
-          // Result.url is already processed by the API to be raw=1
-          const freshUrl = normalizeDropboxImageUrl(result.url);
-          setFormData(prev => ({ ...prev, image_url: freshUrl }));
+          // Use result.url (Original Shared Link) for persistence logic
+          setFormData(prev => ({ ...prev, image_url: result.url }));
           setUploadStatus('Upload Complete!');
           return;
         } else {
@@ -334,16 +332,13 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                     {formData.image_url && (
                       <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
                         {/* 
-                           We use the raw URL here for preview if possible to avoid rapid proxy calls during editing,
-                           but if it's a dropbox link, it might not render if CORS blocks it.
-                           Let's try to use the proxy if it's a dropbox link.
+                           Use getImageSrc for preview to use proxy
                         */}
                         <img 
                           src={getImageSrc(formData.image_url)} 
                           alt="Preview" 
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
                           onError={(e) => {
-                            // Log warning but don't crash
                             console.warn("[EditKdramaModal] Preview failed:", formData.image_url);
                             e.currentTarget.src = KDRAMA_PLACEHOLDER;
                           }}

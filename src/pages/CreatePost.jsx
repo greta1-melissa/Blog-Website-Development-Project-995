@@ -48,7 +48,7 @@ const CreatePost = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'image') {
-      // Automatically normalize image URLs on input
+      // Normalize but keep st/rlkey
       const processedUrl = normalizeDropboxUrl(value);
       setFormData({ ...formData, [name]: processedUrl });
       setImageError(false);
@@ -84,7 +84,8 @@ const CreatePost = () => {
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
-          // Success! Use the returned direct URL
+          // Success! Use result.url (the ORIGINAL shared link with st/rlkey)
+          // Do NOT use directUrl here, we want to store the full link for persistence
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;

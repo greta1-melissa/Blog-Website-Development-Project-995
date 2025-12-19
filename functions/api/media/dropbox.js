@@ -43,7 +43,7 @@ export async function onRequest(context) {
     if (!tokenRes.ok) {
       const err = await tokenRes.text();
       console.error(`[Dropbox Proxy] Token Refresh Failed (Status: ${tokenRes.status}):`, err.substring(0, 300));
-      return new Response(`Failed to authenticate with Dropbox (Status: ${tokenRes.status})`, { status: 502 });
+      return new Response(`Failed to authenticate with Dropbox (Status: ${tokenRes.status}) - ${err.substring(0, 200)}`, { status: 502 });
     }
 
     const tokenData = await tokenRes.json();
@@ -52,6 +52,7 @@ export async function onRequest(context) {
     // 3. Clean the Target URL
     // Dropbox API get_shared_link_file expects the clean shared link (with rlkey), 
     // but modifiers like raw=1 or dl=0 in the 'url' arg can sometimes cause issues.
+    // CRITICAL: Do NOT remove 'st' or 'rlkey' as they are required for access.
     let cleanUrl = targetUrl;
     try {
       const u = new URL(targetUrl);

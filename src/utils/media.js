@@ -13,12 +13,21 @@ export const isDropboxUrl = (url) => {
 };
 
 /**
- * Normalizes a Dropbox URL to ensure it is a direct image link for storage.
+ * Helper to generate a proxy URL.
+ * @param {string} url 
+ * @returns {string}
+ */
+export const toDropboxProxyUrl = (url) => {
+  if (!url) return "";
+  return `/api/media/dropbox?url=${encodeURIComponent(url)}`;
+};
+
+/**
+ * Normalizes a Dropbox URL to ensure it is valid for storage.
  * - Replaces dl=0/1 with raw=1 (standardization)
- * - Removes 'st' (security token) parameters which expire short-term
- * - KEEPS 'rlkey' (resource key) which is critical for scoped links
+ * - KEEPS 'st' (security token) and 'rlkey' (resource key) - CRITICAL for access
  * 
- * use this BEFORE saving to database.
+ * use this BEFORE saving to database if the user manualy inputs a URL.
  * 
  * @param {string} url - The raw URL input
  * @returns {string} - The normalized URL
@@ -32,14 +41,13 @@ export const normalizeDropboxImageUrl = (url) => {
   try {
     const urlObj = new URL(stringUrl);
     
-    // 1. Remove 'st' parameter (security token) - Critical for persistence
-    // Note: Do NOT remove 'rlkey', it is required for private/scoped links
-    urlObj.searchParams.delete('st');
+    // 1. Ensure 'raw=1' for direct rendering (as a fallback/standard)
+    // We do NOT remove 'st' or 'rlkey' anymore.
     
-    // 2. Remove 'dl' parameter to avoid conflicts
+    // Remove 'dl' if present to avoid conflicts with raw
     urlObj.searchParams.delete('dl');
     
-    // 3. Ensure 'raw=1' for direct rendering (fallback if proxy fails)
+    // Set raw=1
     urlObj.searchParams.set('raw', '1');
     
     return urlObj.toString();
@@ -48,20 +56,13 @@ export const normalizeDropboxImageUrl = (url) => {
     let newUrl = stringUrl;
     
     // Replace dl=0/1 with raw=1
-    newUrl = newUrl.replace(/([?&])dl=[01]/g, '$1raw=1');
-    
-    // Remove st=... parameter
-    newUrl = newUrl.replace(/([?&])st=[^&]*&?/g, '$1');
+    if (newUrl.includes('dl=0')) newUrl = newUrl.replace('dl=0', 'raw=1');
+    if (newUrl.includes('dl=1')) newUrl = newUrl.replace('dl=1', 'raw=1');
     
     // Ensure raw=1 if not present
     if (!newUrl.includes('raw=1')) {
       const separator = newUrl.includes('?') ? '&' : '?';
       newUrl = `${newUrl}${separator}raw=1`;
-    }
-    
-    // Cleanup trailing & or ?
-    if (newUrl.endsWith('&') || newUrl.endsWith('?')) {
-      newUrl = newUrl.slice(0, -1);
     }
     
     return newUrl;
@@ -83,9 +84,7 @@ export const getImageSrc = (storedUrl) => {
   
   // If it's a Dropbox URL, route it through our proxy
   if (isDropboxUrl(stringUrl)) {
-    // We encode the full stored URL (which includes raw=1, rlkey, etc.)
-    // The proxy function will clean it up as needed
-    return `/api/media/dropbox?url=${encodeURIComponent(stringUrl)}`;
+    return toDropboxProxyUrl(stringUrl);
   }
   
   return stringUrl;
