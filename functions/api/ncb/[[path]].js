@@ -40,7 +40,6 @@ export async function onRequest(context) {
     const headers = new Headers(request.headers);
 
     // SECURITY: Inject the Secret Key from Server Env
-    // We check both naming conventions to be safe
     const secretKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
 
     if (!secretKey) {
@@ -51,10 +50,9 @@ export async function onRequest(context) {
     }
 
     // Overwrite/Add Authorization header
-    // FIX: Using correct template literal syntax to ensure valid string
     headers.set('Authorization', `Bearer ${secretKey}`);
 
-    // Ensure Host header is not forwarded (Cloudflare/Fetch handles this)
+    // Ensure Host header is not forwarded
     headers.delete('Host');
 
     // 4. Forward the Request
@@ -67,10 +65,30 @@ export async function onRequest(context) {
 
     const response = await fetch(proxyReq);
 
-    // 5. Return Response
-    // We clone the response to modify headers if needed (mostly for CORS)
+    // 5. Handle Response
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
+
+    // ERROR HANDLING: If upstream fails, capture details for debugging
+    if (!response.ok) {
+      const errorText = await response.text();
+      // Return a structured JSON error even if upstream returned HTML/Text
+      return new Response(JSON.stringify({
+        upstreamStatus: response.status,
+        upstreamStatusText: response.statusText,
+        upstreamBody: errorText,
+        path: targetUrl.pathname,
+        method: request.method,
+        proxyMessage: "Upstream NCB API Error"
+      }), {
+        status: response.status, // Keep original status code
+        statusText: response.statusText,
+        headers: {
+          ...Object.fromEntries(newHeaders),
+          "Content-Type": "application/json"
+        }
+      });
+    }
 
     return new Response(response.body, {
       status: response.status,
