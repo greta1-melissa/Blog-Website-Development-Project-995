@@ -344,6 +344,11 @@ const NcbDebug = () => {
     </div>
   );
 
+  // Reusable button classes for consistency
+  const buttonBaseClass = "px-4 py-1.5 text-xs font-bold rounded-lg transition-colors shadow-sm";
+  const purpleButtonClass = `${buttonBaseClass} bg-purple-600 text-white hover:bg-purple-700`;
+  const redButtonClass = `${buttonBaseClass} bg-red-600 text-white hover:bg-red-700`;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
@@ -432,7 +437,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">GET /read/posts</p>
                         </div>
                       </div>
-                      <button onClick={runReadPostsTest} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800">Run Test</button>
+                      <button onClick={runReadPostsTest} className={purpleButtonClass}>Run Test</button>
                     </div>
                     <ResultBox result={readPostsResult} />
                   </div>
@@ -447,7 +452,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">POST /create/posts</p>
                         </div>
                       </div>
-                      <button onClick={runCreatePostTest} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800">Run Test</button>
+                      <button onClick={runCreatePostTest} className={purpleButtonClass}>Run Test</button>
                     </div>
                     <ResultBox result={createPostResult} />
                   </div>
@@ -462,7 +467,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">POST /create/kdrama_recommendations</p>
                         </div>
                       </div>
-                      <button onClick={runCreateKdramaTest} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800">Run Test</button>
+                      <button onClick={runCreateKdramaTest} className={purpleButtonClass}>Run Test</button>
                     </div>
                     <ResultBox result={createKdramaResult} />
                   </div>
@@ -477,7 +482,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">PUT /update/posts/:id</p>
                         </div>
                       </div>
-                      <button onClick={runUpdatePostTest} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800">Run Test</button>
+                      <button onClick={runUpdatePostTest} className={purpleButtonClass}>Run Test</button>
                     </div>
                     <ResultBox result={updatePostResult} />
                   </div>
@@ -492,7 +497,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">PUT /update/kdrama.../:id</p>
                         </div>
                       </div>
-                      <button onClick={runUpdateKdramaTest} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800">Run Test</button>
+                      <button onClick={runUpdateKdramaTest} className={purpleButtonClass}>Run Test</button>
                     </div>
                     <ResultBox result={updateKdramaResult} />
                   </div>
@@ -507,7 +512,7 @@ const NcbDebug = () => {
                           <p className="text-xs text-gray-500">Deletes records starting with 'debug-'</p>
                         </div>
                       </div>
-                      <button onClick={runCleanupTest} className="px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">Run Cleanup</button>
+                      <button onClick={runCleanupTest} className={redButtonClass}>Run Cleanup</button>
                     </div>
                     <ResultBox result={cleanupResult} />
                   </div>
