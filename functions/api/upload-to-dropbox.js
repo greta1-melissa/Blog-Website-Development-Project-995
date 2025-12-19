@@ -49,7 +49,6 @@ export async function onRequest(context) {
     }
 
     // 5. Get Access Token (Refresh Token Flow)
-    // FIX: Added headers and toString() for body
     const tokenParams = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: DROPBOX_REFRESH_TOKEN,
@@ -155,9 +154,8 @@ export async function onRequest(context) {
     }
 
     // 8. Prepare Response
-    // We return the ORIGINAL url (for saving) and a directUrl (just in case)
+    // URL Transformation
     let directUrl = publicUrl;
-    // Replace dl=0 or raw=0 with raw=1 for the direct variant
     if (directUrl.includes('dl=0')) {
       directUrl = directUrl.replace('dl=0', 'raw=1');
     } else if (directUrl.includes('raw=0')) {
@@ -167,11 +165,14 @@ export async function onRequest(context) {
       directUrl = `${directUrl}${separator}raw=1`;
     }
 
+    const proxyUrl = `/api/media/dropbox?url=${encodeURIComponent(publicUrl)}`;
+
     return new Response(JSON.stringify({
       success: true,
       path: dbxData.path_lower,
-      url: publicUrl,       // Save this one (contains st/rlkey)
-      directUrl: directUrl, // Use this if direct access is needed
+      url: publicUrl,       // Save this one (Original)
+      directUrl: directUrl, // Direct hotlink (backup)
+      proxyUrl: proxyUrl,   // Proxy link (recommended for rendering)
       name: dbxData.name
     }), {
       headers: { 'Content-Type': 'application/json' }

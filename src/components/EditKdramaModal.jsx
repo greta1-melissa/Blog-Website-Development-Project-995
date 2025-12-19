@@ -131,23 +131,8 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     } catch (error) {
       console.error("Upload Handler Error:", error);
       setUploadStatus('Upload Failed');
-      
-      if (window.confirm(`Cloud upload failed: ${error.message}\n\nWould you like to use local storage (base64) instead? Note: This increases page size significantly.`)) {
-        try {
-          const base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          setFormData(prev => ({ ...prev, image_url: base64 }));
-          setUploadStatus('Saved Locally (Base64)');
-        } catch (localError) {
-          setErrorMessage("Could not process image locally.");
-        }
-      } else {
-        setErrorMessage(`Upload cancelled. Error: ${error.message}`);
-      }
+      setErrorMessage(`Upload failed: ${error.message}. Please try again.`);
+      // REMOVED: Base64 Fallback
     } finally {
       setIsUploading(false);
       e.target.value = null; // Reset input
@@ -157,11 +142,25 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSaving) return;
-    setIsSaving(true);
     setErrorMessage('');
+
+    const cleanImage = formData.image_url ? formData.image_url.trim() : '';
+
+    // Safety: Block Base64 saving
+    if (cleanImage.startsWith('data:image')) {
+      setErrorMessage("Saving failed: Base64 images are not supported. Please upload using the button.");
+      return;
+    }
+
+    // Fallback to existing if empty string is present, to prevent accidental wipe
+    // If user explicitly wants to delete, they currently can't with this logic, but this is safer for now.
+    const finalImage = cleanImage || (drama ? (drama.image_url || drama.image) : '');
+
+    setIsSaving(true);
 
     const processedData = {
       ...formData,
+      image_url: finalImage,
       tags: formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0),
       display_order: parseInt(formData.display_order) || 0
     };

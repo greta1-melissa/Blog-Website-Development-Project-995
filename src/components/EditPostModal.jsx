@@ -4,7 +4,6 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxUrl } from '../utils/media.js';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
@@ -41,7 +40,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         title: post.title || '',
         content: post.content || '',
         category: post.category || '',
-        // CRITICAL FIX: Check both image_url and image to prevent blank overwrite
+        // Initialize from existing data. Don't add placeholder here.
         image: post.image_url || post.image || '', 
         focusKeyword: post.focusKeyword || '',
         seoTitle: post.seoTitle || post.title || '',
@@ -109,15 +108,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       console.warn("Upload failed:", error);
       setUploadStatus('Upload Failed');
       setErrorMessage(`Upload failed: ${error.message}`);
-      
-      if (window.confirm("Cloud upload failed. Use local storage (Base64) instead?")) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setFormData(prev => ({ ...prev, image: reader.result }));
-          setUploadStatus('Saved Locally');
-        };
-        reader.readAsDataURL(file);
-      }
+      // REMOVED: Base64 fallback (FileReader)
     } finally {
       setIsUploading(false);
     }
@@ -139,11 +130,27 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       finalStatus = 'published';
     }
 
-    // Ensure we send image_url property
+    // CRITICAL: Handle image persistence
+    // 1. Get cleaned string from form
+    const cleanImageInput = formData.image ? formData.image.trim() : '';
+
+    // 2. Safety Check: Block Base64 saving
+    if (cleanImageInput.startsWith('data:image')) {
+      setErrorMessage("Saving failed: Base64 images are not supported. Please upload using the button.");
+      setIsSaving(false);
+      return;
+    }
+
+    // 3. Determine final image value
+    // If input is not empty, use it.
+    // If input IS empty, fallback to existing to prevent overwrite (per instructions).
+    // Note: This prevents deleting an image by clearing the field, but ensures persistence safety.
+    const finalImage = cleanImageInput || post.image_url || post.image || '';
+
     const updatedData = {
       ...formData,
-      image: formData.image || BLOG_PLACEHOLDER,
-      image_url: formData.image || BLOG_PLACEHOLDER, // Add explicit column
+      image: finalImage,
+      image_url: finalImage, 
       date: finalDate,
       status: finalStatus
     };

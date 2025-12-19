@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxUrl } from '../utils/media.js';
 
 const { FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
@@ -100,18 +99,8 @@ const CreatePost = () => {
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadStatus('Upload Failed');
-      setErrorMessage(`Upload failed: ${error.message}. Please try a manual URL or local fallback.`);
-      
-      // Optional: Local Base64 Fallback
-      if (window.confirm("Upload failed. Use local image (Base64) instead?")) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setFormData(prev => ({ ...prev, image: reader.result }));
-          setUploadStatus('Saved Locally');
-          setErrorMessage('');
-        };
-        reader.readAsDataURL(file);
-      }
+      setErrorMessage(`Upload failed: ${error.message}. Please retry or use a manual URL.`);
+      // REMOVED: Base64 Fallback
     } finally {
       setIsUploading(false);
     }
@@ -123,6 +112,14 @@ const CreatePost = () => {
 
     if (!formData.title || !formData.content) {
       alert('Please fill in at least the Title and Content to save.');
+      return;
+    }
+
+    // Safety Check: Block Base64 images
+    if (formData.image && formData.image.trim().startsWith('data:image')) {
+      setErrorMessage("Saving failed: Base64 images (data:image/...) are not supported. Please upload the image to Dropbox using the upload button.");
+      // Scroll to error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -145,10 +142,13 @@ const CreatePost = () => {
     }
 
     // Ensure image_url is included in the payload
+    // Do NOT default to placeholder for DB persistence. Only clean the string.
+    const finalImage = formData.image ? formData.image.trim() : '';
+
     const postData = {
       ...formData,
-      image: formData.image || BLOG_PLACEHOLDER,
-      image_url: formData.image || BLOG_PLACEHOLDER, // Explicit DB column
+      image: finalImage,
+      image_url: finalImage, // Explicit DB column
       author: user?.name || 'BangtanMom',
       date: finalDate,
       status: finalStatus
