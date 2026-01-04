@@ -23,12 +23,19 @@ const NcbDebug = () => {
 
   const runRawTest = async (url, method = 'GET', body = null) => {
     try {
-      const options = { method, headers: { 'Content-Type': 'application/json' } };
+      const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' }
+      };
       if (body) options.body = JSON.stringify(body);
       const res = await fetch(url, options);
       const text = await res.text();
       let json = null;
-      try { json = JSON.parse(text); } catch (e) { json = text; }
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        json = text;
+      }
       return { success: res.ok, status: res.status, body: json };
     } catch (e) {
       return { success: false, status: 'NET_ERR', body: e.message };
@@ -37,11 +44,14 @@ const NcbDebug = () => {
 
   const runCreatePostTest = async () => {
     setCreatePostResult({ loading: true });
-    const instance = status?.instance || '';
-    const url = `/api/ncb/create/posts?Instance=${instance}`;
+    
+    // CLEANED: We no longer append ?Instance=... from the frontend.
+    // The proxy handles this injection server-side.
+    const url = `/api/ncb/create/posts`;
+    
     const payload = {
       title: "Debug Post",
-      content: "Debug content",
+      content: "Testing server-side instance injection",
       category: "General",
       image: "",
       author: "DebugUser",
@@ -49,6 +59,7 @@ const NcbDebug = () => {
       readtime: "2 min read",
       ishandpicked: 0
     };
+
     const result = await runRawTest(url, 'POST', payload);
     setCreatePostResult({ ...result, payloadUsed: payload });
   };
@@ -68,14 +79,42 @@ const NcbDebug = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-6">
-        <h1 className="text-2xl font-bold mb-6 flex items-center"><SafeIcon icon={FiServer} className="mr-2"/> NCB Schema Validator</h1>
+        <h1 className="text-2xl font-bold mb-6 flex items-center">
+          <SafeIcon icon={FiServer} className="mr-2" /> NCB Proxy Validator
+        </h1>
+        
         <div className="space-y-6">
-          <div className="p-4 border rounded-lg">
+          <div className="p-4 border border-purple-100 rounded-lg bg-purple-50/30">
             <div className="flex justify-between items-center">
-              <h4 className="font-bold">Test Create Post (readtime)</h4>
-              <button onClick={runCreatePostTest} className="bg-purple-600 text-white px-4 py-1 rounded">Run</button>
+              <div>
+                <h4 className="font-bold text-gray-900 text-lg">Test Proxy Write</h4>
+                <p className="text-sm text-gray-600">Verifying server-side Instance injection for 'create'</p>
+              </div>
+              <button 
+                onClick={runCreatePostTest} 
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-sm"
+              >
+                Run Write Test
+              </button>
             </div>
             <ResultBox result={createPostResult} />
+          </div>
+
+          <div className="p-4 border border-gray-100 rounded-lg">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="font-bold text-gray-900">Connection Status</h4>
+                <p className="text-sm text-gray-600">Checking read access via proxy</p>
+              </div>
+              <button onClick={checkStatus} className="text-purple-600 p-2 hover:bg-purple-50 rounded-full">
+                <SafeIcon icon={FiRefreshCw} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+            {status && (
+              <div className={`mt-4 p-3 rounded-lg text-sm ${status.canReadPosts ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                {status.message}
+              </div>
+            )}
           </div>
         </div>
       </div>

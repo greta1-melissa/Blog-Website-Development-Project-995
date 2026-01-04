@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { ncbGet, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
+import { ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
 import { kdramas as initialSeedData } from '../data/kdramaData';
 import { normalizeDropboxImageUrl } from '../utils/media.js';
 
@@ -60,13 +60,16 @@ export const KdramaProvider = ({ children }) => {
   const fetchKdramas = async () => {
     setIsLoading(true);
     try {
-      const serverData = await ncbGet(TABLE_NAME);
+      // Standardized NCB Read Pattern: kdrama_recommendations
+      const res = await fetch(`/api/ncb/read/${TABLE_NAME}`);
+      if (!res.ok) throw new Error(`Upstream Error: ${res.status}`);
+      
+      const json = await res.json();
+      
       let currentData = [];
-
-      if (serverData && Array.isArray(serverData) && serverData.length > 0) {
-        currentData = normalizeData(serverData);
+      if (Array.isArray(json.data) && json.data.length > 0) {
+        currentData = normalizeData(json.data);
         const serverSlugs = new Set(currentData.map(d => String(d.slug)));
-
         initialSeedData.forEach(seedItem => {
           if (!serverSlugs.has(String(seedItem.slug))) {
             currentData.push(normalizeData([seedItem])[0]);
@@ -76,12 +79,12 @@ export const KdramaProvider = ({ children }) => {
         const local = getLocalData();
         currentData = local && local.length > 0 ? local : normalizeData(initialSeedData);
       }
-
+      
       currentData.sort((a, b) => a.display_order - b.display_order);
       setKdramas(currentData);
     } catch (error) {
-      console.error("Failed to fetch kdramas", error);
-      setKdramas(normalizeData(initialSeedData));
+      // PRESERVE STATE: Do not wipe kdramas on transient error
+      console.error("KdramaContext fetch failed", error);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +94,6 @@ export const KdramaProvider = ({ children }) => {
     fetchKdramas();
   }, []);
 
-  // IMAGE PERSISTENCE VALIDATOR
   const validateImageProxy = (url) => {
     if (!url) return true;
     if (url.includes('dropbox.com/scl')) {
@@ -106,10 +108,9 @@ export const KdramaProvider = ({ children }) => {
   const addKdrama = async (dramaData) => {
     const tempId = Date.now().toString();
     const rawUrl = (dramaData.image_url || dramaData.image || '').trim();
-    
     validateImageProxy(rawUrl);
+    
     const normalizedImage = normalizeDropboxImageUrl(rawUrl);
-
     const payload = {
       ...dramaData,
       image_url: normalizedImage,
@@ -144,7 +145,6 @@ export const KdramaProvider = ({ children }) => {
     if (!targetSlug) throw new Error("Cannot update: Record has no slug.");
 
     let finalImageUrl = (updates.image_url !== undefined ? updates.image_url : (itemToUpdate.image_url || itemToUpdate.image || '')).trim();
-    
     validateImageProxy(finalImageUrl);
     finalImageUrl = normalizeDropboxImageUrl(finalImageUrl);
 
@@ -165,15 +165,7 @@ export const KdramaProvider = ({ children }) => {
     });
 
     try {
-      const allRecords = await ncbGet(TABLE_NAME);
-      const existingRecord = allRecords.find(r => r.slug === targetSlug || String(r.id) === String(id));
-
-      if (existingRecord) {
-        await ncbUpdate(TABLE_NAME, existingRecord.id, preparedUpdates);
-      } else {
-        const { id: _, ...createPayload } = { ...itemToUpdate, ...preparedUpdates };
-        await ncbCreate(TABLE_NAME, createPayload);
-      }
+      await ncbUpdate(TABLE_NAME, id, preparedUpdates);
     } catch (e) {
       setKdramas(previousState);
       throw e;
@@ -196,7 +188,10 @@ export const KdramaProvider = ({ children }) => {
   const featuredKdramas = useMemo(() => kdramas.filter(d => d.is_featured_on_home).slice(0, 4), [kdramas]);
 
   return (
-    <KdramaContext.Provider value={{ kdramas, featuredKdramas, isLoading, addKdrama, updateKdrama, deleteKdrama, getKdramaBySlug, fetchKdramas }}>
+    <KdramaContext.Provider value={{ 
+      kdramas, featuredKdramas, isLoading, addKdrama, 
+      updateKdrama, deleteKdrama, getKdramaBySlug, fetchKdramas 
+    }}>
       {children}
     </KdramaContext.Provider>
   );

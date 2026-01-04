@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { ncbGet, ncbCreate, ncbUpdate } from '../services/nocodebackendClient';
+import { ncbCreate, ncbUpdate } from '../services/nocodebackendClient';
 
 const ForumContext = createContext();
 
@@ -12,7 +12,6 @@ export const useForum = () => {
   return context;
 };
 
-// Default categories (Purple shades)
 const defaultCategories = [
   { id: 1, name: 'Mom Life & Parenting', description: 'Share your parenting journey', color: 'bg-purple-500', icon: '👶' },
   { id: 2, name: 'K-Drama & Entertainment', description: 'Discuss your favorite K-dramas', color: 'bg-purple-600', icon: '📺' },
@@ -33,7 +32,7 @@ const getLocalData = (key) => {
 
 export const ForumProvider = ({ children }) => {
   const { user } = useAuth();
-  const [categories, setCategories] = useState(defaultCategories);
+  const [categories] = useState(defaultCategories);
   const [threads, setThreads] = useState(() => getLocalData('forum_threads'));
   const [replies, setReplies] = useState(() => getLocalData('forum_replies'));
 
@@ -47,28 +46,36 @@ export const ForumProvider = ({ children }) => {
 
   const fetchData = async () => {
     try {
-      const [serverThreads, serverReplies] = await Promise.all([
-        ncbGet('threads'),
-        ncbGet('replies')
-      ]);
-
-      if (Array.isArray(serverThreads) && serverThreads.length > 0) {
-        const localThreads = getLocalData('forum_threads');
-        const serverIds = new Set(serverThreads.map(t => String(t.id)));
-        const localOnly = localThreads.filter(t => !serverIds.has(String(t.id)));
-        const mergedThreads = [...localOnly, ...serverThreads];
-        mergedThreads.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-        setThreads(mergedThreads);
+      // Standardized NCB Read Pattern: threads
+      const threadsRes = await fetch('/api/ncb/read/threads');
+      if (threadsRes.ok) {
+        const threadsJson = await threadsRes.json();
+        if (Array.isArray(threadsJson.data)) {
+          const serverThreads = threadsJson.data;
+          const localThreads = getLocalData('forum_threads');
+          const serverIds = new Set(serverThreads.map(t => String(t.id)));
+          const localOnly = localThreads.filter(t => !serverIds.has(String(t.id)));
+          const merged = [...localOnly, ...serverThreads];
+          merged.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+          setThreads(merged);
+        }
       }
 
-      if (Array.isArray(serverReplies) && serverReplies.length > 0) {
-        const localReplies = getLocalData('forum_replies');
-        const serverIds = new Set(serverReplies.map(r => String(r.id)));
-        const localOnly = localReplies.filter(r => !serverIds.has(String(r.id)));
-        setReplies([...localOnly, ...serverReplies]);
+      // Standardized NCB Read Pattern: replies
+      const repliesRes = await fetch('/api/ncb/read/replies');
+      if (repliesRes.ok) {
+        const repliesJson = await repliesRes.json();
+        if (Array.isArray(repliesJson.data)) {
+          const serverReplies = repliesJson.data;
+          const localReplies = getLocalData('forum_replies');
+          const serverIds = new Set(serverReplies.map(r => String(r.id)));
+          const localOnly = localReplies.filter(r => !serverIds.has(String(r.id)));
+          setReplies([...localOnly, ...serverReplies]);
+        }
       }
     } catch (error) {
-      console.error("Error fetching forum data", error);
+      // PRESERVE STATE: Do not wipe threads/replies on transient error
+      console.error("ForumContext fetch failed", error);
     }
   };
 
@@ -118,11 +125,10 @@ export const ForumProvider = ({ children }) => {
       likes: 0
     };
 
-    // Optimistic update
     setReplies(prev => [...prev, { ...newReply, id: Date.now() }]);
-    setThreads(prev => prev.map(thread =>
-      String(thread.id) === String(threadId)
-        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() }
+    setThreads(prev => prev.map(thread => 
+      String(thread.id) === String(threadId) 
+        ? { ...thread, replies: (thread.replies || 0) + 1, updatedAt: new Date().toISOString() } 
         : thread
     ));
 
@@ -137,29 +143,17 @@ export const ForumProvider = ({ children }) => {
     }
   };
 
-  const getThreadsByCategory = (categoryId) => {
-    return threads.filter(thread => String(thread.categoryId) === String(categoryId));
-  };
-
-  const getThread = (threadId) => {
-    return threads.find(thread => String(thread.id) === String(threadId));
-  };
-
-  // NEW: Find existing thread by title (fuzzy match or exact)
+  const getThreadsByCategory = (categoryId) => threads.filter(thread => String(thread.categoryId) === String(categoryId));
+  const getThread = (threadId) => threads.find(thread => String(thread.id) === String(threadId));
   const getThreadByTitle = (title) => {
     if (!title) return null;
     return threads.find(t => t.title.toLowerCase().trim() === title.toLowerCase().trim());
   };
-
-  const getRepliesByThread = (threadId) => {
-    return replies.filter(reply => String(reply.threadId) === String(threadId));
-  };
-
+  const getRepliesByThread = (threadId) => replies.filter(reply => String(reply.threadId) === String(threadId));
+  
   const incrementViews = (threadId) => {
-    setThreads(prev => prev.map(thread =>
-      String(thread.id) === String(threadId)
-        ? { ...thread, views: (thread.views || 0) + 1 }
-        : thread
+    setThreads(prev => prev.map(thread => 
+      String(thread.id) === String(threadId) ? { ...thread, views: (thread.views || 0) + 1 } : thread
     ));
     const thread = threads.find(t => String(t.id) === String(threadId));
     if (thread) {
@@ -170,9 +164,7 @@ export const ForumProvider = ({ children }) => {
   const likeReply = async (replyId) => {
     const reply = replies.find(r => String(r.id) === String(replyId));
     const newLikes = (reply?.likes || 0) + 1;
-    setReplies(prev => prev.map(r =>
-      String(r.id) === String(replyId) ? { ...r, likes: newLikes } : r
-    ));
+    setReplies(prev => prev.map(r => String(r.id) === String(replyId) ? { ...r, likes: newLikes } : r));
     try {
       await ncbUpdate('replies', replyId, { likes: newLikes });
     } catch (e) {
@@ -180,22 +172,12 @@ export const ForumProvider = ({ children }) => {
     }
   };
 
-  const value = {
-    categories,
-    threads,
-    replies,
-    createThread,
-    createReply,
-    getThreadsByCategory,
-    getThread,
-    getThreadByTitle, // Export new function
-    getRepliesByThread,
-    incrementViews,
-    likeReply
-  };
-
   return (
-    <ForumContext.Provider value={value}>
+    <ForumContext.Provider value={{ 
+      categories, threads, replies, createThread, createReply, 
+      getThreadsByCategory, getThread, getThreadByTitle, getRepliesByThread, 
+      incrementViews, likeReply 
+    }}>
       {children}
     </ForumContext.Provider>
   );

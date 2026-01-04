@@ -39,20 +39,20 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     setFetchError(null);
     setIsErrorDismissed(false);
-    
+
     try {
-      // Direct fetch calling the proxy as required
+      // REQUIRED IMPLEMENTATION: Preserve state on failure
       const res = await fetch('/api/ncb/read/posts');
       
       if (!res.ok) {
-        throw new Error(`Upstream Error: ${res.status} ${res.statusText}`);
+        throw new Error(`Upstream Error: ${res.status}`);
       }
 
       const json = await res.json();
-      const serverData = json.data;
-      
-      if (Array.isArray(serverData)) {
-        const normalizedPosts = serverData.map(post => normalizePost(post));
+
+      // Only update state if data is a valid array
+      if (Array.isArray(json.data)) {
+        const normalizedPosts = json.data.map(post => normalizePost(post));
         
         // Sorting by date DESC
         normalizedPosts.sort((a, b) => {
@@ -60,16 +60,15 @@ export const BlogProvider = ({ children }) => {
           const dateB = new Date(b.date || 0);
           return dateB - dateA;
         });
-
+        
         setPosts(normalizedPosts);
       } else {
         console.error("[BlogContext] Invalid data format received:", json);
-        // We do NOT call setPosts([]) here to preserve existing state if this was a refresh
       }
-    } catch (e) {
-      // LOGIC: Errors are logged clearly and state is NOT overwritten with empty array
-      console.error('BlogContext fetch failed', e);
-      setFetchError("Could not load posts from server. Please check your connection.");
+    } catch (err) {
+      // CRITICAL: posts state is NOT modified here, preserving previous data
+      console.error('BlogContext fetch failed', err);
+      setFetchError("Could not load posts from server. Showing cached content if available.");
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +96,7 @@ export const BlogProvider = ({ children }) => {
       date: postData.date || new Date().toISOString().split('T')[0],
       readtime: postData.readTime || "2 min read"
     };
+
     const savedPost = await ncbCreate('posts', dbPayload);
     const normalized = normalizePost(savedPost);
     setPosts(prev => [normalized, ...prev]);
@@ -118,9 +118,18 @@ export const BlogProvider = ({ children }) => {
 
   return (
     <BlogContext.Provider value={{
-      posts, publishedPosts, categories, isLoading, 
-      fetchError, isErrorDismissed, dismissError, retryFetch: fetchPosts,
-      addPost, updatePost, deletePost, getPost
+      posts,
+      publishedPosts,
+      categories,
+      isLoading,
+      fetchError,
+      isErrorDismissed,
+      dismissError,
+      retryFetch: fetchPosts,
+      addPost,
+      updatePost,
+      deletePost,
+      getPost
     }}>
       {children}
     </BlogContext.Provider>
