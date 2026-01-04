@@ -13,7 +13,11 @@ import { formatDate } from '../utils/dateUtils';
 import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiBarChart2, FiUsers, FiFileText, FiTv, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiActivity, FiStar, FiCheckCircle, FiClock, FiFile } = FiIcons;
+const {
+  FiBarChart2, FiUsers, FiFileText, FiTv, FiEdit, FiTrash2,
+  FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiActivity,
+  FiStar, FiCheckCircle, FiClock, FiFile
+} = FiIcons;
 
 const AccessDenied = () => (
   <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
@@ -56,9 +60,8 @@ const Admin = () => {
 
   const stats = useMemo(() => {
     const safePosts = Array.isArray(posts) ? posts : [];
-    const totalPosts = safePosts.length;
     return {
-      totalPosts,
+      totalPosts: safePosts.length,
       totalKdramas: kdramas.length,
       totalUsers: 0
     };
@@ -66,6 +69,8 @@ const Admin = () => {
 
   const filteredPosts = useMemo(() => {
     const safePosts = Array.isArray(posts) ? posts : [];
+    
+    // Deduplication by ID
     const seen = new Set();
     const uniquePosts = [];
     safePosts.forEach(post => {
@@ -75,19 +80,22 @@ const Admin = () => {
       }
     });
 
+    // ADMIN REQUIREMENT: 
+    // Show ALL posts regardless of isHandPicked status.
+    // Filtering should only happen for Search, Category, and Status.
     return uniquePosts.filter(post => {
       const postTitle = post.title || '';
       const matchesSearch = searchTerm === '' || postTitle.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
       const postStatus = post.status || 'published';
       const matchesStatus = filterStatus === 'all' || postStatus === filterStatus;
-
+      
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [posts, searchTerm, filterCategory, filterStatus]);
 
   const filteredKdramas = useMemo(() => {
-    return kdramas.filter(drama =>
+    return kdramas.filter(drama => 
       drama.title.toLowerCase().includes(kdramaSearch.toLowerCase()) ||
       (drama.tags && drama.tags.some(t => t.toLowerCase().includes(kdramaSearch.toLowerCase())))
     );
@@ -177,7 +185,7 @@ const Admin = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiBarChart2 },
-    { id: 'posts', label: 'Manage Posts', icon: FiFileText },
+    { id: 'posts', label: 'All Stories', icon: FiFileText },
     { id: 'kdramas', label: 'K-Dramas', icon: FiTv },
     { id: 'users', label: 'User Management', icon: FiUsers },
   ];
@@ -214,10 +222,11 @@ const Admin = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === tab.id
+              className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                activeTab === tab.id
                   ? 'border-purple-500 text-purple-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+              }`}
             >
               <SafeIcon icon={tab.icon} className="text-lg" />
               <span>{tab.label}</span>
@@ -264,7 +273,7 @@ const Admin = () => {
                   <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search posts..."
+                    placeholder="Search all stories..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
@@ -281,14 +290,13 @@ const Admin = () => {
                   {categories.map((category) => (
                     <option key={category} value={category}>{category}</option>
                   ))}
-                  {!categories.includes('Career') && <option value="Career">Career</option>}
                 </select>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
                 >
-                  <option value="all">All Statuses (Default)</option>
+                  <option value="all">Any Status</option>
                   <option value="published">Published</option>
                   <option value="draft">Drafts</option>
                   <option value="scheduled">Scheduled</option>
@@ -364,7 +372,7 @@ const Admin = () => {
                   {filteredPosts.length === 0 && (
                     <tr>
                       <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        No posts found matching your filters.
+                        No stories found matching your filters.
                       </td>
                     </tr>
                   )}

@@ -122,11 +122,9 @@ export const BlogProvider = ({ children }) => {
         });
       }
 
-      finalPosts.sort((a, b) => {
-        if (a.isHandPicked && !b.isHandPicked) return -1;
-        if (!a.isHandPicked && b.isHandPicked) return 1;
-        return new Date(b.date) - new Date(a.date);
-      });
+      // ADMIN REQUIREMENT: Sort purely by Date DESC (Newest First) 
+      // Do NOT filter or sort by isHandPicked here to avoid hiding/reordering logic in Admin.
+      finalPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setPosts(finalPosts);
     } catch (error) {
@@ -149,7 +147,6 @@ export const BlogProvider = ({ children }) => {
     }
   }, [posts]);
 
-  // IMAGE PERSISTENCE VALIDATOR
   const validateImageProxy = (url) => {
     if (!url) return true;
     if (url.includes('dropbox.com/scl')) {
@@ -166,10 +163,9 @@ export const BlogProvider = ({ children }) => {
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const calcReadTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     const postDate = postData.date || new Date().toISOString().split('T')[0];
-    
     const rawImage = (postData.image || postData.image_url || '').trim();
-    validateImageProxy(rawImage);
 
+    validateImageProxy(rawImage);
     const finalImage = normalizeDropboxImageUrl(rawImage);
 
     const newPost = {
@@ -201,8 +197,8 @@ export const BlogProvider = ({ children }) => {
 
       const savedPost = await ncbCreate('posts', dbPayload);
       if (!savedPost || (!savedPost.id && !savedPost._id)) throw new Error("DB creation failed.");
-      const realId = savedPost.id || savedPost._id;
 
+      const realId = savedPost.id || savedPost._id;
       setPosts(prev => prev.map(p => p.id === tempId ? normalizePost({ ...p, ...savedPost, id: realId, isLocalOnly: false }) : p));
       return realId;
     } catch (error) {
@@ -218,7 +214,7 @@ export const BlogProvider = ({ children }) => {
     let updates = { ...updatedFields };
 
     if (updates.image !== undefined || updates.image_url !== undefined) {
-      const imgVal = (updates.image_url !== undefined ? updates.image_url : updates.image || '').trim();
+      const imgVal = (updates.image_url !== undefined ? updates.image_url : (updates.image || '')).trim();
       validateImageProxy(imgVal);
       const newImg = normalizeDropboxImageUrl(imgVal);
       updates.image = newImg;
@@ -242,9 +238,10 @@ export const BlogProvider = ({ children }) => {
       if (updates.image !== undefined) dbUpdates.image = updates.image;
       if (updates.author !== undefined) dbUpdates.author = updates.author;
       if (updates.date !== undefined) dbUpdates.date = updates.date;
-      
+
       const finalReadTime = updates.readtime !== undefined ? updates.readtime : updates.readTime;
       if (finalReadTime !== undefined) dbUpdates.readtime = finalReadTime;
+
       if (updates.isHandPicked !== undefined) dbUpdates.ishandpicked = updates.isHandPicked ? 1 : 0;
 
       await ncbUpdate('posts', id, dbUpdates);
@@ -269,6 +266,7 @@ export const BlogProvider = ({ children }) => {
   };
 
   const getPost = (id) => posts.find(post => String(post.id) === String(id));
+
   const getPostsByCategory = (category) => publishedPosts.filter(post => post.category === category);
 
   const value = {
