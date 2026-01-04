@@ -2,10 +2,12 @@
  * NoCodeBackend (NCB) Client
  * 
  * CENTRALIZED: Enforces the canonical Instance ID for all requests.
+ * This ensures incognito and authenticated sessions read the same data.
  */
 
+// Single source of truth for the browser
+export const DEFAULT_NCB_INSTANCE = import.meta.env.VITE_NCB_INSTANCE || "54230_bangtan_mom_blog_site";
 const NCB_URL = '/api/ncb';
-const NCB_INSTANCE = '54230_bangtan_mom_blog_site'; // CANONICAL INSTANCE ID
 
 /**
  * Defensive check to prevent FormData from being sent to NCB.
@@ -28,21 +30,28 @@ function normalizeTableName(table) {
 
 /**
  * Attach Instance and query params.
+ * STRICT: Ensures Instance is NEVER missing or empty.
  */
 function withInstanceParam(path, extraParams = {}) {
   const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
   
-  // ALWAYS inject the canonical instance ID
-  url.searchParams.set('Instance', NCB_INSTANCE);
-  
-  // Cache Busting
-  url.searchParams.set('_t', Date.now());
-
+  // 1. Apply extra params (filters, pagination, etc.)
   Object.entries(extraParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value));
     }
   });
+
+  // 2. ENFORCE INSTANCE: 
+  // If Instance is missing or was explicitly passed as empty string, 
+  // revert to the canonical default.
+  const currentInstance = url.searchParams.get('Instance');
+  if (!currentInstance || currentInstance.trim() === '') {
+    url.searchParams.set('Instance', DEFAULT_NCB_INSTANCE);
+  }
+  
+  // 3. Cache Busting
+  url.searchParams.set('_t', Date.now());
 
   return url.toString();
 }
@@ -177,7 +186,7 @@ export async function ncbGet(table, queryParams) {
 
 export async function getNcbStatus() {
   const status = { 
-    instance: NCB_INSTANCE, 
+    instance: DEFAULT_NCB_INSTANCE, 
     canReadPosts: false, 
     message: '' 
   };

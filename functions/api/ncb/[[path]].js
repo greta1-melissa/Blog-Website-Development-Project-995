@@ -1,15 +1,16 @@
 /**
  * Cloudflare Pages Function: NoCodeBackend Proxy
  * 
- * ENFORCED: Automatically injects the default Instance ID if missing.
+ * FAIL-SAFE: Automatically injects the default Instance ID if missing or empty.
  * This ensures incognito and authenticated sessions read the same data.
  * 
  * Route: /api/ncb/*
  */
 export async function onRequest(context) {
   const { request, env, params } = context;
-
-  const DEFAULT_INSTANCE = '54230_bangtan_mom_blog_site';
+  
+  // Canonical fallback instance
+  const FALLBACK_INSTANCE = '54230_bangtan_mom_blog_site';
 
   // 1. Handle CORS Preflight
   if (request.method === "OPTIONS") {
@@ -37,10 +38,14 @@ export async function onRequest(context) {
       targetUrl.searchParams.append(key, val);
     });
 
-    // 3. ENFORCE INSTANCE PARAMETER
-    // If the client didn't provide an Instance, inject the canonical one.
-    if (!targetUrl.searchParams.has('Instance')) {
-      targetUrl.searchParams.set('Instance', env.NCB_INSTANCE || DEFAULT_INSTANCE);
+    // 3. ENFORCE INSTANCE PARAMETER (Server Side Fail-safe)
+    // Rules:
+    // - Check if Instance exists and is not an empty string.
+    // - If missing/empty, use env.NCB_INSTANCE or env.VITE_NCB_INSTANCE or hardcoded fallback.
+    const currentInstance = targetUrl.searchParams.get('Instance');
+    if (!currentInstance || currentInstance.trim() === '') {
+      const defaultInstance = env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || FALLBACK_INSTANCE;
+      targetUrl.searchParams.set('Instance', defaultInstance);
     }
 
     // 4. Prepare Headers
