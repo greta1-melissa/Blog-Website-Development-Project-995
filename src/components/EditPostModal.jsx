@@ -9,7 +9,10 @@ import { normalizeDropboxUrl } from '../utils/media.js';
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
-  const [sections, setSections] = useState({ seo: false, schedule: true });
+  const [sections, setSections] = useState({
+    seo: false,
+    schedule: true
+  });
 
   const toggleSection = (section) => {
     setSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -20,6 +23,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     content: '',
     category: '',
     image: '',
+    readTime: '',
     focusKeyword: '',
     seoTitle: '',
     metaDescription: '',
@@ -40,8 +44,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         title: post.title || '',
         content: post.content || '',
         category: post.category || '',
-        // Initialize from existing data. Don't add placeholder here.
-        image: post.image_url || post.image || '', 
+        image: post.image_url || post.image || '',
+        readTime: post.readTime || post.readtime || '',
         focusKeyword: post.focusKeyword || '',
         seoTitle: post.seoTitle || post.title || '',
         metaDescription: post.metaDescription || '',
@@ -82,7 +86,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     try {
       const data = new FormData();
       data.append('file', file);
-      
+
       const response = await fetch('/api/upload-to-dropbox', {
         method: 'POST',
         body: data
@@ -92,23 +96,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       if (response.ok && contentType && contentType.includes("application/json")) {
         const result = await response.json();
         if (result.success) {
-          // Use result.url (Original Link) for storage
           setFormData(prev => ({ ...prev, image: result.url }));
           setUploadStatus('Upload Complete!');
           return;
         } else {
           throw new Error(result.message || "Server upload failed.");
         }
-      } 
-      
+      }
       const errorText = await response.text();
       throw new Error(`Server Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
-
     } catch (error) {
       console.warn("Upload failed:", error);
       setUploadStatus('Upload Failed');
       setErrorMessage(`Upload failed: ${error.message}`);
-      // REMOVED: Base64 fallback (FileReader)
     } finally {
       setIsUploading(false);
     }
@@ -130,27 +130,22 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       finalStatus = 'published';
     }
 
-    // CRITICAL: Handle image persistence
-    // 1. Get cleaned string from form
     const cleanImageInput = formData.image ? formData.image.trim() : '';
-
-    // 2. Safety Check: Block Base64 saving
     if (cleanImageInput.startsWith('data:image')) {
       setErrorMessage("Saving failed: Base64 images are not supported. Please upload using the button.");
       setIsSaving(false);
       return;
     }
 
-    // 3. Determine final image value
-    // If input is not empty, use it.
-    // If input IS empty, fallback to existing to prevent overwrite (per instructions).
-    // Note: This prevents deleting an image by clearing the field, but ensures persistence safety.
     const finalImage = cleanImageInput || post.image_url || post.image || '';
 
+    // FIX: Map readTime -> readtime and remove readTime from the payload for NCB
+    const { readTime, ...restOfFormData } = formData;
     const updatedData = {
-      ...formData,
+      ...restOfFormData,
+      readtime: readTime,
       image: finalImage,
-      image_url: finalImage, 
+      // Removed image_url to align with NCB schema which strictly uses 'image'
       date: finalDate,
       status: finalStatus
     };
@@ -179,7 +174,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
       ['link', 'clean']
     ],
   };
@@ -239,6 +234,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                       required
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
                     <div className="rounded-lg overflow-hidden border border-gray-300">
@@ -255,13 +251,18 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
 
                 {/* SEO Section */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                  <button type="button" onClick={() => toggleSection('seo')} className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('seo')}
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
                     <div className="flex items-center">
                       <SafeIcon icon={FiSearch} className="text-purple-600 mr-2" />
                       <h3 className="text-base font-bold text-gray-900">SEO Optimization</h3>
                     </div>
                     <SafeIcon icon={sections.seo ? FiChevronUp : FiChevronDown} className="text-gray-500" />
                   </button>
+
                   <AnimatePresence>
                     {sections.seo && (
                       <motion.div
@@ -329,6 +330,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         <option value="scheduled">Scheduled</option>
                       </select>
                     </div>
+
                     <div className={formData.status === 'scheduled' ? 'bg-purple-100 p-3 rounded-lg border border-purple-200' : ''}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {formData.status === 'scheduled' ? 'Scheduled Date' : 'Publish Date'}
@@ -338,6 +340,18 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         name="scheduledDate"
                         value={formData.scheduledDate}
                         onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Read Time</label>
+                      <input
+                        type="text"
+                        name="readTime"
+                        value={formData.readTime}
+                        onChange={handleChange}
+                        placeholder="e.g. 5 min read"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                       />
                     </div>
@@ -375,6 +389,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                         />
                       </div>
+
                       <div className="relative">
                         <input
                           type="file"
@@ -383,13 +398,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                           className="hidden"
                           accept="image/*"
                         />
-                        <label 
+                        <label
                           htmlFor="edit-file-upload"
-                          className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap text-sm bg-white ${
-                            uploadStatus === 'Upload Failed' 
-                              ? 'border-red-300 text-red-600' 
-                              : 'border-purple-300 text-purple-600 hover:bg-purple-50'
-                          }`}
+                          className={`flex items-center justify-center px-4 py-2 border border-dashed rounded-lg cursor-pointer transition-colors whitespace-nowrap text-sm bg-white ${uploadStatus === 'Upload Failed' ? 'border-red-300 text-red-600' : 'border-purple-300 text-purple-600 hover:bg-purple-50'}`}
                         >
                           {isUploading ? (
                             <span className="animate-pulse">Uploading...</span>
@@ -401,12 +412,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         </label>
                       </div>
                     </div>
-                    
+
                     {formData.image && (
                       <div className="relative h-32 w-full bg-white rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={formData.image} 
-                          alt="Preview" 
+                        <img
+                          src={formData.image}
+                          alt="Preview"
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
                           onError={() => setImageError(true)}
                           onLoad={() => setImageError(false)}
@@ -435,13 +446,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
             >
               {isSaving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Saving...
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> Saving...
                 </>
               ) : (
                 <>
-                  <SafeIcon icon={FiSave} className="mr-2" />
-                  {getButtonText()}
+                  <SafeIcon icon={FiSave} className="mr-2" /> {getButtonText()}
                 </>
               )}
             </button>

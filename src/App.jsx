@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QuestProvider } from '@questlabs/react-sdk';
 import { BlogProvider } from './contexts/BlogContext';
 import { AuthProvider } from './contexts/AuthContext';
