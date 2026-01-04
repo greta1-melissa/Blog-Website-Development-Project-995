@@ -14,12 +14,11 @@ import { getImageSrc } from '../utils/media.js';
 const { FiUsers, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiStar, FiGrid } = FiIcons;
 
 const Admin = () => {
+  // REQUIRED: Using posts and state from BlogContext
+  // No direct fetch calls for 'posts' are performed in this component.
   const { posts = [], categories = [], deletePost, updatePost, isLoading } = useBlog();
   const { kdramas = [] } = useKdrama();
   const { isAdmin, logout } = useAuth();
-  
-  // DIAGNOSTIC LOG
-  console.log('ADMIN POSTS STATE', posts);
 
   const [activeTab, setActiveTab] = useState('posts');
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,10 +33,8 @@ const Admin = () => {
 
   const adminPosts = useMemo(() => {
     return posts.filter(post => {
-      const matchesSearch = searchTerm === '' || 
-        (post.title || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = filterCategory === '' || 
-        post.category === filterCategory;
+      const matchesSearch = searchTerm === '' || (post.title || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = filterCategory === '' || post.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
   }, [posts, searchTerm, filterCategory]);
@@ -46,7 +43,7 @@ const Admin = () => {
     try {
       await updatePost(post.id, { isHandPicked: !post.isHandPicked });
     } catch (error) {
-      alert('Failed to update featured status.');
+      console.error('Failed to update featured status:', error);
     }
   };
 
@@ -86,7 +83,9 @@ const Admin = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${activeTab === tab ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${
+                activeTab === tab ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
             >
               {tab === 'posts' ? 'All Stories' : tab}
             </button>
@@ -99,17 +98,17 @@ const Admin = () => {
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-100 flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search all stories..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
+              <input
+                type="text"
+                placeholder="Search all stories..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
-            <select 
-              value={filterCategory} 
-              onChange={(e) => setFilterCategory(e.target.value)} 
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg outline-none bg-white"
             >
               <option value="">All Categories</option>
@@ -150,10 +149,9 @@ const Admin = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <img 
-                            src={getImageSrc(post.image || post.image_url) || '/placeholder.png'} 
+                            src={getImageSrc(post.image || post.image_url)} 
                             className="w-10 h-10 rounded object-cover mr-3 bg-gray-100" 
                             alt="" 
-                            onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/150'} 
                           />
                           <div className="text-sm font-semibold text-gray-900 max-w-xs truncate">{post.title}</div>
                         </div>
@@ -161,7 +159,7 @@ const Admin = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{post.category}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button 
-                          onClick={() => handleToggleFeatured(post)} 
+                          onClick={() => handleToggleFeatured(post)}
                           className={`text-xl transition-colors ${post.isHandPicked ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}
                           title={post.isHandPicked ? "Featured" : "Not Featured"}
                         >
@@ -188,7 +186,7 @@ const Admin = () => {
       )}
 
       {activeTab === 'users' && <UserManagement />}
-      
+
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
@@ -206,10 +204,10 @@ const Admin = () => {
         </div>
       )}
 
-      <EditPostModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        post={editingPost}
+      <EditPostModal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        post={editingPost} 
         onSave={(id, data) => updatePost(id, data)}
         categories={['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career']}
       />

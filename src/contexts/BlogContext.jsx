@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { ncbGet, ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
+import { ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
 import { normalizeDropboxImageUrl } from '../utils/media.js';
 
 const BlogContext = createContext();
@@ -19,7 +19,6 @@ export const BlogProvider = ({ children }) => {
   const [fetchError, setFetchError] = useState(null);
   const [isErrorDismissed, setIsErrorDismissed] = useState(false);
 
-  // Store ALL posts - logic strictly follows response.data requirement
   const publishedPosts = useMemo(() => {
     return posts;
   }, [posts]);
@@ -42,32 +41,35 @@ export const BlogProvider = ({ children }) => {
     setIsErrorDismissed(false);
     
     try {
-      // ncbGet calls /api/ncb/read/posts and extracts json.data
-      const serverData = await ncbGet('posts');
+      // Direct fetch calling the proxy as required
+      const res = await fetch('/api/ncb/read/posts');
       
-      if (!Array.isArray(serverData)) {
-        console.error("[BlogContext] Expected array in json.data, got:", typeof serverData);
-        setPosts([]);
-        return;
+      if (!res.ok) {
+        throw new Error(`Upstream Error: ${res.status} ${res.statusText}`);
       }
 
-      // DIAGNOSTIC LOG
-      console.log('BLOG CONTEXT POSTS LOADED', serverData.length);
-
-      // Handle raw response data without applying any filters here
-      const normalizedPosts = serverData.map(post => normalizePost(post));
+      const json = await res.json();
+      const serverData = json.data;
       
-      // Sorting by date DESC
-      normalizedPosts.sort((a, b) => {
-        const dateA = new Date(a.date || 0);
-        const dateB = new Date(b.date || 0);
-        return dateB - dateA;
-      });
+      if (Array.isArray(serverData)) {
+        const normalizedPosts = serverData.map(post => normalizePost(post));
+        
+        // Sorting by date DESC
+        normalizedPosts.sort((a, b) => {
+          const dateA = new Date(a.date || 0);
+          const dateB = new Date(b.date || 0);
+          return dateB - dateA;
+        });
 
-      setPosts(normalizedPosts);
-    } catch (error) {
-      console.error("[BlogContext] fetchPosts failed:", error);
-      setFetchError("Could not load posts from server. Check Cloudflare NCB_API_KEY.");
+        setPosts(normalizedPosts);
+      } else {
+        console.error("[BlogContext] Invalid data format received:", json);
+        // We do NOT call setPosts([]) here to preserve existing state if this was a refresh
+      }
+    } catch (e) {
+      // LOGIC: Errors are logged clearly and state is NOT overwritten with empty array
+      console.error('BlogContext fetch failed', e);
+      setFetchError("Could not load posts from server. Please check your connection.");
     } finally {
       setIsLoading(false);
     }

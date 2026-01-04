@@ -1,19 +1,14 @@
 /**
  * Cloudflare Pages Function: NoCodeBackend Proxy
  * 
- * FAIL-SAFE: Automatically injects the default Instance ID if missing or empty.
- * This ensures incognito and authenticated sessions read the same data.
- * 
- * UPDATED RESPONSE HANDLING:
- * Buffers JSON responses to ensure reliable client-side parsing.
- * 
  * Route: /api/ncb/*
+ * 
+ * This proxy ensures that the NCB Instance ID is always injected from 
+ * server-side environment variables, preventing failures due to missing 
+ * client-side parameters.
  */
 export async function onRequest(context) {
   const { request, env, params } = context;
-
-  // Canonical fallback instance
-  const FALLBACK_INSTANCE = '54230_bangtan_mom_blog_site';
 
   // 1. Handle CORS Preflight
   if (request.method === "OPTIONS") {
@@ -41,25 +36,19 @@ export async function onRequest(context) {
       targetUrl.searchParams.append(key, val);
     });
 
-    // 3. ENFORCE INSTANCE PARAMETER (Server Side Fail-safe)
-    const currentInstance = targetUrl.searchParams.get('Instance');
-    if (!currentInstance || currentInstance.trim() === '') {
-      const defaultInstance = env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || FALLBACK_INSTANCE;
-      targetUrl.searchParams.set('Instance', defaultInstance);
-    }
+    // 3. ENFORCE INSTANCE PARAMETER (Server Side Injection)
+    // Priority: VITE_NCB_INSTANCE > VITE_NCB_INSTANCE_ID > NCB_INSTANCE
+    const instance = 
+      env.VITE_NCB_INSTANCE || 
+      env.VITE_NCB_INSTANCE_ID || 
+      env.NCB_INSTANCE;
 
-    // 4. Prepare Headers & AUTH RESOLUTION
-    const headers = new Headers(request.headers);
-    
-    // Priority: NCB_API_KEY > VITE_NCB_API_KEY
-    const ncbApiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
-
-    if (!ncbApiKey) {
+    if (!instance) {
+      console.error("[NCB Proxy] Missing NCB Instance in environment variables.");
       return new Response(JSON.stringify({ 
-        error: "Missing NCB API key",
-        hasNCB_API_KEY: !!env.NCB_API_KEY,
-        hasVITE_NCB_API_KEY: !!env.VITE_NCB_API_KEY
-      }), {
+        error: "Missing NCB Instance",
+        details: "Server configuration error: Instance ID not found in environment."
+      }), { 
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -68,10 +57,24 @@ export async function onRequest(context) {
       });
     }
 
+    // Force override/injection of the Instance parameter
+    targetUrl.searchParams.set('Instance', instance);
+
+    // 4. Prepare Headers & AUTH RESOLUTION
+    const headers = new Headers(request.headers);
+    const ncbApiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
+    
+    if (!ncbApiKey) {
+      return new Response(JSON.stringify({ error: "Missing NCB API key" }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
     headers.set('Authorization', `Bearer ${ncbApiKey}`);
     headers.delete('Host');
 
-    // 5. Body Buffering for Request
+    // 5. Body Buffering
     let rawBody = null;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
@@ -91,11 +94,10 @@ export async function onRequest(context) {
 
     const response = await fetch(proxyReq);
 
-    // 7. Handle Response with Buffering for JSON
+    // 7. Handle Response
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
-    // If the response is not success, we still buffer the body to provide details to the client
     if (!response.ok) {
       const errorText = await response.text();
       return new Response(JSON.stringify({
@@ -103,10 +105,9 @@ export async function onRequest(context) {
         upstreamStatusText: response.statusText,
         upstreamBody: errorText,
         path: targetUrl.pathname,
-        instance: targetUrl.searchParams.get('Instance'),
-        method: request.method
-      }), {
-        status: response.status,
+        instance: instance
+      }), { 
+        status: response.status, 
         headers: {
           ...Object.fromEntries(newHeaders),
           "Content-Type": "application/json"
@@ -114,30 +115,18 @@ export async function onRequest(context) {
       });
     }
 
-    // Handle 204 No Content or empty bodies
-    if (response.status === 204 || response.status === 304 || !response.body) {
-      return new Response(null, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: newHeaders
-      });
-    }
-
-    // CRITICAL FIX: Buffer JSON bodies
+    // Buffer JSON bodies for reliable client-side parsing
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const jsonText = await response.text();
       return new Response(jsonText, {
         status: response.status,
-        statusText: response.statusText,
         headers: newHeaders
       });
     }
 
-    // Fallback: Stream binary or non-JSON content
     return new Response(response.body, {
       status: response.status,
-      statusText: response.statusText,
       headers: newHeaders
     });
 
@@ -146,7 +135,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
       status: 'error',
       message: `Proxy Internal Error: ${err.message}`
-    }), {
+    }), { 
       status: 500,
       headers: {
         'Content-Type': 'application/json',
