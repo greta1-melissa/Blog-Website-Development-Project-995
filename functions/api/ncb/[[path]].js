@@ -4,11 +4,16 @@
  * FAIL-SAFE: Automatically injects the default Instance ID if missing or empty.
  * This ensures incognito and authenticated sessions read the same data.
  * 
+ * UPDATED AUTH LOGIC:
+ * 1. Prioritizes NCB_API_KEY
+ * 2. Falls back to VITE_NCB_API_KEY
+ * 3. Returns structured error if both are missing
+ * 
  * Route: /api/ncb/*
  */
 export async function onRequest(context) {
   const { request, env, params } = context;
-  
+
   // Canonical fallback instance
   const FALLBACK_INSTANCE = '54230_bangtan_mom_blog_site';
 
@@ -39,30 +44,33 @@ export async function onRequest(context) {
     });
 
     // 3. ENFORCE INSTANCE PARAMETER (Server Side Fail-safe)
-    // Rules:
-    // - Check if Instance exists and is not an empty string.
-    // - If missing/empty, use env.NCB_INSTANCE or env.VITE_NCB_INSTANCE or hardcoded fallback.
     const currentInstance = targetUrl.searchParams.get('Instance');
     if (!currentInstance || currentInstance.trim() === '') {
       const defaultInstance = env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || FALLBACK_INSTANCE;
       targetUrl.searchParams.set('Instance', defaultInstance);
     }
 
-    // 4. Prepare Headers
+    // 4. Prepare Headers & AUTH RESOLUTION
     const headers = new Headers(request.headers);
-    const secretKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
+    
+    // Priority: NCB_API_KEY > VITE_NCB_API_KEY
+    const ncbApiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
 
-    if (!secretKey) {
-      return new Response(JSON.stringify({ 
-        status: 'error', 
-        message: 'Proxy Error: Missing NCB_API_KEY on server.' 
-      }), { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
+    if (!ncbApiKey) {
+      return new Response(JSON.stringify({
+        error: "Missing NCB API key",
+        hasNCB_API_KEY: !!env.NCB_API_KEY,
+        hasVITE_NCB_API_KEY: !!env.VITE_NCB_API_KEY
+      }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
       });
     }
 
-    headers.set('Authorization', `Bearer ${secretKey}`);
+    headers.set('Authorization', `Bearer ${ncbApiKey}`);
     headers.delete('Host');
 
     // 5. Body Buffering
@@ -127,7 +135,10 @@ export async function onRequest(context) {
       message: `Proxy Internal Error: ${err.message}`
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }

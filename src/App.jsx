@@ -8,6 +8,7 @@ import { KdramaProvider } from './contexts/KdramaContext';
 import questConfig from './config/questConfig';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import GlobalErrorBanner from './components/GlobalErrorBanner';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import BlogPost from './pages/BlogPost';
@@ -46,12 +47,12 @@ function App() {
               <ForumProvider>
                 <div className="min-h-screen bg-gray-50 flex flex-col">
                   <Header />
+                  <GlobalErrorBanner />
                   <main className="flex-grow">
                     <Routes>
                       <Route path="/login" element={<Login />} />
                       <Route path="/admin-login" element={<AdminLogin />} />
                       <Route path="/onboarding" element={<Onboarding />} />
-                      
                       <Route path="/" element={<Home />} />
                       <Route path="/post/:id" element={<BlogPost />} />
                       <Route path="/create" element={<CreatePost />} />
@@ -60,35 +61,15 @@ function App() {
                       <Route path="/products" element={<ProductRecommendations />} />
                       <Route path="/kdrama-recommendations" element={<KdramaRecommendations />} />
                       <Route path="/kdrama-recommendations/:id" element={<KdramaDetail />} />
-
-                      {/* Legal Routes */}
                       <Route path="/safe-space-promise" element={<SafeSpacePromise />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       <Route path="/terms-and-conditions" element={<TermsConditions />} />
-
-                      <Route 
-                        path="/admin" 
-                        element={
-                          <ProtectedRoute adminOnly={true}>
-                            <Admin />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      
+                      <Route path="/admin" element={<ProtectedRoute adminOnly={true}><Admin /></ProtectedRoute>} />
                       <Route path="/forums" element={<Forums />} />
                       <Route path="/forums/category/:categoryId" element={<ForumCategory />} />
                       <Route path="/forums/thread/:threadId" element={<ForumThread />} />
                       <Route path="/forums/new-thread" element={<NewThread />} />
-
-                      {/* Admin Debug Route */}
-                      <Route 
-                        path="/debug/ncb" 
-                        element={
-                          <ProtectedRoute adminOnly={true}>
-                            <NcbDebug />
-                          </ProtectedRoute>
-                        } 
-                      />
+                      <Route path="/debug/ncb" element={<ProtectedRoute adminOnly={true}><NcbDebug /></ProtectedRoute>} />
                     </Routes>
                   </main>
                   <Footer />
