@@ -18,20 +18,18 @@ const Home = () => {
   const footerVideoRef = useRef(null);
   const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
 
+  // REQUIRED LOGIC: Home page shows ONLY featured posts
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
-    let selection = posts.filter(p => p.isHandPicked);
-    selection.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (selection.length < 3) {
-      const selectedIds = new Set(selection.map(p => p.id));
-      const fillers = posts
-        .filter(p => !selectedIds.has(p.id))
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 3 - selection.length);
-      selection = [...selection, ...fillers];
-    }
-    return selection.slice(0, 3);
+    
+    // Filter strictly by ishandpicked === 1 as per requirements
+    return posts
+      .filter(p => p.ishandpicked === 1)
+      .sort((a, b) => {
+        const dateA = new Date(a.date || 0);
+        const dateB = new Date(b.date || 0);
+        return dateB - dateA;
+      });
   }, [posts]);
 
   const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
@@ -55,7 +53,6 @@ const Home = () => {
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float"></div>
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '2s' }}></div>
         </div>
-
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -102,7 +99,8 @@ const Home = () => {
                     Latest Story
                   </span>
                   <span className="text-purple-100 text-sm flex items-center font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                    <SafeIcon icon={FiCalendar} className="mr-2" /> {formatDate(mostRecentPost.date)}
+                    <SafeIcon icon={FiCalendar} className="mr-2" />
+                    {formatDate(mostRecentPost.date)}
                   </span>
                 </div>
                 <Link to={`/post/${mostRecentPost.id}`} className="block">
@@ -113,10 +111,7 @@ const Home = () => {
                 <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
                   {stripHtml(mostRecentPost.content)}
                 </p>
-                <Link
-                  to={`/post/${mostRecentPost.id}`}
-                  className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
-                >
+                <Link to={`/post/${mostRecentPost.id}`} className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all">
                   Read Full Story <SafeIcon icon={FiArrowRight} className="ml-2" />
                 </Link>
               </div>
@@ -143,7 +138,7 @@ const Home = () => {
                 className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity"
                 onError={(e) => {
                   console.error('[Home] Broken Image for Watching Widget:', currentKDrama.image);
-                  e.currentTarget.style.display = 'none'; // Basic fallback: hide image
+                  e.currentTarget.style.display = 'none';
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
@@ -189,6 +184,7 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Featured Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -211,10 +207,7 @@ const Home = () => {
         <KdramaGrid />
 
         <div className="text-center mt-12">
-          <Link
-            to="/kdrama-recommendations"
-            className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all"
-          >
+          <Link to="/kdrama-recommendations" className="inline-flex items-center px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 font-bold rounded-full hover:bg-purple-50 transition-all">
             View All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
           </Link>
         </div>
@@ -225,17 +218,23 @@ const Home = () => {
           <div>
             <div className="flex items-center space-x-2 mb-2">
               <SafeIcon icon={FiStar} className="text-purple-600 text-xl" />
-              <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Editor's Picks</span>
+              <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Handpicked Stories</span>
             </div>
-            <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
+            <h2 className="text-3xl font-serif font-bold text-gray-900">Featured on Home</h2>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
-          {featuredPosts.map((post, index) => (
-            <BlogCard key={post.id} post={post} index={index} />
-          ))}
-        </div>
+        {featuredPosts.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-purple-200">
+            <p className="text-gray-500">No handpicked stories to display at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+            {featuredPosts.map((post, index) => (
+              <BlogCard key={post.id} post={post} index={index} />
+            ))}
+          </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 40 }}

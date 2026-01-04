@@ -12,10 +12,6 @@ export const useBlog = () => {
   return context;
 };
 
-const initialPosts = [
-  { id: 7, title: "Starting Over at Forty (Something): Why I Finally Hit “Publish”", content: "Hi, I’m Melissa—mom of two, in my early forties...", author: "BangtanMom", date: "2025-12-02", category: "Health", readtime: "5 min read", image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop", isHandPicked: true }
-];
-
 export const BlogProvider = ({ children }) => {
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -23,7 +19,7 @@ export const BlogProvider = ({ children }) => {
   const [fetchError, setFetchError] = useState(null);
   const [isErrorDismissed, setIsErrorDismissed] = useState(false);
 
-  // All posts are considered published as the DB has no status column
+  // Store ALL posts - logic strictly follows response.data requirement
   const publishedPosts = useMemo(() => {
     return posts;
   }, [posts]);
@@ -46,26 +42,32 @@ export const BlogProvider = ({ children }) => {
     setIsErrorDismissed(false);
     
     try {
+      // ncbGet calls /api/ncb/read/posts and extracts json.data
       const serverData = await ncbGet('posts');
+      
       if (!Array.isArray(serverData)) {
-        throw new Error("Invalid data format");
-      }
-      
-      const normalizedServerPosts = serverData.map(post => normalizePost(post));
-      
-      if (normalizedServerPosts.length > 0) {
-        normalizedServerPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
-        setPosts(normalizedServerPosts);
-      } else {
+        console.error("[BlogContext] Expected array in json.data, got:", typeof serverData);
         setPosts([]);
+        return;
       }
+
+      // DIAGNOSTIC LOG
+      console.log('BLOG CONTEXT POSTS LOADED', serverData.length);
+
+      // Handle raw response data without applying any filters here
+      const normalizedPosts = serverData.map(post => normalizePost(post));
+      
+      // Sorting by date DESC
+      normalizedPosts.sort((a, b) => {
+        const dateA = new Date(a.date || 0);
+        const dateB = new Date(b.date || 0);
+        return dateB - dateA;
+      });
+
+      setPosts(normalizedPosts);
     } catch (error) {
       console.error("[BlogContext] fetchPosts failed:", error);
-      setFetchError("Could not load posts from server. Check Cloudflare runtime env vars (Production/Preview): NCB_API_KEY.");
-      
-      if (posts.length === 0) {
-        setPosts(initialPosts.map(p => normalizePost(p)));
-      }
+      setFetchError("Could not load posts from server. Check Cloudflare NCB_API_KEY.");
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +87,7 @@ export const BlogProvider = ({ children }) => {
   const dismissError = () => setIsErrorDismissed(true);
 
   const addPost = async (postData) => {
-    const { status, ...rest } = postData; // Remove status from payload
+    const { status, ...rest } = postData;
     const dbPayload = {
       ...rest,
       ishandpicked: 0,
@@ -100,7 +102,7 @@ export const BlogProvider = ({ children }) => {
   };
 
   const updatePost = async (id, updatedFields) => {
-    const { status, ...rest } = updatedFields; // Remove status from update
+    const { status, ...rest } = updatedFields;
     await ncbUpdate('posts', id, rest);
     setPosts(prev => prev.map(post => String(post.id) === String(id) ? { ...post, ...rest } : post));
   };
