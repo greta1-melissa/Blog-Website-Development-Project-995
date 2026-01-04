@@ -1,8 +1,5 @@
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
-// Registry to prevent console spam for blocked URLs in development
-const blockedRegistry = new Set();
-
 /**
  * Checks if a string is a Dropbox URL.
  */
@@ -25,7 +22,7 @@ const isValidAbsoluteUrl = (str) => {
 };
 
 /**
- * Normalizes an Image URL for CDN optimization and security.
+ * Normalizes an Image URL for CDN optimization.
  */
 export const normalizeImageUrl = (url) => {
   if (!url || typeof url !== 'string') return "";
@@ -51,9 +48,8 @@ export const normalizeImageUrl = (url) => {
  * 
  * Rules:
  * 1. Empty/Invalid -> Fallback
- * 2. Dropbox -> Fallback (Logged only in development)
- * 3. Relative -> Resolved to /assets/ (e.g., "logo.png" -> "/assets/logo.png")
- * 4. Invalid External -> Fallback
+ * 2. Dropbox (with raw=1) -> Allowed Direct
+ * 3. Relative -> Resolved to /assets/
  */
 export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
   if (!url || typeof url !== 'string' || url.trim() === "") {
@@ -62,22 +58,27 @@ export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
   
   const normalized = normalizeImageUrl(url);
 
-  // 1. BLOCKADE: Detect and short-circuit Dropbox links
+  // Allow direct Dropbox URLs if they have the raw=1 parameter
   if (isDropboxUrl(normalized)) {
-    // Only log in Development to keep Production console clean
-    if (import.meta.env.DEV && !blockedRegistry.has(normalized)) {
-      console.warn(`[Security] Blocked Dropbox URL at runtime: ${normalized}. Replaced with fallback.`);
-      blockedRegistry.add(normalized);
+    try {
+      const u = new URL(normalized);
+      if (u.searchParams.get('raw') === '1') {
+        return normalized;
+      }
+      // If it's a dropbox link but missing raw=1, we still allow it 
+      // but the browser might not render it as an image unless raw=1 is present.
+      return normalized;
+    } catch (e) {
+      return normalized;
     }
-    return fallback;
   }
 
-  // 2. RELATIVE PATHS: If it doesn't look like a URL or an absolute path, assume it's an asset
+  // Relative paths assumed to be in public assets
   if (!normalized.startsWith('http') && !normalized.startsWith('/') && !normalized.startsWith('data:')) {
     return `/assets/${normalized}`;
   }
 
-  // 3. VALIDATION: If it's supposed to be an absolute URL, check if it's valid
+  // Validation for absolute URLs
   if (normalized.startsWith('http') && !isValidAbsoluteUrl(normalized)) {
     return fallback;
   }
@@ -86,11 +87,10 @@ export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
 };
 
 /**
- * Legacy support - strictly returns empty if Dropbox to trigger fallbacks in older components.
+ * Normalizes Dropbox URL - now permissive.
  */
 export const normalizeDropboxUrl = (url) => {
-  if (isDropboxUrl(url)) return "";
-  return url;
+  return url || "";
 };
 
 export const normalizeDropboxImageUrl = normalizeDropboxUrl;
