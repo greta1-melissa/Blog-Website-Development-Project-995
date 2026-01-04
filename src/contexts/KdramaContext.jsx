@@ -26,7 +26,6 @@ const getLocalData = () => {
 export const KdramaProvider = ({ children }) => {
   const [kdramas, setKdramas] = useState(() => getLocalData() || []);
   const [isLoading, setIsLoading] = useState(true);
-
   const TABLE_NAME = 'kdrama_recommendations';
 
   const normalizeData = (data) => {
@@ -34,7 +33,6 @@ export const KdramaProvider = ({ children }) => {
     return data.filter(item => item && typeof item === 'object').map((item, index) => {
       const rawImage = item.image_url || item.image || '';
       const finalImageUrl = normalizeDropboxImageUrl(rawImage);
-
       return {
         ...item,
         id: item.id || `temp-${Date.now()}-${index}`,
@@ -68,6 +66,7 @@ export const KdramaProvider = ({ children }) => {
       if (serverData && Array.isArray(serverData) && serverData.length > 0) {
         currentData = normalizeData(serverData);
         const serverSlugs = new Set(currentData.map(d => String(d.slug)));
+
         initialSeedData.forEach(seedItem => {
           if (!serverSlugs.has(String(seedItem.slug))) {
             currentData.push(normalizeData([seedItem])[0]);
@@ -92,20 +91,29 @@ export const KdramaProvider = ({ children }) => {
     fetchKdramas();
   }, []);
 
+  // IMAGE PERSISTENCE VALIDATOR
+  const validateImageProxy = (url) => {
+    if (!url) return true;
+    if (url.includes('dropbox.com/scl')) {
+      throw new Error("Direct Dropbox links are forbidden. Use the 'Upload' button to generate a permanent proxy link.");
+    }
+    if (!url.startsWith('/api/media/dropbox') && !url.includes('images.unsplash.com')) {
+      throw new Error("Image URL must start with /api/media/dropbox for persistence.");
+    }
+    return true;
+  };
+
   const addKdrama = async (dramaData) => {
     const tempId = Date.now().toString();
     const rawUrl = (dramaData.image_url || dramaData.image || '').trim();
-    if (rawUrl.startsWith('data:image')) {
-      throw new Error("Base64 images are not allowed. Please upload the file.");
-    }
-
+    
+    validateImageProxy(rawUrl);
     const normalizedImage = normalizeDropboxImageUrl(rawUrl);
 
-    // PAYLOAD STANDARDIZATION: tags must be string
     const payload = {
       ...dramaData,
       image_url: normalizedImage,
-      image: "", 
+      image: "",
       tags: Array.isArray(dramaData.tags) ? dramaData.tags.join(',') : (dramaData.tags || ''),
       created_at: new Date().toISOString()
     };
@@ -119,7 +127,6 @@ export const KdramaProvider = ({ children }) => {
     try {
       const saved = await ncbCreate(TABLE_NAME, payload);
       if (!saved || saved.error) throw new Error(saved?.error || "Create failed");
-
       const realId = saved.id || saved._id;
       setKdramas(prev => prev.map(d => d.id === tempId ? { ...d, ...saved, id: realId } : d));
       return realId;
@@ -137,19 +144,17 @@ export const KdramaProvider = ({ children }) => {
     if (!targetSlug) throw new Error("Cannot update: Record has no slug.");
 
     let finalImageUrl = (updates.image_url !== undefined ? updates.image_url : (itemToUpdate.image_url || itemToUpdate.image || '')).trim();
-    if (finalImageUrl.startsWith('data:image')) {
-      throw new Error("Base64 images are not allowed. Please upload the file.");
-    }
+    
+    validateImageProxy(finalImageUrl);
     finalImageUrl = normalizeDropboxImageUrl(finalImageUrl);
 
-    // PAYLOAD STANDARDIZATION: tags must be string
     const preparedUpdates = {
       ...updates,
       image_url: finalImageUrl,
       image: "",
       updated_at: new Date().toISOString()
     };
-    
+
     if (updates.tags !== undefined) {
       preparedUpdates.tags = Array.isArray(updates.tags) ? updates.tags.join(',') : (updates.tags || '');
     }
@@ -175,7 +180,6 @@ export const KdramaProvider = ({ children }) => {
     }
   };
 
-  // Rest of context remains same...
   const deleteKdrama = async (id) => {
     const previousState = [...kdramas];
     setKdramas(prev => prev.filter(d => d.id !== id));

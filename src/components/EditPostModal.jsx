@@ -4,16 +4,12 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { normalizeDropboxUrl } from '../utils/media.js';
+import { normalizeDropboxUrl, getImageSrc } from '../utils/media.js';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiAlertTriangle } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
-  const [sections, setSections] = useState({
-    seo: false,
-    schedule: true
-  });
-
+  const [sections, setSections] = useState({ seo: false, schedule: true });
   const toggleSection = (section) => {
     setSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -92,19 +88,16 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         body: data
       });
 
-      const contentType = response.headers.get("content-type");
-      if (response.ok && contentType && contentType.includes("application/json")) {
-        const result = await response.json();
-        if (result.success) {
-          setFormData(prev => ({ ...prev, image: result.url }));
-          setUploadStatus('Upload Complete!');
-          return;
-        } else {
-          throw new Error(result.message || "Server upload failed.");
-        }
+      const result = await response.json();
+      
+      // STRICT RESPONSE HANDLING: Only accept proxyUrl
+      if (response.ok && result.success && result.proxyUrl) {
+        setFormData(prev => ({ ...prev, image: result.proxyUrl }));
+        setUploadStatus('Upload Complete!');
+      } else {
+        const errorMsg = result.proxyUrl ? (result.message || "Upload failed") : "Server did not return a valid proxy URL.";
+        throw new Error(errorMsg);
       }
-      const errorText = await response.text();
-      throw new Error(`Server Error: ${response.status}. Details: ${errorText.substring(0, 80)}`);
     } catch (error) {
       console.warn("Upload failed:", error);
       setUploadStatus('Upload Failed');
@@ -119,35 +112,31 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     setIsSaving(true);
     setErrorMessage('');
 
-    let finalStatus = formData.status;
-    let finalDate = formData.scheduledDate || new Date().toISOString().split('T')[0];
-
-    if (finalStatus === 'draft') {
-      // stay draft
-    } else if (finalStatus === 'scheduled') {
-      // keep date
-    } else {
-      finalStatus = 'published';
-    }
-
     const cleanImageInput = formData.image ? formData.image.trim() : '';
-    if (cleanImageInput.startsWith('data:image')) {
-      setErrorMessage("Saving failed: Base64 images are not supported. Please upload using the button.");
-      setIsSaving(false);
-      return;
+
+    // IMAGE PERSISTENCE GUARD
+    if (cleanImageInput) {
+      if (cleanImageInput.includes('dropbox.com')) {
+        setErrorMessage("Direct Dropbox links are forbidden. Please use the 'Upload' button to generate a permanent proxy link.");
+        setIsSaving(false);
+        return;
+      }
+      if (!cleanImageInput.startsWith('/api/media/dropbox') && !cleanImageInput.includes('images.unsplash.com')) {
+        setErrorMessage("Invalid Image URL. Must be a proxy link (starts with /api/media/dropbox).");
+        setIsSaving(false);
+        return;
+      }
     }
 
     const finalImage = cleanImageInput || post.image_url || post.image || '';
-
-    // FIX: Map readTime -> readtime and remove readTime from the payload for NCB
     const { readTime, ...restOfFormData } = formData;
+    
     const updatedData = {
       ...restOfFormData,
       readtime: readTime,
       image: finalImage,
-      // Removed image_url to align with NCB schema which strictly uses 'image'
-      date: finalDate,
-      status: finalStatus
+      date: formData.scheduledDate || new Date().toISOString().split('T')[0],
+      status: formData.status
     };
 
     try {
@@ -197,7 +186,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
         >
-          {/* Header */}
           <div className="sticky top-0 bg-white z-20 px-6 py-4 border-b border-gray-100 flex justify-between items-center shadow-sm">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Edit Post</h2>
@@ -220,7 +208,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Column */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="space-y-6">
                   <div>
@@ -249,7 +236,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   </div>
                 </div>
 
-                {/* SEO Section */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
                   <button
                     type="button"
@@ -262,7 +248,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     </div>
                     <SafeIcon icon={sections.seo ? FiChevronUp : FiChevronDown} className="text-gray-500" />
                   </button>
-
                   <AnimatePresence>
                     {sections.seo && (
                       <motion.div
@@ -309,7 +294,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 </div>
               </div>
 
-              {/* Sidebar Column */}
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <div className="flex items-center mb-4 text-purple-800">
@@ -343,7 +327,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm bg-white"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Read Time</label>
                       <input
@@ -404,7 +388,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                         >
                           {isUploading ? (
                             <span className="animate-pulse">Uploading...</span>
-                          ) : uploadStatus.includes('Complete') || uploadStatus.includes('Saved') ? (
+                          ) : uploadStatus.includes('Complete') ? (
                             <><SafeIcon icon={FiCheck} className="mr-2" /> {uploadStatus}</>
                           ) : (
                             <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload New File</>
@@ -416,7 +400,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     {formData.image && (
                       <div className="relative h-32 w-full bg-white rounded-lg overflow-hidden border border-gray-200">
                         <img
-                          src={formData.image}
+                          src={getImageSrc(formData.image)}
                           alt="Preview"
                           className={`w-full h-full object-cover transition-opacity ${imageError ? 'opacity-0' : 'opacity-100'}`}
                           onError={() => setImageError(true)}
@@ -430,7 +414,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
             </div>
           </form>
 
-          {/* Footer Actions */}
           <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-100 flex justify-end gap-3 z-20">
             <button
               onClick={onClose}

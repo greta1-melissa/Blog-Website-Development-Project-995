@@ -1,8 +1,8 @@
 /**
  * Cloudflare Pages Function to handle file uploads to Dropbox.
  * Route: /api/upload-to-dropbox
- *
- * Uses Refresh Token flow for continuous authentication.
+ * 
+ * STANDARDIZED: Returns exclusively proxy URLs for frontend consumption.
  */
 export async function onRequest(context) {
   const { request, env } = context;
@@ -28,7 +28,6 @@ export async function onRequest(context) {
 
   // 3. Auth Config Validation
   const { DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN } = env;
-
   if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET || !DROPBOX_REFRESH_TOKEN) {
     return new Response(JSON.stringify({ success: false, message: 'Server Config Error: Missing Dropbox Credentials' }), {
       status: 500,
@@ -40,7 +39,6 @@ export async function onRequest(context) {
     // 4. File Parsing
     const formData = await request.formData();
     const file = formData.get('file');
-
     if (!file) {
       return new Response(JSON.stringify({ success: false, message: 'No file provided in request' }), {
         status: 400,
@@ -58,16 +56,13 @@ export async function onRequest(context) {
 
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: tokenParams.toString(),
     });
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
-      console.error('Dropbox Token Refresh Failed:', errText.substring(0, 200));
-      throw new Error(`Failed to authenticate with Dropbox: ${tokenRes.status}`);
+      throw new Error(`Auth failed: ${tokenRes.status}`);
     }
 
     const { access_token } = await tokenRes.json();
@@ -98,20 +93,13 @@ export async function onRequest(context) {
     });
 
     if (!dbxResponse.ok) {
-      const errorText = await dbxResponse.text();
-      console.error("Dropbox Upload Failed:", errorText);
-      return new Response(JSON.stringify({ success: false, message: 'Dropbox upload failed', details: errorText }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" }
-      });
+      throw new Error("Dropbox upload failed");
     }
 
     const dbxData = await dbxResponse.json();
 
     // 7. Create or Get Shared Link
     let publicUrl = '';
-
-    // Attempt to create a new link
     const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
       headers: {
@@ -125,7 +113,6 @@ export async function onRequest(context) {
       const shareData = await shareResponse.json();
       publicUrl = shareData.url;
     } else {
-      // If link exists, Dropbox returns an error. We must fetch the existing link.
       const shareError = await shareResponse.json();
       if (shareError.error && shareError.error['.tag'] === 'shared_link_already_exists') {
         const listLinksResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
@@ -136,7 +123,6 @@ export async function onRequest(context) {
           },
           body: JSON.stringify({ path: dbxData.path_lower })
         });
-
         if (listLinksResponse.ok) {
           const listData = await listLinksResponse.json();
           if (listData.links && listData.links.length > 0) {
@@ -147,40 +133,32 @@ export async function onRequest(context) {
     }
 
     if (!publicUrl) {
-      return new Response(JSON.stringify({ success: false, message: 'File uploaded but could not generate public link.' }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
+      throw new Error('Could not generate public link');
     }
 
-    // 8. Prepare Response
-    // URL Transformation
-    let directUrl = publicUrl;
-    if (directUrl.includes('dl=0')) {
-      directUrl = directUrl.replace('dl=0', 'raw=1');
-    } else if (directUrl.includes('raw=0')) {
-      directUrl = directUrl.replace('raw=0', 'raw=1');
-    } else if (!directUrl.includes('raw=1')) {
-      const separator = directUrl.includes('?') ? '&' : '?';
-      directUrl = `${directUrl}${separator}raw=1`;
-    }
-
+    // 8. Prepare CANONICAL Response
+    // We only return the proxyUrl and name. 
+    // Raw URLs are excluded to prevent accidental persistence of non-proxied links.
     const proxyUrl = `/api/media/dropbox?url=${encodeURIComponent(publicUrl)}`;
 
     return new Response(JSON.stringify({
       success: true,
-      path: dbxData.path_lower,
-      url: publicUrl,       // Save this one (Original)
-      directUrl: directUrl, // Direct hotlink (backup)
-      proxyUrl: proxyUrl,   // Proxy link (recommended for rendering)
-      name: dbxData.name
+      proxyUrl: proxyUrl, // CANONICAL FORMAT
+      name: dbxData.name,
+      _metadata: {
+         info: "Raw Dropbox URLs are deprecated. Use proxyUrl for all rendering and persistence."
+      }
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error("Server Function Error:", error);
-    return new Response(JSON.stringify({ success: false, message: 'Internal Server Error', details: error.message }), {
+    console.error("Upload Function Error:", error);
+    return new Response(JSON.stringify({
+      success: false,
+      message: 'Internal Server Error',
+      details: error.message
+    }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });

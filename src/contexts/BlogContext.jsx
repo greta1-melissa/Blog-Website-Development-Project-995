@@ -92,8 +92,8 @@ export const BlogProvider = ({ children }) => {
     try {
       const serverData = await ncbGet('posts');
       const localData = getLocalPosts() || [];
-      
       let finalPosts = [];
+
       const safeServerData = Array.isArray(serverData) ? serverData : [];
       const serverIds = new Set(safeServerData.map(p => String(p.id)));
 
@@ -149,6 +149,18 @@ export const BlogProvider = ({ children }) => {
     }
   }, [posts]);
 
+  // IMAGE PERSISTENCE VALIDATOR
+  const validateImageProxy = (url) => {
+    if (!url) return true;
+    if (url.includes('dropbox.com/scl')) {
+      throw new Error("Direct Dropbox links are forbidden. Use the 'Upload' button to generate a permanent proxy link.");
+    }
+    if (!url.startsWith('/api/media/dropbox') && !url.includes('images.unsplash.com')) {
+      throw new Error("Image URL must start with /api/media/dropbox for persistence.");
+    }
+    return true;
+  };
+
   const addPost = async (postData) => {
     const tempId = Date.now();
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
@@ -156,9 +168,8 @@ export const BlogProvider = ({ children }) => {
     const postDate = postData.date || new Date().toISOString().split('T')[0];
     
     const rawImage = (postData.image || postData.image_url || '').trim();
-    if (rawImage.startsWith('data:image')) {
-      throw new Error("Base64 images are not allowed. Please upload the file.");
-    }
+    validateImageProxy(rawImage);
+
     const finalImage = normalizeDropboxImageUrl(rawImage);
 
     const newPost = {
@@ -177,7 +188,6 @@ export const BlogProvider = ({ children }) => {
     setPosts(prev => [newPost, ...prev]);
 
     try {
-      // PAYLOAD STANDARDIZATION: Strictly use lowercase 'readtime'
       const dbPayload = {
         title: newPost.title,
         content: newPost.content,
@@ -185,17 +195,15 @@ export const BlogProvider = ({ children }) => {
         image: newPost.image,
         author: newPost.author,
         date: newPost.date,
-        readtime: newPost.readTime, // Correct lowercase key
+        readtime: newPost.readTime,
         ishandpicked: 0
       };
 
       const savedPost = await ncbCreate('posts', dbPayload);
       if (!savedPost || (!savedPost.id && !savedPost._id)) throw new Error("DB creation failed.");
-      
       const realId = savedPost.id || savedPost._id;
-      setPosts(prev => prev.map(p => 
-        p.id === tempId ? normalizePost({ ...p, ...savedPost, id: realId, isLocalOnly: false }) : p
-      ));
+
+      setPosts(prev => prev.map(p => p.id === tempId ? normalizePost({ ...p, ...savedPost, id: realId, isLocalOnly: false }) : p));
       return realId;
     } catch (error) {
       throw error;
@@ -211,9 +219,7 @@ export const BlogProvider = ({ children }) => {
 
     if (updates.image !== undefined || updates.image_url !== undefined) {
       const imgVal = (updates.image_url !== undefined ? updates.image_url : updates.image || '').trim();
-      if (imgVal.startsWith('data:image')) {
-        throw new Error("Base64 images are not allowed. Please upload the file.");
-      }
+      validateImageProxy(imgVal);
       const newImg = normalizeDropboxImageUrl(imgVal);
       updates.image = newImg;
       updates.image_url = newImg;
@@ -224,14 +230,11 @@ export const BlogProvider = ({ children }) => {
       updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
     }
 
-    setPosts(prev => prev.map(post => 
-      String(post.id) === String(id) ? normalizePost({ ...post, ...updates }) : post
-    ));
+    setPosts(prev => prev.map(post => String(post.id) === String(id) ? normalizePost({ ...post, ...updates }) : post));
 
     if (target.isLocalOnly) return;
 
     try {
-      // PAYLOAD STANDARDIZATION: Map readTime -> readtime
       const dbUpdates = {};
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.content !== undefined) dbUpdates.content = updates.content;
@@ -240,10 +243,8 @@ export const BlogProvider = ({ children }) => {
       if (updates.author !== undefined) dbUpdates.author = updates.author;
       if (updates.date !== undefined) dbUpdates.date = updates.date;
       
-      // Support both readTime and readtime from the source
       const finalReadTime = updates.readtime !== undefined ? updates.readtime : updates.readTime;
       if (finalReadTime !== undefined) dbUpdates.readtime = finalReadTime;
-
       if (updates.isHandPicked !== undefined) dbUpdates.ishandpicked = updates.isHandPicked ? 1 : 0;
 
       await ncbUpdate('posts', id, dbUpdates);

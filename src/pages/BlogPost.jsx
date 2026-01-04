@@ -86,9 +86,11 @@ const BlogPost = () => {
   };
 
   const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
-  const cleanHtmlContent = isHtml ? post.content
-    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
-    .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '') : post.content;
+  const cleanHtmlContent = isHtml 
+    ? post.content
+      .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
+      .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '')
+    : post.content;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
@@ -115,7 +117,10 @@ const BlogPost = () => {
               <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
             </span>
           </div>
-          <button onClick={handleShare} className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors">
+          <button
+            onClick={handleShare}
+            className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+          >
             <SafeIcon icon={FiShare2} className="text-lg" />
           </button>
         </div>
@@ -132,7 +137,10 @@ const BlogPost = () => {
             </div>
             <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
               <SafeIcon icon={FiClock} className="mr-1 text-purple-600" />
-              <span className="text-purple-800">{post.readTime}</span>
+              <span className="text-purple-800">
+                {/* UI DATA FIX: Prefer 'readtime' from DB, fallback to 'readTime' */}
+                {post.readtime || post.readTime || "1 min read"}
+              </span>
             </div>
           </div>
 
@@ -202,7 +210,10 @@ const BlogPost = () => {
               <SafeIcon icon={isFollowing ? FiCheck : FiHeart} className={`mr-2 ${isFollowing ? 'fill-current' : ''}`} />
               {isFollowing ? 'Following' : 'Follow'}
             </button>
-            <button onClick={handleShare} className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors">
+            <button
+              onClick={handleShare}
+              className="flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
+            >
               <SafeIcon icon={FiShare2} className="mr-2" /> Share
             </button>
           </div>
@@ -223,7 +234,9 @@ const BlogPost = () => {
             <p className="text-gray-600 mb-6">
               Discover more stories, tips, and insights from our blog
             </p>
-            <Link to="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
+            <Link
+              to="/"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-lg hover:from-purple-700 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to All Posts
             </Link>
