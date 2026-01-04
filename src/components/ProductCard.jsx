@@ -1,37 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiStar, FiDollarSign, FiExternalLink, FiHeart } = FiIcons;
 
 const ProductCard = ({ product, index }) => {
-  const [imgSrc, setImgSrc] = useState(PLACEHOLDER_IMAGE);
-
-  useEffect(() => {
-    const src = getImageSrc(product.image || product.image_url);
-    setImgSrc(src || PLACEHOLDER_IMAGE);
-  }, [product.image, product.image_url]);
-
-  const handleImageError = (e) => {
-    console.warn(`[ProductCard] Image load failed for product ID ${product.id}`);
-    e.currentTarget.src = PLACEHOLDER_IMAGE;
-  };
-
   const getRatingStars = (rating = 5) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <SafeIcon
-          key={i}
-          icon={FiStar}
-          className={`${i < rating ? 'text-purple-400' : 'text-gray-300'} text-sm`}
-        />
+        <SafeIcon key={i} icon={FiStar} className={`${i < rating ? 'text-purple-400' : 'text-gray-300'} text-sm`} />
       );
     }
     return stars;
@@ -55,11 +39,11 @@ const ProductCard = ({ product, index }) => {
     >
       <Link to={`/post/${product.id}`}>
         <div className="relative overflow-hidden">
-          <img
-            src={imgSrc}
-            alt={product.title}
+          <SafeImage 
+            src={product.image || product.image_url} 
+            alt={product.title} 
+            fallback={PLACEHOLDER_IMAGE}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={handleImageError}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className="absolute top-4 left-4">
@@ -74,6 +58,7 @@ const ProductCard = ({ product, index }) => {
           </div>
         </div>
       </Link>
+
       <div className="p-6">
         <div className="flex items-center justify-between mb-3">
           {price && (
@@ -99,10 +84,7 @@ const ProductCard = ({ product, index }) => {
             {formatDate(product.date)}
           </span>
           <div className="flex space-x-2">
-            <Link
-              to={`/post/${product.id}`}
-              className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium transition-colors group px-3 py-1 bg-purple-50 rounded-full"
-            >
+            <Link to={`/post/${product.id}`} className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium transition-colors group px-3 py-1 bg-purple-50 rounded-full" >
               <span>Review</span>
               <SafeIcon icon={FiExternalLink} className="ml-1 group-hover:translate-x-1 transition-transform" />
             </Link>

@@ -1,29 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
 
 const BlogCard = ({ post, index }) => {
-  const [imgSrc, setImgSrc] = useState(BLOG_PLACEHOLDER);
-
-  useEffect(() => {
-    // Use getImageSrc for proxying
-    const src = getImageSrc(post.image || post.image_url);
-    setImgSrc(src || BLOG_PLACEHOLDER);
-  }, [post.image, post.image_url]);
-
-  const handleImageError = (e) => {
-    console.warn(`[BlogCard] Image load failed for post ID ${post.id}. URL: ${post.image || post.image_url}`);
-    e.currentTarget.src = BLOG_PLACEHOLDER;
-  };
-
   const getCategoryColor = (category) => {
     switch (category) {
       case 'Health': return 'bg-purple-100 text-purple-800';
@@ -36,18 +23,18 @@ const BlogCard = ({ post, index }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ duration: 0.5, delay: index * 0.1 }} 
       className="group flex flex-col h-full bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-purple-100 hover:border-purple-300"
     >
       <Link to={`/post/${post.id}`} className="relative overflow-hidden aspect-[4/3] bg-gray-100">
-        <img
-          src={imgSrc}
-          alt={post.title}
-          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out"
-          onError={handleImageError}
+        <SafeImage 
+          src={post.image || post.image_url} 
+          alt={post.title} 
+          fallback={BLOG_PLACEHOLDER}
+          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out" 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute top-4 left-4">
@@ -64,9 +51,7 @@ const BlogCard = ({ post, index }) => {
           </span>
           <span className="w-1 h-1 bg-purple-200 rounded-full"></span>
           <span className="flex items-center">
-            <SafeIcon icon={FiClock} className="mr-1 text-purple-400" /> 
-            {/* UI DATA FIX: Prefer 'readtime' from DB, fallback to 'readTime' */}
-            {post.readtime || post.readTime || "1 min read"}
+            <SafeIcon icon={FiClock} className="mr-1 text-purple-400" /> {post.readtime || post.readTime || "1 min read"}
           </span>
         </div>
 
@@ -75,15 +60,15 @@ const BlogCard = ({ post, index }) => {
             {post.title}
           </h3>
         </Link>
-
+        
         <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
           {stripHtml(post.content).substring(0, 120)}...
         </p>
 
         <div className="pt-4 border-t border-purple-50 flex items-center justify-between mt-auto">
           <span className="text-xs text-gray-400 font-medium">{formatDate(post.date)}</span>
-          <Link
-            to={`/post/${post.id}`}
+          <Link 
+            to={`/post/${post.id}`} 
             className="inline-flex items-center text-sm font-semibold text-purple-600 group-hover:translate-x-1 transition-transform duration-300"
           >
             Read Article <SafeIcon icon={FiArrowRight} className="ml-1" />

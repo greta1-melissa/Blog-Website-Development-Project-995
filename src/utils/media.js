@@ -1,95 +1,72 @@
 /**
- * Media Utility Functions
+ * Media Utility Functions - Optimized for CDN delivery
  */
 
 /**
- * Checks if a URL is a Dropbox URL.
- * @param {string} url 
- * @returns {boolean}
+ * Checks if a URL is a Dropbox URL (Legacy).
  */
 export const isDropboxUrl = (url) => {
-  if (!url) return false;
-  return String(url).includes('dropbox.com');
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('dropbox.com');
 };
 
 /**
- * Helper to generate a proxy URL.
- * @param {string} url 
- * @returns {string}
+ * Normalizes an Image URL for CDN optimization.
+ * If Unsplash, adds size parameters. If Dropbox, marks for proxying.
  */
-export const toDropboxProxyUrl = (url) => {
-  if (!url) return "";
-  return `/api/media/dropbox?url=${encodeURIComponent(url)}`;
+export const normalizeImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return "";
+  const cleanUrl = url.trim();
+
+  // Handle Unsplash Optimization
+  if (cleanUrl.includes('images.unsplash.com')) {
+    try {
+      const u = new URL(cleanUrl);
+      // Ensure we have reasonable defaults for web performance
+      if (!u.searchParams.has('w')) u.searchParams.set('w', '1200');
+      if (!u.searchParams.has('q')) u.searchParams.set('q', '80');
+      if (!u.searchParams.has('auto')) u.searchParams.set('auto', 'format');
+      return u.toString();
+    } catch (e) {
+      return cleanUrl;
+    }
+  }
+
+  return cleanUrl;
 };
 
 /**
- * Normalizes a Dropbox URL to ensure it is valid for storage.
- * - Replaces dl=0/1 with raw=1 (standardization)
- * - KEEPS 'st' (security token) and 'rlkey' (resource key) - CRITICAL for access
- * 
- * use this BEFORE saving to database if the user manualy inputs a URL.
- * 
- * @param {string} url - The raw URL input
- * @returns {string} - The normalized URL
+ * Resolves any URL to a displayable source.
+ * MIGRATION NOTICE: Moving away from Dropbox proxying for new content.
+ */
+export const getImageSrc = (url) => {
+  if (!url) return "";
+  const normalized = normalizeImageUrl(url);
+
+  // If it's already a relative API path or local asset, return it
+  if (normalized.startsWith('/api/') || normalized.startsWith('/src/')) return normalized;
+
+  // Legacy Dropbox Proxying
+  if (isDropboxUrl(normalized)) {
+    return `/api/media/dropbox?url=${encodeURIComponent(normalized)}`;
+  }
+
+  return normalized;
+};
+
+/**
+ * Legacy normalization for Dropbox links before they reach the DB
  */
 export const normalizeDropboxImageUrl = (url) => {
-  if (!url) return "";
-  const stringUrl = String(url).trim();
-  
-  if (!stringUrl.includes('dropbox.com')) return stringUrl;
-
+  if (!url || typeof url !== 'string' || !url.includes('dropbox.com')) return url;
   try {
-    const urlObj = new URL(stringUrl);
-    
-    // 1. Ensure 'raw=1' for direct rendering (as a fallback/standard)
-    // We do NOT remove 'st' or 'rlkey' anymore.
-    
-    // Remove 'dl' if present to avoid conflicts with raw
+    const urlObj = new URL(url);
     urlObj.searchParams.delete('dl');
-    
-    // Set raw=1
     urlObj.searchParams.set('raw', '1');
-    
     return urlObj.toString();
   } catch (e) {
-    // Fallback for simple string replacement if URL parsing fails
-    let newUrl = stringUrl;
-    
-    // Replace dl=0/1 with raw=1
-    if (newUrl.includes('dl=0')) newUrl = newUrl.replace('dl=0', 'raw=1');
-    if (newUrl.includes('dl=1')) newUrl = newUrl.replace('dl=1', 'raw=1');
-    
-    // Ensure raw=1 if not present
-    if (!newUrl.includes('raw=1')) {
-      const separator = newUrl.includes('?') ? '&' : '?';
-      newUrl = `${newUrl}${separator}raw=1`;
-    }
-    
-    return newUrl;
+    return url;
   }
 };
 
-/**
- * Resolves a stored URL to a displayable source.
- * Proxies Dropbox URLs through our API to avoid CORS, Hotlinking, and Expiration issues.
- * 
- * USE THIS in <img src={...} />
- * 
- * @param {string} storedUrl - The URL stored in the database
- * @returns {string} - The resolved image source (proxy URL or original)
- */
-export const getImageSrc = (storedUrl) => {
-  if (!storedUrl) return "";
-  const stringUrl = String(storedUrl).trim();
-  
-  // If it's a Dropbox URL, route it through our proxy
-  if (isDropboxUrl(stringUrl)) {
-    return toDropboxProxyUrl(stringUrl);
-  }
-  
-  return stringUrl;
-};
-
-// Export aliases
 export const normalizeDropboxUrl = normalizeDropboxImageUrl;
-export const toDirectImageUrl = getImageSrc; // Updated to use proxy

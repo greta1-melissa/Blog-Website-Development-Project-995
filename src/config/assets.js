@@ -1,8 +1,14 @@
-export const LOGO_URL = "https://www.dropbox.com/scl/fi/7vg2ns18992qlcp9fsl8r/animated-purple-laptop-heart-icon.png?rlkey=p88xt7zv1xuxexll9l2jqnw0l&st=pc6w6n79&raw=1";
-export const ANIMATED_LOGO_VIDEO_URL = "https://www.dropbox.com/scl/fi/bwhvn1l1m8iqnzigvy1hk/flashing-heart-logo-animation.mp4?rlkey=cmkbvlrh57ptba6odd4qo6dwr&st=febh8t5c&raw=1";
-export const FEATURED_STORY_VIDEO_URL = "https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=awoqlf6x&raw=1";
+// Reliable CDN & Local Assets - Migrated from Dropbox
+// We use high-performance CDNs (Unsplash, Pexels) and local SVGs for core UI
 
-// New Fallback Images
-export const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=800&auto=format&fit=crop&q=60"; // Purple fluid art
-export const KDRAMA_PLACEHOLDER = "https://images.unsplash.com/photo-1593784991095-a20506948430?w=800&auto=format&fit=crop&q=60"; // TV/Entertainment
-export const BLOG_PLACEHOLDER = "https://images.unsplash.com/photo-1499750310159-52f0f837ce62?w=800&auto=format&fit=crop&q=60"; // Cozy desk
+// Logo uses the local SVG asset for instant loading
+export const LOGO_URL = "/src/assets/logo.svg";
+
+// UI Videos - Migrated to high-performance Pexels CDN (Reliable delivery)
+export const ANIMATED_LOGO_VIDEO_URL = "https://player.vimeo.com/external/370331493.sd.mp4?s=7b9963554d8bc073400301931393663a7536e84d&profile_id=139&oauth2_token_id=57447761";
+export const FEATURED_STORY_VIDEO_URL = "https://player.vimeo.com/external/451717369.sd.mp4?s=99360c70094055272372f4f2a7a8d5f3d640989f&profile_id=165&oauth2_token_id=57447761";
+
+// Fallback Images - Optimized Unsplash CDN links with size constraints
+export const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=800&auto=format&fit=crop&q=60";
+export const KDRAMA_PLACEHOLDER = "https://images.unsplash.com/photo-1593784991095-a20506948430?w=800&auto=format&fit=crop&q=60";
+export const BLOG_PLACEHOLDER = "https://images.unsplash.com/photo-1499750310159-52f0f837ce62?w=800&auto=format&fit=crop&q=60";
