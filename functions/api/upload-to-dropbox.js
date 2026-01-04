@@ -1,13 +1,15 @@
 /**
- * Cloudflare Pages Function to handle file uploads to Dropbox.
+ * Cloudflare Pages Function: Standardized Dropbox Upload
  * Route: /api/upload-to-dropbox
  * 
- * STANDARDIZED: Returns exclusively proxy URLs for frontend consumption.
+ * FINAL CONTRACT:
+ * Success (200/201): { success: true, proxyUrl: string, name: string }
+ * Failure (4xx/5xx): { success: false, message: string }
  */
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // 1. CORS Preflight
+  // 1. CORS & Method Guard
   if (request.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -18,7 +20,6 @@ export async function onRequest(context) {
     });
   }
 
-  // 2. Method Check
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ success: false, message: 'Method not allowed' }), {
       status: 405,
@@ -26,80 +27,64 @@ export async function onRequest(context) {
     });
   }
 
-  // 3. Auth Config Validation
+  // 2. Env Validation
   const { DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN } = env;
   if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET || !DROPBOX_REFRESH_TOKEN) {
-    return new Response(JSON.stringify({ success: false, message: 'Server Config Error: Missing Dropbox Credentials' }), {
+    return new Response(JSON.stringify({ success: false, message: 'Server configuration error' }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });
   }
 
   try {
-    // 4. File Parsing
+    // 3. Request Parsing
     const formData = await request.formData();
     const file = formData.get('file');
     if (!file) {
-      return new Response(JSON.stringify({ success: false, message: 'No file provided in request' }), {
+      return new Response(JSON.stringify({ success: false, message: 'No file provided' }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 5. Get Access Token (Refresh Token Flow)
-    const tokenParams = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: DROPBOX_REFRESH_TOKEN,
-      client_id: DROPBOX_APP_KEY,
-      client_secret: DROPBOX_APP_SECRET,
-    });
-
+    // 4. Token Refresh (Existing Logic)
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenParams.toString(),
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: DROPBOX_REFRESH_TOKEN,
+        client_id: DROPBOX_APP_KEY,
+        client_secret: DROPBOX_APP_SECRET,
+      }).toString(),
     });
 
-    if (!tokenRes.ok) {
-      const errText = await tokenRes.text();
-      throw new Error(`Auth failed: ${tokenRes.status}`);
-    }
-
+    if (!tokenRes.ok) throw new Error(`Auth failed: ${tokenRes.status}`);
     const { access_token } = await tokenRes.json();
 
-    // 6. Upload File
+    // 5. File Upload (Existing Logic)
     const filename = file.name || "upload.png";
     const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const timestamp = Date.now();
-    const uploadPath = `/uploads/${timestamp}_${safeFilename}`;
+    const uploadPath = `/uploads/${Date.now()}_${safeFilename}`;
     const arrayBuffer = await file.arrayBuffer();
-
-    const dbxArgs = {
-      path: uploadPath,
-      mode: 'add',
-      autorename: true,
-      mute: false,
-      strict_conflict: false
-    };
 
     const dbxResponse = await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${access_token}`,
-        'Dropbox-API-Arg': JSON.stringify(dbxArgs),
+        'Dropbox-API-Arg': JSON.stringify({ path: uploadPath, mode: 'add', autorename: true }),
         'Content-Type': 'application/octet-stream'
       },
       body: arrayBuffer
     });
 
-    if (!dbxResponse.ok) {
-      throw new Error("Dropbox upload failed");
-    }
-
+    if (!dbxResponse.ok) throw new Error("Dropbox internal upload failed");
     const dbxData = await dbxResponse.json();
 
-    // 7. Create or Get Shared Link
-    let publicUrl = '';
+    // 6. Shared Link Logic (Normalization Source)
+    let rawSharedUrl = '';
+    
+    // Path A: Try creating a new link
     const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
       headers: {
@@ -111,11 +96,12 @@ export async function onRequest(context) {
 
     if (shareResponse.ok) {
       const shareData = await shareResponse.json();
-      publicUrl = shareData.url;
+      rawSharedUrl = shareData.url;
     } else {
+      // Path B: Link exists, retrieve it
       const shareError = await shareResponse.json();
       if (shareError.error && shareError.error['.tag'] === 'shared_link_already_exists') {
-        const listLinksResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+        const listLinksRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${access_token}`,
@@ -123,41 +109,38 @@ export async function onRequest(context) {
           },
           body: JSON.stringify({ path: dbxData.path_lower })
         });
-        if (listLinksResponse.ok) {
-          const listData = await listLinksResponse.json();
+        if (listLinksRes.ok) {
+          const listData = await listLinksRes.json();
           if (listData.links && listData.links.length > 0) {
-            publicUrl = listData.links[0].url;
+            rawSharedUrl = listData.links[0].url;
           }
         }
       }
     }
 
-    if (!publicUrl) {
-      throw new Error('Could not generate public link');
+    if (!rawSharedUrl) {
+      throw new Error('Failed to generate sharing URL');
     }
 
-    // 8. Prepare CANONICAL Response
-    // We only return the proxyUrl and name. 
-    // Raw URLs are excluded to prevent accidental persistence of non-proxied links.
-    const proxyUrl = `/api/media/dropbox?url=${encodeURIComponent(publicUrl)}`;
+    // 7. CANONICAL RESPONSE CONSTRUCTION
+    // We enforce the proxyUrl format required by the frontend guards.
+    const proxyUrl = `/api/media/dropbox?url=${encodeURIComponent(rawSharedUrl)}`;
 
     return new Response(JSON.stringify({
       success: true,
-      proxyUrl: proxyUrl, // CANONICAL FORMAT
-      name: dbxData.name,
-      _metadata: {
-         info: "Raw Dropbox URLs are deprecated. Use proxyUrl for all rendering and persistence."
-      }
+      proxyUrl: proxyUrl, // Canonical field
+      name: dbxData.name  // Actual name (account for autorename)
     }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
     });
 
   } catch (error) {
-    console.error("Upload Function Error:", error);
     return new Response(JSON.stringify({
       success: false,
-      message: 'Internal Server Error',
-      details: error.message
+      message: error.message || 'Internal upload error'
     }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
