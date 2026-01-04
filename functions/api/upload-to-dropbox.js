@@ -4,7 +4,8 @@
  * Performs a 3-step process:
  * 1. Refreshes OAuth2 access token using Refresh Token flow.
  * 2. Uploads file to /Apps/BangtanMom/uploads.
- * 3. Creates/Retrieves a shared link and converts it to a raw direct link (?raw=1).
+ * 3. Creates/Retrieves a shared link.
+ * 4. Returns a PROXY URL to prevent direct Dropbox rendering.
  * 
  * Route: /api/upload-to-dropbox
  */
@@ -102,7 +103,6 @@ export async function onRequest(context) {
 
     let sharedUrl = '';
     if (shareRes.status === 409) {
-      // Link already exists, fetch it
       const listRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
         method: 'POST',
         headers: {
@@ -121,14 +121,15 @@ export async function onRequest(context) {
       sharedUrl = shareData.url;
     }
 
-    // 7. Format the direct "raw" URL
-    // Convert ...?dl=0 to ...?raw=1
-    const publicUrl = sharedUrl.replace(/\?dl=0$/, '?raw=1');
+    // 7. SECURE RESPONSE CONTRACT
+    // We return a proxy URL that points back to our own worker.
+    // This worker will handle the Dropbox stream server-side.
+    const proxyUrl = `/api/media/dropbox?url=${encodeURIComponent(sharedUrl)}`;
 
     return new Response(JSON.stringify({
       success: true,
-      publicUrl: publicUrl,
-      proxyUrl: publicUrl, // Keep for backward compatibility with existing components
+      publicUrl: sharedUrl, // Original Dropbox link for reference only
+      proxyUrl: proxyUrl,   // THE LINK FRONTEND MUST USE
       fileName: fileName
     }), {
       status: 200,

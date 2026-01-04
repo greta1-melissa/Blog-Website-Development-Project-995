@@ -70,6 +70,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
       const result = await response.json();
 
       if (response.ok && result.success && result.proxyUrl) {
+        // Store proxy URL only
         setFormData(prev => ({ ...prev, image_url: result.proxyUrl }));
         setUploadStatus('Upload Complete!');
       } else {
@@ -150,7 +151,7 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                           name="image_url"
                           value={formData.image_url}
                           onChange={handleChange}
-                          placeholder="Image URL (include ?raw=1 for Dropbox)"
+                          placeholder="Image URL..."
                           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg outline-none text-sm bg-white"
                         />
                       </div>
@@ -172,7 +173,12 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                       </div>
                       {formData.image_url && (
                         <div className="relative h-40 w-full bg-white rounded-lg overflow-hidden border border-gray-200 mt-2">
-                          <SafeImage src={formData.image_url} alt="Preview" fallback={KDRAMA_PLACEHOLDER} className="w-full h-full object-cover" />
+                          <SafeImage 
+                            src={formData.image_url} 
+                            alt="Preview" 
+                            fallback={KDRAMA_PLACEHOLDER}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       )}
                     </div>
