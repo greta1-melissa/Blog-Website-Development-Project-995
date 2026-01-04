@@ -51,10 +51,12 @@ const getLocalPosts = () => {
 };
 
 export const BlogProvider = ({ children }) => {
+  // Master list of ALL posts for Admin
   const [posts, setPosts] = useState(() => getLocalPosts() || initialPosts);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Filtered list for PUBLIC-FACING components
   const publishedPosts = useMemo(() => {
     const now = new Date();
     return posts.filter(post => {
@@ -81,8 +83,8 @@ export const BlogProvider = ({ children }) => {
       image: finalImage,
       image_url: finalImage,
       readTime: post.readtime || post.readTime || "1 min read",
+      // Map ishandpicked (0/1) from DB to boolean for UI
       isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true,
-      isLocalOnly: post.isLocalOnly === true,
       status: ['draft', 'scheduled', 'published'].includes(post.status) ? post.status : 'published'
     };
   };
@@ -90,47 +92,30 @@ export const BlogProvider = ({ children }) => {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
+      // 1. Fetch ALL posts from server
       const serverData = await ncbGet('posts');
-      const localData = getLocalPosts() || [];
-      let finalPosts = [];
-
       const safeServerData = Array.isArray(serverData) ? serverData : [];
-      const serverIds = new Set(safeServerData.map(p => String(p.id)));
+      
+      // 2. Normalize and merge with local seeds/storage
+      const normalizedServerPosts = safeServerData.map(post => normalizePost(post));
+      let finalPosts = [...normalizedServerPosts];
 
-      const normalizedServerPosts = safeServerData.map(post => normalizePost({ ...post, isLocalOnly: false }));
-      finalPosts = [...normalizedServerPosts];
-
+      const serverIds = new Set(normalizedServerPosts.map(p => String(p.id)));
+      
+      // Add initial seeds if they don't exist on server
       initialPosts.forEach(seedPost => {
         if (!serverIds.has(String(seedPost.id))) {
-          const exists = finalPosts.some(p => String(p.id) === String(seedPost.id));
-          if (!exists) {
-            finalPosts.push(normalizePost({ ...seedPost, isLocalOnly: true }));
-          }
+          finalPosts.push(normalizePost(seedPost));
         }
       });
 
-      if (localData.length > 0) {
-        localData.forEach(localPost => {
-          const idStr = String(localPost.id);
-          const isSeed = initialPosts.some(s => String(s.id) === idStr);
-          if (!serverIds.has(idStr) && !isSeed) {
-            const alreadyAdded = finalPosts.some(p => String(p.id) === idStr);
-            if (!alreadyAdded) {
-              finalPosts.push(normalizePost({ ...localPost, isLocalOnly: true }));
-            }
-          }
-        });
-      }
-
-      // ADMIN REQUIREMENT: Sort purely by Date DESC (Newest First) 
-      // Do NOT filter or sort by isHandPicked here to avoid hiding/reordering logic in Admin.
+      // 3. ADMIN REQUIREMENT: Sort purely by Date DESC (Newest First)
+      // We do NOT filter by isHandPicked here.
       finalPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setPosts(finalPosts);
     } catch (error) {
       console.error("[BlogContext] fetchPosts failed.", error);
-      const localData = getLocalPosts();
-      setPosts((localData && localData.length > 0) ? localData : initialPosts);
     } finally {
       setIsLoading(false);
     }
@@ -147,102 +132,55 @@ export const BlogProvider = ({ children }) => {
     }
   }, [posts]);
 
-  const validateImageProxy = (url) => {
-    if (!url) return true;
-    if (url.includes('dropbox.com/scl')) {
-      throw new Error("Direct Dropbox links are forbidden. Use the 'Upload' button to generate a permanent proxy link.");
-    }
-    if (!url.startsWith('/api/media/dropbox') && !url.includes('images.unsplash.com')) {
-      throw new Error("Image URL must start with /api/media/dropbox for persistence.");
-    }
-    return true;
-  };
-
   const addPost = async (postData) => {
     const tempId = Date.now();
     const wordCount = postData.content ? postData.content.split(' ').length : 0;
     const calcReadTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
-    const postDate = postData.date || new Date().toISOString().split('T')[0];
-    const rawImage = (postData.image || postData.image_url || '').trim();
-
-    validateImageProxy(rawImage);
-    const finalImage = normalizeDropboxImageUrl(rawImage);
-
-    const newPost = {
-      ...postData,
-      id: tempId,
-      date: postDate,
-      readTime: postData.readTime || postData.readtime || calcReadTime,
+    
+    const dbPayload = {
+      title: postData.title,
+      content: postData.content,
+      category: postData.category,
+      image: postData.image || postData.image_url || '',
       author: postData.author || "BangtanMom",
-      isHandPicked: false,
-      status: postData.status || 'published',
-      image: finalImage,
-      image_url: finalImage,
-      isLocalOnly: true
+      date: postData.date || new Date().toISOString().split('T')[0],
+      readtime: postData.readTime || calcReadTime,
+      ishandpicked: 0,
+      status: postData.status || 'published'
     };
 
-    setPosts(prev => [newPost, ...prev]);
-
     try {
-      const dbPayload = {
-        title: newPost.title,
-        content: newPost.content,
-        category: newPost.category,
-        image: newPost.image,
-        author: newPost.author,
-        date: newPost.date,
-        readtime: newPost.readTime,
-        ishandpicked: 0
-      };
-
       const savedPost = await ncbCreate('posts', dbPayload);
-      if (!savedPost || (!savedPost.id && !savedPost._id)) throw new Error("DB creation failed.");
-
-      const realId = savedPost.id || savedPost._id;
-      setPosts(prev => prev.map(p => p.id === tempId ? normalizePost({ ...p, ...savedPost, id: realId, isLocalOnly: false }) : p));
+      const realId = savedPost?.id || savedPost?._id || tempId;
+      const normalized = normalizePost({ ...dbPayload, id: realId });
+      setPosts(prev => [normalized, ...prev]);
       return realId;
     } catch (error) {
+      console.error("Failed to save post:", error);
       throw error;
     }
   };
 
   const updatePost = async (id, updatedFields) => {
     const previousPosts = [...posts];
-    const target = previousPosts.find(post => String(post.id) === String(id));
-    if (!target) return;
-
-    let updates = { ...updatedFields };
-
-    if (updates.image !== undefined || updates.image_url !== undefined) {
-      const imgVal = (updates.image_url !== undefined ? updates.image_url : (updates.image || '')).trim();
-      validateImageProxy(imgVal);
-      const newImg = normalizeDropboxImageUrl(imgVal);
-      updates.image = newImg;
-      updates.image_url = newImg;
-    }
-
-    if (updates.content && !updates.readTime && !updates.readtime) {
-      const wordCount = updates.content.split(' ').length;
-      updates.readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
-    }
-
-    setPosts(prev => prev.map(post => String(post.id) === String(id) ? normalizePost({ ...post, ...updates }) : post));
-
-    if (target.isLocalOnly) return;
+    setPosts(prev => prev.map(post => String(post.id) === String(id) ? { ...post, ...updatedFields } : post));
 
     try {
       const dbUpdates = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.content !== undefined) dbUpdates.content = updates.content;
-      if (updates.category !== undefined) dbUpdates.category = updates.category;
-      if (updates.image !== undefined) dbUpdates.image = updates.image;
-      if (updates.author !== undefined) dbUpdates.author = updates.author;
-      if (updates.date !== undefined) dbUpdates.date = updates.date;
-
-      const finalReadTime = updates.readtime !== undefined ? updates.readtime : updates.readTime;
+      if (updatedFields.title !== undefined) dbUpdates.title = updatedFields.title;
+      if (updatedFields.content !== undefined) dbUpdates.content = updatedFields.content;
+      if (updatedFields.category !== undefined) dbUpdates.category = updatedFields.category;
+      if (updatedFields.image !== undefined) dbUpdates.image = updatedFields.image;
+      if (updatedFields.image_url !== undefined) dbUpdates.image = updatedFields.image_url;
+      if (updatedFields.date !== undefined) dbUpdates.date = updatedFields.date;
+      if (updatedFields.status !== undefined) dbUpdates.status = updatedFields.status;
+      
+      const finalReadTime = updatedFields.readtime || updatedFields.readTime;
       if (finalReadTime !== undefined) dbUpdates.readtime = finalReadTime;
 
-      if (updates.isHandPicked !== undefined) dbUpdates.ishandpicked = updates.isHandPicked ? 1 : 0;
+      if (updatedFields.isHandPicked !== undefined) {
+        dbUpdates.ishandpicked = updatedFields.isHandPicked ? 1 : 0;
+      }
 
       await ncbUpdate('posts', id, dbUpdates);
     } catch (error) {
@@ -252,12 +190,8 @@ export const BlogProvider = ({ children }) => {
   };
 
   const deletePost = async (id) => {
-    const postToDelete = posts.find(post => String(post.id) === String(id));
     const previousPosts = [...posts];
     setPosts(prev => prev.filter(post => String(post.id) !== String(id)));
-
-    if (postToDelete && postToDelete.isLocalOnly) return;
-
     try {
       await ncbDelete('posts', id);
     } catch (error) {
@@ -266,7 +200,6 @@ export const BlogProvider = ({ children }) => {
   };
 
   const getPost = (id) => posts.find(post => String(post.id) === String(id));
-
   const getPostsByCategory = (category) => publishedPosts.filter(post => post.category === category);
 
   const value = {
