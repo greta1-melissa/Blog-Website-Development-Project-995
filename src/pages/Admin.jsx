@@ -11,7 +11,7 @@ import SafeIcon from '../common/SafeIcon';
 import { formatDate } from '../utils/dateUtils';
 import { getImageSrc } from '../utils/media.js';
 
-const { FiUsers, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiStar, FiCheckCircle, FiClock, FiFile, FiAlertTriangle, FiRefreshCcw } = FiIcons;
+const { FiUsers, FiEdit, FiTrash2, FiEye, FiPlus, FiSearch, FiShield, FiLogOut, FiStar, FiCheckCircle, FiClock, FiFile } = FiIcons;
 
 const Admin = () => {
   const { posts = [], categories = [], deletePost, updatePost, isLoading } = useBlog();
@@ -21,7 +21,6 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState('posts');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [editingPost, setEditingPost] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -34,26 +33,15 @@ const Admin = () => {
     return posts.filter(post => {
       const matchesSearch = searchTerm === '' || (post.title || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === '' || post.category === filterCategory;
-      const matchesStatus = filterStatus === 'all' || (post.status || 'published') === filterStatus;
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesCategory;
     });
-  }, [posts, searchTerm, filterCategory, filterStatus]);
+  }, [posts, searchTerm, filterCategory]);
 
   const handleToggleFeatured = async (post) => {
     try {
       await updatePost(post.id, { isHandPicked: !post.isHandPicked });
     } catch (error) {
       alert('Failed to update featured status.');
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const s = status || 'published';
-    switch (s) {
-      case 'published': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><SafeIcon icon={FiCheckCircle} className="mr-1" /> Published</span>;
-      case 'draft': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><SafeIcon icon={FiFile} className="mr-1" /> Draft</span>;
-      case 'scheduled': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"><SafeIcon icon={FiClock} className="mr-1" /> Scheduled</span>;
-      default: return null;
     }
   };
 
@@ -112,12 +100,6 @@ const Admin = () => {
               <option value="">All Categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg outline-none bg-white">
-              <option value="all">All Statuses</option>
-              <option value="published">Published</option>
-              <option value="draft">Drafts</option>
-              <option value="scheduled">Scheduled</option>
-            </select>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
@@ -125,7 +107,6 @@ const Admin = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Post</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Category</th>
                   <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Featured</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
@@ -135,7 +116,7 @@ const Admin = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading && posts.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent mb-4" />
                         Loading stories...
@@ -144,7 +125,7 @@ const Admin = () => {
                   </tr>
                 ) : filteredPosts.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                       No stories found matching your filters.
                     </td>
                   </tr>
@@ -157,7 +138,6 @@ const Admin = () => {
                           <div className="text-sm font-semibold text-gray-900 max-w-xs truncate">{post.title}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(post.status)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{post.category}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button onClick={() => handleToggleFeatured(post)} className={`text-xl transition-colors ${post.isHandPicked ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'}`}>

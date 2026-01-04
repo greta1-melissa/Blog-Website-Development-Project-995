@@ -13,7 +13,7 @@ export const useBlog = () => {
 };
 
 const initialPosts = [
-  { id: 7, title: "Starting Over at Forty (Something): Why I Finally Hit “Publish”", content: "Hi, I’m Melissa—mom of two, in my early forties...", author: "BangtanMom", date: "2025-12-02", category: "Health", readtime: "5 min read", image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop", isHandPicked: true, status: 'published' }
+  { id: 7, title: "Starting Over at Forty (Something): Why I Finally Hit “Publish”", content: "Hi, I’m Melissa—mom of two, in my early forties...", author: "BangtanMom", date: "2025-12-02", category: "Health", readtime: "5 min read", image: "https://images.unsplash.com/photo-1493612276216-9c5907b65267?w=800&h=400&fit=crop", isHandPicked: true }
 ];
 
 export const BlogProvider = ({ children }) => {
@@ -23,16 +23,9 @@ export const BlogProvider = ({ children }) => {
   const [fetchError, setFetchError] = useState(null);
   const [isErrorDismissed, setIsErrorDismissed] = useState(false);
 
+  // All posts are considered published as the DB has no status column
   const publishedPosts = useMemo(() => {
-    const now = new Date();
-    return posts.filter(post => {
-      if (post.status === 'draft') return false;
-      if (post.status === 'scheduled') {
-        const postDate = new Date(post.date);
-        return postDate <= now;
-      }
-      return true;
-    });
+    return posts;
   }, [posts]);
 
   const normalizePost = (post) => {
@@ -43,8 +36,7 @@ export const BlogProvider = ({ children }) => {
       image: finalImage,
       image_url: finalImage,
       readTime: post.readtime || post.readTime || "1 min read",
-      isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true,
-      status: ['draft', 'scheduled', 'published'].includes(post.status) ? post.status : 'published'
+      isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true
     };
   };
 
@@ -65,15 +57,12 @@ export const BlogProvider = ({ children }) => {
         normalizedServerPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
         setPosts(normalizedServerPosts);
       } else {
-        // If server is empty, we still consider it "working" but empty
         setPosts([]);
       }
     } catch (error) {
       console.error("[BlogContext] fetchPosts failed:", error);
-      // EXACT ERROR MESSAGE PER CONTRACT
       setFetchError("Could not load posts from server. Check Cloudflare runtime env vars (Production/Preview): NCB_API_KEY.");
       
-      // Fallback to seeds so UI isn't broken
       if (posts.length === 0) {
         setPosts(initialPosts.map(p => normalizePost(p)));
       }
@@ -96,13 +85,13 @@ export const BlogProvider = ({ children }) => {
   const dismissError = () => setIsErrorDismissed(true);
 
   const addPost = async (postData) => {
+    const { status, ...rest } = postData; // Remove status from payload
     const dbPayload = {
-      ...postData,
+      ...rest,
       ishandpicked: 0,
       author: postData.author || "BangtanMom",
       date: postData.date || new Date().toISOString().split('T')[0],
-      readtime: postData.readTime || "2 min read",
-      status: postData.status || 'published'
+      readtime: postData.readTime || "2 min read"
     };
     const savedPost = await ncbCreate('posts', dbPayload);
     const normalized = normalizePost(savedPost);
@@ -111,8 +100,9 @@ export const BlogProvider = ({ children }) => {
   };
 
   const updatePost = async (id, updatedFields) => {
-    await ncbUpdate('posts', id, updatedFields);
-    setPosts(prev => prev.map(post => String(post.id) === String(id) ? { ...post, ...updatedFields } : post));
+    const { status, ...rest } = updatedFields; // Remove status from update
+    await ncbUpdate('posts', id, rest);
+    setPosts(prev => prev.map(post => String(post.id) === String(id) ? { ...post, ...rest } : post));
   };
 
   const deletePost = async (id) => {

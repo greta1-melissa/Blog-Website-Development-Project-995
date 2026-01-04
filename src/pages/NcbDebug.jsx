@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getNcbStatus, ncbCreate, ncbDelete, ncbReadAll } from '../services/nocodebackendClient';
+import { getNcbStatus } from '../services/nocodebackendClient';
 import SafeIcon from '../common/SafeIcon';
 import * as FiIcons from 'react-icons/fi';
 
-const { 
-  FiRefreshCw, FiServer, FiGlobe, 
-  FiDatabase, FiTrash2, FiPlus, FiEdit 
-} = FiIcons;
+const { FiRefreshCw, FiServer, FiTrash2 } = FiIcons;
 
 const NcbDebug = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-
   const [createPostResult, setCreatePostResult] = useState(null);
-  const [createKdramaResult, setCreateKdramaResult] = useState(null);
-  const [cleanupResult, setCleanupResult] = useState(null);
 
   const checkStatus = async () => {
     setLoading(true);
@@ -23,14 +17,13 @@ const NcbDebug = () => {
     setLoading(false);
   };
 
-  useEffect(() => { checkStatus(); }, []);
+  useEffect(() => {
+    checkStatus();
+  }, []);
 
   const runRawTest = async (url, method = 'GET', body = null) => {
     try {
-      const options = {
-        method,
-        headers: { 'Content-Type': 'application/json' }
-      };
+      const options = { method, headers: { 'Content-Type': 'application/json' } };
       if (body) options.body = JSON.stringify(body);
       const res = await fetch(url, options);
       const text = await res.text();
@@ -46,8 +39,6 @@ const NcbDebug = () => {
     setCreatePostResult({ loading: true });
     const instance = status?.instance || '';
     const url = `/api/ncb/create/posts?Instance=${instance}`;
-    
-    // STANDARDIZED: Schema expects 'readtime'
     const payload = {
       title: "Debug Post",
       content: "Debug content",
@@ -58,49 +49,8 @@ const NcbDebug = () => {
       readtime: "2 min read",
       ishandpicked: 0
     };
-    
     const result = await runRawTest(url, 'POST', payload);
     setCreatePostResult({ ...result, payloadUsed: payload });
-  };
-
-  const runCreateKdramaTest = async () => {
-    setCreateKdramaResult({ loading: true });
-    const instance = status?.instance || '';
-    const url = `/api/ncb/create/kdrama_recommendations?Instance=${instance}`;
-    
-    // STANDARDIZED: tags must be string
-    const payload = {
-      title: "Debug K-Drama",
-      slug: `debug-kdrama-${Date.now()}`,
-      tags: "Debug,Test", 
-      synopsis_short: "Synopsis",
-      image_url: "",
-      image: ""
-    };
-    
-    const result = await runRawTest(url, 'POST', payload);
-    setCreateKdramaResult({ ...result, payloadUsed: payload });
-  };
-
-  const runCleanupTest = async () => {
-    setCleanupResult({ loading: true });
-    try {
-      let deletedCount = 0;
-      const cleanTable = async (table, filterFn) => {
-        const records = await ncbReadAll(table, { limit: 100 });
-        if (!Array.isArray(records)) return;
-        const targets = records.filter(filterFn);
-        for (const target of targets) {
-          const success = await ncbDelete(table, target.id);
-          if (success) deletedCount++;
-        }
-      };
-      await cleanTable('posts', r => r.title === "Debug Post");
-      await cleanTable('kdrama_recommendations', r => r.slug && r.slug.startsWith('debug-kdrama-'));
-      setCleanupResult({ success: true, status: 200, body: { message: `Deleted ${deletedCount} records.` } });
-    } catch (e) {
-      setCleanupResult({ success: false, status: 'ERR', body: e.message });
-    }
   };
 
   const ResultBox = ({ result }) => {
@@ -127,15 +77,6 @@ const NcbDebug = () => {
             </div>
             <ResultBox result={createPostResult} />
           </div>
-          <div className="p-4 border rounded-lg">
-            <div className="flex justify-between items-center">
-              <h4 className="font-bold">Test Create K-Drama (tags as string)</h4>
-              <button onClick={runCreateKdramaTest} className="bg-purple-600 text-white px-4 py-1 rounded">Run</button>
-            </div>
-            <ResultBox result={createKdramaResult} />
-          </div>
-          <button onClick={runCleanupTest} className="text-red-600 text-sm font-bold flex items-center"><SafeIcon icon={FiTrash2} className="mr-1"/> Cleanup Debug Records</button>
-          <ResultBox result={cleanupResult} />
         </div>
       </div>
     </div>
