@@ -4,10 +4,8 @@
  * FAIL-SAFE: Automatically injects the default Instance ID if missing or empty.
  * This ensures incognito and authenticated sessions read the same data.
  * 
- * UPDATED AUTH LOGIC:
- * 1. Prioritizes NCB_API_KEY
- * 2. Falls back to VITE_NCB_API_KEY
- * 3. Returns structured error if both are missing
+ * UPDATED RESPONSE HANDLING:
+ * Buffers JSON responses to ensure reliable client-side parsing.
  * 
  * Route: /api/ncb/*
  */
@@ -22,8 +20,8 @@ export async function onRequest(context) {
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
       },
     });
   }
@@ -57,13 +55,13 @@ export async function onRequest(context) {
     const ncbApiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
 
     if (!ncbApiKey) {
-      return new Response(JSON.stringify({
+      return new Response(JSON.stringify({ 
         error: "Missing NCB API key",
         hasNCB_API_KEY: !!env.NCB_API_KEY,
         hasVITE_NCB_API_KEY: !!env.VITE_NCB_API_KEY
       }), {
         status: 500,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         }
@@ -73,7 +71,7 @@ export async function onRequest(context) {
     headers.set('Authorization', `Bearer ${ncbApiKey}`);
     headers.delete('Host');
 
-    // 5. Body Buffering
+    // 5. Body Buffering for Request
     let rawBody = null;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
@@ -93,10 +91,11 @@ export async function onRequest(context) {
 
     const response = await fetch(proxyReq);
 
-    // 7. Handle Response
+    // 7. Handle Response with Buffering for JSON
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
+    // If the response is not success, we still buffer the body to provide details to the client
     if (!response.ok) {
       const errorText = await response.text();
       return new Response(JSON.stringify({
@@ -115,6 +114,7 @@ export async function onRequest(context) {
       });
     }
 
+    // Handle 204 No Content or empty bodies
     if (response.status === 204 || response.status === 304 || !response.body) {
       return new Response(null, {
         status: response.status,
@@ -123,6 +123,18 @@ export async function onRequest(context) {
       });
     }
 
+    // CRITICAL FIX: Buffer JSON bodies
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const jsonText = await response.text();
+      return new Response(jsonText, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
+    }
+
+    // Fallback: Stream binary or non-JSON content
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -130,12 +142,13 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
+    console.error("Proxy Internal Error:", err);
     return new Response(JSON.stringify({
       status: 'error',
       message: `Proxy Internal Error: ${err.message}`
     }), {
       status: 500,
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       }
