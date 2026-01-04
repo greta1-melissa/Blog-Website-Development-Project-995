@@ -1,12 +1,17 @@
 /**
- * DEPRECATION NOTICE:
- * This endpoint is maintained for legacy compatibility but is being phased out.
- * For new deployments, Cloudflare R2 is the recommended storage solution.
+ * Cloudflare Pages Function: Dropbox Upload API
+ * 
+ * Performs a 3-step process:
+ * 1. Refreshes OAuth2 access token using Refresh Token flow.
+ * 2. Uploads file to /Apps/BangtanMom/uploads.
+ * 3. Creates/Retrieves a shared link and converts it to a raw direct link (?raw=1).
+ * 
+ * Route: /api/upload-to-dropbox
  */
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // Standard Guard
+  // 1. Handle CORS Preflight
   if (request.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -17,12 +22,133 @@ export async function onRequest(context) {
     });
   }
 
-  // Redirect or process via existing Dropbox logic
-  // [Existing Dropbox Upload Logic remains here for backward compatibility]
-  // ... (refer to prior version for full implementation)
-  
-  return new Response(JSON.stringify({ 
-    success: false, 
-    message: "This endpoint is entering maintenance mode. Please migrate to R2." 
-  }), { status: 410 });
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { 
+      status: 405,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    // 2. Validate Environment
+    const { DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN } = env;
+    if (!DROPBOX_APP_KEY || !DROPBOX_APP_SECRET || !DROPBOX_REFRESH_TOKEN) {
+      throw new Error("Missing Dropbox credentials in environment variables.");
+    }
+
+    // 3. Extract File from Request
+    const formData = await request.formData();
+    const file = formData.get('file');
+    if (!file) throw new Error("No file provided in request");
+
+    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const fileBuffer = await file.arrayBuffer();
+
+    // 4. Step 1: Get Access Token (Refresh Flow)
+    const tokenParams = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: DROPBOX_REFRESH_TOKEN,
+      client_id: DROPBOX_APP_KEY,
+      client_secret: DROPBOX_APP_SECRET,
+    });
+
+    const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenParams.toString(),
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.text();
+      throw new Error(`Token Refresh Failed: ${err}`);
+    }
+    const { access_token } = await tokenRes.json();
+
+    // 5. Step 2: Upload File to Dropbox
+    const uploadRes = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Dropbox-API-Arg': JSON.stringify({
+          path: `/uploads/${fileName}`,
+          mode: 'add',
+          autorename: true,
+          mute: false
+        }),
+        'Content-Type': 'application/octet-stream'
+      },
+      body: fileBuffer
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.text();
+      throw new Error(`Upload Failed: ${err}`);
+    }
+    const uploadData = await uploadRes.json();
+    const filePath = uploadData.path_display;
+
+    // 6. Step 3: Create Shared Link
+    const shareRes = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        path: filePath,
+        settings: { requested_visibility: 'public' }
+      })
+    });
+
+    let sharedUrl = '';
+    if (shareRes.status === 409) {
+      // Link already exists, fetch it
+      const listRes = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ path: filePath, direct_only: true })
+      });
+      const listData = await listRes.json();
+      sharedUrl = listData.links[0].url;
+    } else if (!shareRes.ok) {
+      const err = await shareRes.text();
+      throw new Error(`Sharing Failed: ${err}`);
+    } else {
+      const shareData = await shareRes.json();
+      sharedUrl = shareData.url;
+    }
+
+    // 7. Format the direct "raw" URL
+    // Convert ...?dl=0 to ...?raw=1
+    const publicUrl = sharedUrl.replace(/\?dl=0$/, '?raw=1');
+
+    return new Response(JSON.stringify({
+      success: true,
+      publicUrl: publicUrl,
+      proxyUrl: publicUrl, // Keep for backward compatibility with existing components
+      fileName: fileName
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+
+  } catch (error) {
+    console.error(`[Upload API Error]: ${error.message}`);
+    return new Response(JSON.stringify({
+      success: false,
+      message: error.message
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
 }
