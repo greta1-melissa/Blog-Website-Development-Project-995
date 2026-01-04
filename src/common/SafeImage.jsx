@@ -5,22 +5,49 @@ import { PLACEHOLDER_IMAGE } from '../config/assets';
 /**
  * SafeImage Component
  * 
- * Final line of defense for image rendering. 
- * Prevents network requests to blocked sources and handles loading failures.
+ * Final line of defense for image rendering.
+ * Only allows images from trusted sources or our internal proxy.
  */
-const SafeImage = ({ 
-  src, 
-  alt = "", 
-  fallback = PLACEHOLDER_IMAGE, 
-  className = "", 
-  loading = "lazy", 
-  ...props 
-}) => {
+const SafeImage = ({ src, alt = "", fallback = PLACEHOLDER_IMAGE, className = "", loading = "lazy", ...props }) => {
   
-  // Resolve source using global normalization logic
+  // Define trusted patterns for rendering
+  const isTrustedSource = (url) => {
+    if (!url) return false;
+    
+    // 1. Internal Proxy (Critical for Dropbox functionality)
+    if (url.startsWith('/api/media/')) return true;
+    
+    // 2. Local Assets
+    if (url.startsWith('/assets/') || url.startsWith('/') || url.startsWith('data:')) return true;
+    
+    // 3. Approved CDNs
+    const trustedHosts = [
+      'images.unsplash.com',
+      'player.vimeo.com',
+      'i.scdn.co', // Spotify
+      'images.pexels.com'
+    ];
+    
+    try {
+      const u = new URL(url);
+      return trustedHosts.some(host => u.hostname.includes(host));
+    } catch (e) {
+      return false;
+    }
+  };
+
   const resolveInitialSrc = (input) => {
     if (!input) return fallback;
-    return getImageSrc(input, fallback);
+    
+    const resolved = getImageSrc(input, fallback);
+    
+    // If the resolved URL is still a raw Dropbox URL (normalization failed)
+    // or is not a trusted source, we force the fallback immediately.
+    if (isDropboxUrl(resolved) || !isTrustedSource(resolved)) {
+      return fallback;
+    }
+    
+    return resolved;
   };
 
   const [imgSrc, setImgSrc] = useState(() => resolveInitialSrc(src));
@@ -34,11 +61,10 @@ const SafeImage = ({
 
   const handleError = () => {
     if (hasFailed || imgSrc === fallback) {
-      // Final emergency fallback to transparent pixel to prevent broken icon
+      // Final emergency fallback to transparent pixel
       setImgSrc("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
       return;
     }
-
     setHasFailed(true);
     setImgSrc(fallback);
   };
@@ -49,7 +75,7 @@ const SafeImage = ({
       alt={alt} 
       className={className} 
       onError={handleError} 
-      loading={loading}
+      loading={loading} 
       {...props} 
     />
   );

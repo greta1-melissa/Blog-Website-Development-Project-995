@@ -48,7 +48,7 @@ export const normalizeImageUrl = (url) => {
  * 
  * Rules:
  * 1. Empty/Invalid -> Fallback
- * 2. Dropbox (with raw=1) -> Allowed Direct
+ * 2. Dropbox -> ALWAYS Proxied via /api/media/dropbox (Direct access forbidden)
  * 3. Relative -> Resolved to /assets/
  */
 export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
@@ -58,19 +58,10 @@ export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
   
   const normalized = normalizeImageUrl(url);
 
-  // Allow direct Dropbox URLs if they have the raw=1 parameter
+  // MANDATORY PROXY FOR DROPBOX
+  // We do not allow raw Dropbox URLs to be rendered directly to avoid runtime blocks
   if (isDropboxUrl(normalized)) {
-    try {
-      const u = new URL(normalized);
-      if (u.searchParams.get('raw') === '1') {
-        return normalized;
-      }
-      // If it's a dropbox link but missing raw=1, we still allow it 
-      // but the browser might not render it as an image unless raw=1 is present.
-      return normalized;
-    } catch (e) {
-      return normalized;
-    }
+    return `/api/media/dropbox?url=${encodeURIComponent(normalized)}`;
   }
 
   // Relative paths assumed to be in public assets
@@ -87,7 +78,8 @@ export const getImageSrc = (url, fallback = PLACEHOLDER_IMAGE) => {
 };
 
 /**
- * Normalizes Dropbox URL - now permissive.
+ * Normalizes Dropbox URL - now permissive in terms of input, 
+ * but the proxying happens at the getImageSrc level.
  */
 export const normalizeDropboxUrl = (url) => {
   return url || "";
