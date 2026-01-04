@@ -28,7 +28,7 @@ export const KdramaProvider = ({ children }) => {
     return data.map((item, index) => {
       const rawImage = item.image_url || item.image || '';
       
-      // Normalize image path immediately
+      // Normalize image path immediately - blocks Dropbox and handles legacy empty strings
       const cleanImage = getImageSrc(rawImage, KDRAMA_PLACEHOLDER);
       
       return {

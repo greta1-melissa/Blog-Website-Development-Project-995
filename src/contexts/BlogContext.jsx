@@ -26,12 +26,12 @@ export const BlogProvider = ({ children }) => {
 
   /**
    * Normalizes post data coming from the database.
-   * CRITICAL: Sanitizes image URLs immediately.
+   * Intercepts Dropbox links and empty strings immediately.
    */
   const normalizePost = (post) => {
     const rawImage = post.image || post.image_url || '';
     
-    // Normalize image using global utility
+    // Normalize image using global utility - handles Dropbox blockade and fallbacks
     const cleanImage = getImageSrc(rawImage, BLOG_PLACEHOLDER);
     
     return {
