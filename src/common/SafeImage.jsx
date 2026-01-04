@@ -1,68 +1,56 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getImageSrc } from '../utils/media';
+import React, { useState, useEffect } from 'react';
+import { getImageSrc, isDropboxUrl } from '../utils/media';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 
 /**
  * SafeImage Component
  * 
- * Standardized wrapper for all images in the application.
- * - Handles Dropbox proxying automatically via getImageSrc.
- * - Robust error handling with category-specific fallbacks.
- * - Prevents infinite re-render loops by tracking failure state.
- * - Ensures state updates only once per failure.
+ * Final line of defense for image rendering. 
+ * Prevents network requests to blocked sources and handles loading failures.
  */
 const SafeImage = ({ 
   src, 
   alt = "", 
   fallback = PLACEHOLDER_IMAGE, 
   className = "", 
-  loading = "lazy",
+  loading = "lazy", 
   ...props 
 }) => {
-  // Initialize state with the processed source or fallback
-  const [imgSrc, setImgSrc] = useState(() => getImageSrc(src) || fallback);
   
-  // Flag to track if the primary source has already failed to prevent loops
-  const [hasFailed, setHasFailed] = useState(false);
-  
-  // Track logged failures to prevent console spam
-  const loggedUrls = useRef(new Set());
+  // Resolve source using global normalization logic
+  const resolveInitialSrc = (input) => {
+    if (!input) return fallback;
+    return getImageSrc(input, fallback);
+  };
 
-  // Reset state when source or fallback props change
+  const [imgSrc, setImgSrc] = useState(() => resolveInitialSrc(src));
+  const [hasFailed, setHasFailed] = useState(false);
+
+  // Re-normalize if props change
   useEffect(() => {
-    const newSrc = getImageSrc(src) || fallback;
-    setImgSrc(newSrc);
+    setImgSrc(resolveInitialSrc(src));
     setHasFailed(false);
   }, [src, fallback]);
 
   const handleError = () => {
-    // 1. If we already tried the fallback and it also failed, stop.
-    // This prevents infinite loops if the placeholder itself is broken.
-    if (hasFailed) {
-      // Return a transparent 1x1 pixel as the absolute final fallback
+    if (hasFailed || imgSrc === fallback) {
+      // Final emergency fallback to transparent pixel to prevent broken icon
       setImgSrc("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
       return;
     }
 
-    // 2. Log diagnostic info exactly once per unique URL
-    if (src && !loggedUrls.current.has(src)) {
-      console.warn(`[SafeImage] Load failed for: ${src}. Switching to fallback.`);
-      loggedUrls.current.add(src);
-    }
-
-    // 3. Update state once: mark as failed and switch to the provided fallback
     setHasFailed(true);
     setImgSrc(fallback);
   };
 
   return (
-    <img
-      src={imgSrc}
-      alt={alt}
-      className={className}
-      onError={handleError}
+    <img 
+      src={imgSrc} 
+      alt={alt} 
+      className={className} 
+      onError={handleError} 
       loading={loading}
-      {...props}
+      {...props} 
     />
   );
 };

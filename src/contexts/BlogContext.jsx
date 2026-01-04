@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
-import { normalizeDropboxImageUrl } from '../utils/media.js';
+import { getImageSrc } from '../utils/media.js';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const BlogContext = createContext();
 
@@ -23,13 +24,20 @@ export const BlogProvider = ({ children }) => {
     return posts;
   }, [posts]);
 
+  /**
+   * Normalizes post data coming from the database.
+   * CRITICAL: Sanitizes image URLs immediately.
+   */
   const normalizePost = (post) => {
     const rawImage = post.image || post.image_url || '';
-    const finalImage = normalizeDropboxImageUrl(rawImage);
+    
+    // Normalize image using global utility
+    const cleanImage = getImageSrc(rawImage, BLOG_PLACEHOLDER);
+    
     return {
       ...post,
-      image: finalImage,
-      image_url: finalImage,
+      image: cleanImage,
+      image_url: cleanImage,
       readTime: post.readtime || post.readTime || "1 min read",
       isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true
     };
@@ -39,36 +47,25 @@ export const BlogProvider = ({ children }) => {
     setIsLoading(true);
     setFetchError(null);
     setIsErrorDismissed(false);
-
     try {
-      // REQUIRED IMPLEMENTATION: Preserve state on failure
       const res = await fetch('/api/ncb/read/posts');
-      
       if (!res.ok) {
         throw new Error(`Upstream Error: ${res.status}`);
       }
-
       const json = await res.json();
-
-      // Only update state if data is a valid array
+      
       if (Array.isArray(json.data)) {
         const normalizedPosts = json.data.map(post => normalizePost(post));
-        
-        // Sorting by date DESC
         normalizedPosts.sort((a, b) => {
           const dateA = new Date(a.date || 0);
           const dateB = new Date(b.date || 0);
           return dateB - dateA;
         });
-        
         setPosts(normalizedPosts);
-      } else {
-        console.error("[BlogContext] Invalid data format received:", json);
       }
     } catch (err) {
-      // CRITICAL: posts state is NOT modified here, preserving previous data
       console.error('BlogContext fetch failed', err);
-      setFetchError("Could not load posts from server. Showing cached content if available.");
+      setFetchError("Could not load posts from server.");
     } finally {
       setIsLoading(false);
     }
@@ -88,25 +85,15 @@ export const BlogProvider = ({ children }) => {
   const dismissError = () => setIsErrorDismissed(true);
 
   const addPost = async (postData) => {
-    const { status, ...rest } = postData;
-    const dbPayload = {
-      ...rest,
-      ishandpicked: 0,
-      author: postData.author || "BangtanMom",
-      date: postData.date || new Date().toISOString().split('T')[0],
-      readtime: postData.readTime || "2 min read"
-    };
-
-    const savedPost = await ncbCreate('posts', dbPayload);
+    const savedPost = await ncbCreate('posts', postData);
     const normalized = normalizePost(savedPost);
     setPosts(prev => [normalized, ...prev]);
     return normalized.id;
   };
 
   const updatePost = async (id, updatedFields) => {
-    const { status, ...rest } = updatedFields;
-    await ncbUpdate('posts', id, rest);
-    setPosts(prev => prev.map(post => String(post.id) === String(id) ? { ...post, ...rest } : post));
+    await ncbUpdate('posts', id, updatedFields);
+    setPosts(prev => prev.map(post => String(post.id) === String(id) ? normalizePost({ ...post, ...updatedFields }) : post));
   };
 
   const deletePost = async (id) => {
@@ -118,17 +105,17 @@ export const BlogProvider = ({ children }) => {
 
   return (
     <BlogContext.Provider value={{
-      posts,
-      publishedPosts,
-      categories,
-      isLoading,
-      fetchError,
-      isErrorDismissed,
-      dismissError,
-      retryFetch: fetchPosts,
-      addPost,
-      updatePost,
-      deletePost,
+      posts, 
+      publishedPosts, 
+      categories, 
+      isLoading, 
+      fetchError, 
+      isErrorDismissed, 
+      dismissError, 
+      retryFetch: fetchPosts, 
+      addPost, 
+      updatePost, 
+      deletePost, 
       getPost
     }}>
       {children}
