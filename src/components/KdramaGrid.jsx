@@ -12,30 +12,30 @@ const { FiArrowRight, FiMessageCircle } = FiIcons;
 const KdramaCard = ({ drama, index }) => {
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      whileInView={{ opacity: 1, y: 0 }} 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }} 
+      transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 border border-purple-50 flex flex-col h-full overflow-hidden"
     >
       <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block relative h-56 overflow-hidden bg-purple-100">
         <SafeImage 
           src={drama.image_url || drama.image} 
-          alt={drama.image_alt || drama.title} 
+          alt={drama.title} 
           fallback={KDRAMA_PLACEHOLDER}
-          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out" 
-          loading="lazy" 
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-          {drama.tags && drama.tags.slice(0, 1).map((tag, idx) => (
-            <span key={idx} className="px-2 py-1 bg-white/90 backdrop-blur-sm text-purple-800 text-xs font-bold rounded-md shadow-sm">
+          {drama.tags && drama.tags.slice(0, 2).map((tag, idx) => (
+            <span key={idx} className="px-2 py-1 bg-white/90 backdrop-blur-sm text-purple-800 text-[10px] font-bold rounded-md shadow-sm uppercase">
               {tag}
             </span>
           ))}
         </div>
       </Link>
-
+      
       <div className="p-5 flex flex-col flex-grow">
         <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`}>
           <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight hover:text-purple-600 transition-colors line-clamp-2 min-h-[3rem]">
@@ -45,10 +45,9 @@ const KdramaCard = ({ drama, index }) => {
         <p className="text-gray-600 text-xs leading-relaxed mb-4 flex-grow line-clamp-3">
           {drama.synopsis_short}
         </p>
-
         <div className="mt-auto flex items-center justify-between border-t border-gray-50 pt-4">
           <Link 
-            to={`/kdrama-recommendations/${drama.slug || drama.id}`} 
+            to={`/kdrama-recommendations/${drama.slug || drama.id}`}
             className="inline-flex items-center text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors group/link"
           >
             Read Review <SafeIcon icon={FiArrowRight} className="ml-1 group-hover/link:translate-x-1 transition-transform" />
@@ -63,7 +62,7 @@ const KdramaCard = ({ drama, index }) => {
 };
 
 const KdramaGrid = () => {
-  const { featuredKdramas, isLoading } = useKdrama();
+  const { featuredKdramas, isLoading, kdramas } = useKdrama();
 
   if (isLoading) {
     return (
@@ -82,9 +81,19 @@ const KdramaGrid = () => {
     );
   }
 
+  const displayList = featuredKdramas.length > 0 ? featuredKdramas : kdramas.slice(0, 4);
+
+  if (displayList.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-purple-200">
+        <p className="text-gray-500">No drama recommendations found yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {featuredKdramas.map((drama, index) => (
+      {displayList.map((drama, index) => (
         <KdramaCard key={drama.id} drama={drama} index={index} />
       ))}
     </div>

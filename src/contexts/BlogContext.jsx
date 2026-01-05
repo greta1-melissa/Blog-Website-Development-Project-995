@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { ncbCreate, ncbDelete, ncbUpdate } from '../services/nocodebackendClient';
+import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
 import { getImageSrc } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
@@ -15,57 +15,46 @@ export const useBlog = () => {
 
 export const BlogProvider = ({ children }) => {
   const [posts, setPosts] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-  const [isErrorDismissed, setIsErrorDismissed] = useState(false);
+  const [error, setError] = useState(null);
+  const TABLE_NAME = 'posts';
 
-  const publishedPosts = useMemo(() => {
-    return posts;
-  }, [posts]);
-
-  /**
-   * Normalizes post data coming from the database.
-   * Intercepts Dropbox links and empty strings immediately.
-   */
   const normalizePost = (post) => {
-    const rawImage = post.image || post.image_url || '';
-    
-    // Normalize image using global utility - handles Dropbox blockade and fallbacks
+    const rawImage = post.image || post.image_url || post.featured_image_url || '';
     const cleanImage = getImageSrc(rawImage, BLOG_PLACEHOLDER);
     
     return {
       ...post,
+      id: post.id,
+      title: post.title || 'Untitled',
+      slug: post.slug || '',
+      category: post.category || 'General',
+      status: post.status || 'published',
+      excerpt: post.excerpt || post.summary || '',
+      content: post.content || '',
       image: cleanImage,
       image_url: cleanImage,
+      featured_image_url: cleanImage,
       readTime: post.readtime || post.readTime || "1 min read",
-      isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true
+      isHandPicked: post.ishandpicked === 1 || post.isHandPicked === true || post.ishandpicked === '1',
+      date: post.date || post.created_at || new Date().toISOString()
     };
   };
 
   const fetchPosts = async () => {
     setIsLoading(true);
-    setFetchError(null);
-    setIsErrorDismissed(false);
+    setError(null);
     try {
-      const res = await fetch('/api/ncb/read/posts');
-      if (!res.ok) {
-        throw new Error(`Upstream Error: ${res.status}`);
-      }
-      const json = await res.json();
-      
-      if (Array.isArray(json.data)) {
-        const normalizedPosts = json.data.map(post => normalizePost(post));
-        normalizedPosts.sort((a, b) => {
-          const dateA = new Date(a.date || 0);
-          const dateB = new Date(b.date || 0);
-          return dateB - dateA;
-        });
-        setPosts(normalizedPosts);
+      const data = await ncbReadAll(TABLE_NAME);
+      if (Array.isArray(data)) {
+        const normalized = data.map(normalizePost).sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        );
+        setPosts(normalized);
       }
     } catch (err) {
-      console.error('BlogContext fetch failed', err);
-      setFetchError("Could not load posts from server.");
+      console.error('BlogContext: Fetch failed', err);
+      setError("Failed to load blog posts.");
     } finally {
       setIsLoading(false);
     }
@@ -75,48 +64,55 @@ export const BlogProvider = ({ children }) => {
     fetchPosts();
   }, []);
 
-  useEffect(() => {
-    if (posts.length > 0) {
-      const uniqueCategories = [...new Set(posts.map(post => post.category))].filter(Boolean);
-      setCategories(uniqueCategories);
-    }
-  }, [posts]);
-
-  const dismissError = () => setIsErrorDismissed(true);
-
   const addPost = async (postData) => {
-    const savedPost = await ncbCreate('posts', postData);
-    const normalized = normalizePost(savedPost);
-    setPosts(prev => [normalized, ...prev]);
-    return normalized.id;
+    try {
+      const result = await ncbCreate(TABLE_NAME, postData);
+      await fetchPosts();
+      return result.id;
+    } catch (err) {
+      throw new Error("Failed to create post");
+    }
   };
 
-  const updatePost = async (id, updatedFields) => {
-    await ncbUpdate('posts', id, updatedFields);
-    setPosts(prev => prev.map(post => String(post.id) === String(id) ? normalizePost({ ...post, ...updatedFields }) : post));
+  const updatePost = async (id, updates) => {
+    try {
+      await ncbUpdate(TABLE_NAME, id, updates);
+      setPosts(prev => prev.map(p => 
+        String(p.id) === String(id) ? normalizePost({ ...p, ...updates }) : p
+      ));
+    } catch (err) {
+      throw new Error("Failed to update post");
+    }
   };
 
   const deletePost = async (id) => {
-    await ncbDelete('posts', id);
-    setPosts(prev => prev.filter(post => String(post.id) !== String(id)));
+    try {
+      await ncbDelete(TABLE_NAME, id);
+      setPosts(prev => prev.filter(p => String(p.id) !== String(id)));
+    } catch (err) {
+      throw new Error("Failed to delete post");
+    }
   };
 
-  const getPost = (id) => posts.find(post => String(post.id) === String(id));
+  const categories = useMemo(() => {
+    const unique = [...new Set(posts.map(p => p.category))].filter(Boolean);
+    return unique.length > 0 ? unique : ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career'];
+  }, [posts]);
+
+  const publishedPosts = useMemo(() => posts.filter(p => p.status === 'published'), [posts]);
 
   return (
     <BlogContext.Provider value={{
-      posts, 
-      publishedPosts, 
-      categories, 
-      isLoading, 
-      fetchError, 
-      isErrorDismissed, 
-      dismissError, 
-      retryFetch: fetchPosts, 
-      addPost, 
-      updatePost, 
-      deletePost, 
-      getPost
+      posts,
+      publishedPosts,
+      categories,
+      isLoading,
+      error,
+      addPost,
+      updatePost,
+      deletePost,
+      fetchPosts,
+      getPost: (id) => posts.find(p => String(p.id) === String(id))
     }}>
       {children}
     </BlogContext.Provider>
