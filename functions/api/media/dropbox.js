@@ -26,8 +26,8 @@ export async function onRequest(context) {
     const tokenParams = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: DROPBOX_REFRESH_TOKEN,
-      client_id: DROPBOX_APP_KEY,
-      client_secret: DROPBOX_APP_SECRET,
+      client_id: DROPBOX_APP_KEY.trim(),
+      client_secret: DROPBOX_APP_SECRET.trim(),
     });
 
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
@@ -38,7 +38,7 @@ export async function onRequest(context) {
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
-      throw new Error(`Token Refresh Failed: ${errText.substring(0, 100)}`);
+      throw new Error(`Token Refresh Failed: ${errText.substring(0, 150)}`);
     }
 
     const { access_token } = await tokenRes.json();
@@ -76,25 +76,26 @@ export async function onRequest(context) {
     let contentType = fileRes.headers.get('content-type');
     
     // If content-type is missing or generic, infer from URL extension
-    if (!contentType || contentType === 'application/octet-stream') {
+    if (!contentType || contentType.startsWith('application/octet-stream')) {
       const path = new URL(cleanUrl).pathname.toLowerCase();
       if (path.endsWith('.png')) contentType = 'image/png';
       else if (path.endsWith('.webp')) contentType = 'image/webp';
       else if (path.endsWith('.gif')) contentType = 'image/gif';
       else if (path.endsWith('.svg')) contentType = 'image/svg+xml';
-      else contentType = 'image/jpeg'; // Default fallback
+      else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) contentType = 'image/jpeg';
+      else contentType = 'image/jpeg'; // Default fallback for blog visuals
     }
 
     newHeaders.set('Content-Type', contentType);
     
-    // CRITICAL: Force inline display (overrides Dropbox's default 'attachment')
+    // CRITICAL: Force inline display (overrides Dropbox's default attachment behavior)
     newHeaders.set('Content-Disposition', 'inline');
     
     // Caching and CORS
     newHeaders.set('Cache-Control', 'public, max-age=86400');
     newHeaders.set('Access-Control-Allow-Origin', '*');
 
-    // 6. Stream binary body directly to browser
+    // 6. Return raw binary body directly to browser
     return new Response(fileRes.body, {
       status: 200,
       headers: newHeaders,
@@ -102,16 +103,11 @@ export async function onRequest(context) {
 
   } catch (error) {
     // Error Response (JSON)
-    const errorResponse = {
-      ok: false,
-      error: "dropbox proxy failure",
-      message: error?.message ?? "unknown error",
-      timestamp: new Date().toISOString()
-    };
-
-    console.error(errorResponse);
-
-    return new Response(JSON.stringify(errorResponse), {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "dropbox_proxy_error",
+      message: error.message
+    }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
