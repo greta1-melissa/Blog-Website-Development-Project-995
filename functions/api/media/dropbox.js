@@ -1,13 +1,13 @@
 /**
  * Cloudflare Pages Function: Dropbox Image Proxy
  * Route: /api/media/dropbox?url=...
- *
- * Proxies Dropbox shared links via server-side API calls.
- * Updated: Guaranteed JSON 500 error responses on any failure.
+ * 
+ * Proxies Dropbox shared links and forces inline browser rendering
+ * instead of triggering a download.
  */
 export async function onRequest(context) {
   const { request, env } = context;
-
+  
   try {
     const url = new URL(request.url);
     const targetUrl = url.searchParams.get('url');
@@ -32,19 +32,16 @@ export async function onRequest(context) {
 
     const tokenRes = await fetch('https://api.dropbox.com/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: tokenParams.toString(),
     });
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
-      throw new Error(`Token Refresh Failed (${tokenRes.status}): ${errText.substring(0, 100)}`);
+      throw new Error(`Token Refresh Failed: ${errText.substring(0, 100)}`);
     }
 
-    const tokenData = await tokenRes.json();
-    const access_token = tokenData.access_token;
+    const { access_token } = await tokenRes.json();
 
     // 3. Clean the Target URL
     let cleanUrl = targetUrl;
@@ -54,10 +51,10 @@ export async function onRequest(context) {
       u.searchParams.delete('raw');
       cleanUrl = u.toString();
     } catch (e) {
-      // If URL parsing fails, continue with original string
+      // Continue with original string if URL parsing fails
     }
 
-    // 4. Fetch File Content
+    // 4. Fetch File Content from Dropbox
     const fileRes = await fetch('https://content.dropboxapi.com/2/sharing/get_shared_link_file', {
       method: 'POST',
       headers: {
@@ -72,41 +69,48 @@ export async function onRequest(context) {
       throw new Error(`Dropbox API fetch failed (${fileRes.status}): ${errorText.substring(0, 100)}`);
     }
 
-    // 5. Stream Response with Caching
-    const originalHeaders = new Headers(fileRes.headers);
+    // 5. Build Response Headers for Inline Display
     const newHeaders = new Headers();
     
-    if (originalHeaders.has('Content-Type')) {
-      newHeaders.set('Content-Type', originalHeaders.get('Content-Type'));
-    } else {
-      newHeaders.set('Content-Type', 'image/jpeg');
+    // Determine Content-Type
+    let contentType = fileRes.headers.get('content-type');
+    
+    // If content-type is missing or generic, infer from URL extension
+    if (!contentType || contentType === 'application/octet-stream') {
+      const path = new URL(cleanUrl).pathname.toLowerCase();
+      if (path.endsWith('.png')) contentType = 'image/png';
+      else if (path.endsWith('.webp')) contentType = 'image/webp';
+      else if (path.endsWith('.gif')) contentType = 'image/gif';
+      else if (path.endsWith('.svg')) contentType = 'image/svg+xml';
+      else contentType = 'image/jpeg'; // Default fallback
     }
 
-    newHeaders.set('Cache-Control', 'public, max-age=3600');
+    newHeaders.set('Content-Type', contentType);
+    
+    // CRITICAL: Force inline display (overrides Dropbox's default 'attachment')
+    newHeaders.set('Content-Disposition', 'inline');
+    
+    // Caching and CORS
+    newHeaders.set('Cache-Control', 'public, max-age=86400');
     newHeaders.set('Access-Control-Allow-Origin', '*');
 
+    // 6. Stream binary body directly to browser
     return new Response(fileRes.body, {
       status: 200,
       headers: newHeaders,
     });
 
   } catch (error) {
-    // REQUIRED ERROR HANDLING CONTRACT
+    // Error Response (JSON)
     const errorResponse = {
       ok: false,
       error: "dropbox proxy failure",
       message: error?.message ?? "unknown error",
-      hostname: request.headers.get("host") || "unknown",
-      hasDROPBOX_ACCESS_TOKEN: Boolean(env.DROPBOX_ACCESS_TOKEN),
-      hasDROPBOX_REFRESH_TOKEN: Boolean(env.DROPBOX_REFRESH_TOKEN),
-      hasDROPBOX_APP_KEY: Boolean(env.DROPBOX_APP_KEY),
-      hasDROPBOX_APP_SECRET: Boolean(env.DROPBOX_APP_SECRET)
+      timestamp: new Date().toISOString()
     };
 
-    // Log the complete error object to the server console
     console.error(errorResponse);
 
-    // Return strict JSON 500 response
     return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: {
