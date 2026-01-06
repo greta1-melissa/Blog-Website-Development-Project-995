@@ -9,7 +9,7 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL, KDRAMA_PLACEHOLDER } from '../config/assets';
+import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
 
@@ -83,10 +83,21 @@ const Home = () => {
               💜 Welcome to the chaos &amp; charm
             </span>
 
-            <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6 leading-tight">
-              Life, Love, and a{" "}
-              <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
-                Little Bit of BTS
+            <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6 leading-[1.05]">
+              <span className="block">
+                <span className="text-gray-900">Life</span>
+                <span className="text-purple-600">,</span>{" "}
+                <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+                  Love
+                </span>
+                <span className="text-purple-600">,</span>
+              </span>
+
+              <span className="block mt-2">
+                <span className="text-gray-900">and a</span>{" "}
+                <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-purple-700 bg-clip-text text-transparent font-extrabold tracking-tight">
+                  Little Bit of BTS
+                </span>
               </span>
             </h1>
 
@@ -98,7 +109,7 @@ const Home = () => {
           {/* Bento Grid */}
           <div className="relative z-20 -mb-10">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[520px]">
-              {/* Featured Story Video Card */}
+              {/* Featured Story Video Card (LEFT) */}
               {mostRecentPost ? (
                 <motion.div
                   initial={{ opacity: 0, x: -12 }}
@@ -107,13 +118,13 @@ const Home = () => {
                   className="lg:col-span-2 bg-black rounded-3xl shadow-xl relative overflow-hidden group border border-purple-200/40"
                 >
                   <video
-                    src={FEATURED_STORY_VIDEO_URL}
+                    src="https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=ym2k2ouz&raw=1"
                     autoPlay
                     loop
                     muted
                     playsInline
                     preload="auto"
-                    className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity"
+                    className="absolute inset-0 w-full h-full object-cover transform scale-105 group-hover:scale-110 transition-transform duration-1000"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
 
@@ -150,41 +161,63 @@ const Home = () => {
                 <div className="lg:col-span-2 bg-purple-100 rounded-3xl h-[400px] lg:h-full animate-pulse" />
               )}
 
-              {/* Currently Watching Card */}
-              <motion.div
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-lg border border-purple-100 flex flex-col"
-              >
-                <div className="relative h-48 lg:h-60">
-                  <SafeImage
-                    src={currentKDrama.image}
-                    alt={currentKDrama.title}
-                    fallback={KDRAMA_PLACEHOLDER}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute top-4 left-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-600 text-white text-[10px] font-bold uppercase tracking-widest">
-                      <SafeIcon icon={FiTv} className="mr-2" /> {currentKDrama.status}
-                    </span>
+              {/* RIGHT COLUMN STACK */}
+              <div className="flex flex-col gap-6 lg:h-full">
+                {/* Currently Watching Card */}
+                <motion.div
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="flex-1 bg-white rounded-3xl overflow-hidden shadow-lg border border-purple-100 flex flex-col"
+                >
+                  <div className="relative h-40 lg:h-48">
+                    <SafeImage
+                      src={currentKDrama.image}
+                      alt={currentKDrama.title}
+                      fallback={KDRAMA_PLACEHOLDER}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute top-4 left-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-600 text-white text-[10px] font-bold uppercase tracking-widest">
+                        <SafeIcon icon={FiTv} className="mr-2" /> {currentKDrama.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="p-8 flex-1 flex flex-col">
-                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{currentKDrama.title}</h3>
-                  <p className="text-gray-600 italic leading-relaxed flex-1">
-                    "{currentKDrama.description}"
-                  </p>
-                  <Link
-                    to="/kdrama-recommendations"
-                    className="mt-6 inline-flex items-center text-purple-700 font-bold hover:text-purple-900 transition-colors"
-                  >
-                    All Recs <SafeIcon icon={FiArrowRight} className="ml-2" />
-                  </Link>
-                </div>
-              </motion.div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h3 className="text-xl font-serif font-bold text-gray-900 mb-2">{currentKDrama.title}</h3>
+                    <p className="text-gray-600 italic leading-relaxed text-sm flex-1">
+                      "{currentKDrama.description}"
+                    </p>
+                    <Link
+                      to="/kdrama-recommendations"
+                      className="mt-4 inline-flex items-center text-xs text-purple-700 font-bold hover:text-purple-900 transition-colors"
+                    >
+                      All Recs <SafeIcon icon={FiArrowRight} className="ml-2" />
+                    </Link>
+                  </div>
+                </motion.div>
+
+                {/* Spotify embed card */}
+                <motion.div 
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
+                >
+                  <iframe
+                    src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0"
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    title="My Bangtan Faves Playlist"
+                    className="absolute inset-0 w-full h-full"
+                  ></iframe>
+                </motion.div>
+              </div>
             </div>
           </div>
         </div>
@@ -251,12 +284,12 @@ const Home = () => {
             >
               {isFooterInView && (
                 <video
-                  src={ANIMATED_LOGO_VIDEO_URL}
+                  src="https://www.dropbox.com/scl/fi/bwhvn1l1m8iqnzigvy1hk/flashing-heart-logo-animation.mp4?rlkey=cmkbvlrh57ptba6odd4qo6dwr&st=rwkkrpwt&raw=1"
                   autoPlay
                   loop
                   muted
                   playsInline
-                  className="w-full h-full object-cover scale-110"
+                  className="w-full h-full object-cover transform scale-110"
                 />
               )}
             </div>
