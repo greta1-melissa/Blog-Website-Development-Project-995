@@ -9,9 +9,13 @@ import SafeIcon from '../common/SafeIcon';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { getImageSrc } from '../utils/media.js';
-import { ANIMATED_LOGO_VIDEO_URL, FEATURED_STORY_VIDEO_URL } from '../config/assets';
+import { ANIMATED_LOGO_VIDEO_URL } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
+const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart, FiChevronDown, FiMusic, FiPlay } = FiIcons;
+
+// Direct link for the background video (Optimized with raw=1 for direct streaming)
+const HERO_BG_VIDEO = "https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=jeg4z0pq&raw=1";
+const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/37i9dQZF1DX0S69vT_-66T"; // Curated BTS/Cozy Playlist
 
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
@@ -20,15 +24,11 @@ const Home = () => {
 
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
-
     const getPostTime = (p) => new Date(p?.date || p?.published_at || p?.created_at || 0).getTime();
 
-    // Accept multiple possible "handpicked" flags (boolean, number, different keys)
     let selection = posts.filter(p =>
       p?.isHandPicked === true ||
       p?.ishandpicked === 1 ||
-      p?.ishandpicked === true ||
-      p?.is_hand_picked === 1 ||
       p?.is_hand_picked === true
     );
 
@@ -42,19 +42,11 @@ const Home = () => {
         .slice(0, 3 - selection.length);
       selection = [...selection, ...fillers];
     }
-
     return selection.slice(0, 3);
-  }, [posts]);
-
-  const mostRecentPost = useMemo(() => {
-    if (!posts || posts.length === 0) return null;
-    const getPostTime = (p) => new Date(p?.date || p?.published_at || p?.created_at || 0).getTime();
-    return [...posts].sort((a, b) => getPostTime(b) - getPostTime(a))[0];
   }, [posts]);
 
   const currentKDrama = {
     title: "Would You Marry Me?",
-    episode: "Choi Woo Sik",
     status: "Rewatching",
     image: "https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?w=600&h=800&fit=crop",
     description: "The chemistry is unmatched! Choi Woo Sik's performance is pure gold. ❤️",
@@ -65,200 +57,210 @@ const Home = () => {
 
   return (
     <div className="min-h-screen pb-20 bg-primary-50">
-      {/* Hero Section */}
-      <div className="relative pt-20 pb-32 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-100 rounded-full opacity-60 blur-3xl"></div>
-          <div className="absolute top-1/2 -right-24 w-96 h-96 bg-pink-100 rounded-full opacity-60 blur-3xl"></div>
-          <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-blue-100 rounded-full opacity-50 blur-3xl"></div>
+      {/* 1. Full-Width Single Column Hero Video Section */}
+      <section className="relative h-[90vh] min-h-[600px] w-full overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 z-0">
+          <video
+            src={HERO_BG_VIDEO}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          {/* Subtle Overlays for readability */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-transparent to-primary-50"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-center max-w-3xl mx-auto mb-16"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
           >
-            <span className="inline-block py-2 px-6 rounded-full bg-purple-100 text-purple-800 font-medium text-sm mb-6">
-              ARMY Mom • K-Drama Lover • Work From Home Life
+            <span className="inline-block py-2 px-6 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold text-xs mb-8 uppercase tracking-[0.25em] shadow-xl">
+              ARMY Mom • K-Drama Lover • WFH Life
             </span>
-            <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6 leading-tight">
-              Welcome to <span className="text-purple-700">Bangtan Mom</span>
+            
+            <h1 className="text-6xl md:text-8xl lg:text-9xl font-serif font-bold text-white mb-8 leading-tight drop-shadow-2xl">
+              Bangtan <span className="text-purple-300">Mom</span>
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              A cozy corner for heartfelt stories, K-drama recommendations, and the beautiful chaos of being a mom.
+            
+            <p className="text-xl md:text-2xl text-purple-50 max-w-3xl mx-auto leading-relaxed mb-12 font-light drop-shadow-lg">
+              Heartfelt stories, curated K-drama recs, and the beautiful chaos of motherhood.
             </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              <Link 
+                to="/blog" 
+                className="px-10 py-5 bg-purple-600 text-white rounded-full font-bold shadow-2xl hover:bg-purple-500 hover:scale-105 transition-all text-sm uppercase tracking-widest"
+              >
+                Read Stories
+              </Link>
+              <Link 
+                to="/forums" 
+                className="px-10 py-5 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full font-bold hover:bg-white/20 transition-all text-sm uppercase tracking-widest"
+              >
+                Join Community
+              </Link>
+            </div>
           </motion.div>
 
-          {/* Bento Grid Hero Area */}
-          <div className="relative z-20 mb-24">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
-              {mostRecentPost ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
-                  className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100"
-                >
-                  <video
-                    src={FEATURED_STORY_VIDEO_URL}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    preload="auto"
-                    className="absolute inset-0 w-full h-full object-cover transform scale-105 group-hover:scale-110 transition-transform duration-1000"
-                  />
+          <motion.div 
+            animate={{ y: [0, 15, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 text-white/50"
+          >
+            <SafeIcon icon={FiChevronDown} className="text-4xl" />
+          </motion.div>
+        </div>
+      </section>
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/40 to-transparent opacity-90"></div>
-
-                  <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <span className="flex items-center text-purple-100 text-sm font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                        <SafeIcon icon={FiCalendar} className="mr-2" /> {formatDate(mostRecentPost.date || mostRecentPost.published_at || mostRecentPost.created_at)}
-                      </span>
-                      <span className="flex items-center text-purple-100 text-sm font-medium bg-purple-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                        <SafeIcon icon={FiHeart} className="mr-2" /> Featured Story
-                      </span>
-                    </div>
-
-                    <Link to={`/post/${mostRecentPost.id}`} className="block">
-                      <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4 leading-tight group-hover:text-purple-200 transition-colors drop-shadow-sm">
-                        {mostRecentPost.title}
-                      </h2>
-                    </Link>
-
-                    <p className="text-purple-50 line-clamp-2 max-w-xl mb-6 text-lg font-medium drop-shadow-sm opacity-90">
-                      {stripHtml(mostRecentPost.content)}
-                    </p>
-
-                    <Link
-                      to={`/post/${mostRecentPost.id}`}
-                      className="inline-flex items-center text-white font-bold border-b-2 border-white pb-1 hover:border-purple-300 hover:text-purple-200 transition-all"
-                    >
-                      Read the full story <SafeIcon icon={FiArrowRight} className="ml-2" />
-                    </Link>
-                  </div>
-                </motion.div>
-              ) : (
-                <div className="lg:col-span-2 rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full border border-purple-100" />
-              )}
-
-              {/* Current KDrama Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-lg border border-purple-100 h-[400px] lg:h-full flex flex-col"
-              >
-                <div className="relative h-48 lg:h-56 overflow-hidden">
-                  <img
-                    src={currentDramaImg}
-                    alt={currentKDrama.title}
-                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-
-                  <div className="absolute bottom-4 left-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-600 text-white text-sm font-medium">
-                      <SafeIcon icon={FiTv} className="mr-2" /> {currentKDrama.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-1">{currentKDrama.title}</h3>
-                  <p className="text-sm text-purple-600 font-medium mb-4">{currentKDrama.year}</p>
-                  <p className="text-gray-600 flex-1 italic">"{currentKDrama.description}"</p>
-
-                  <Link
-                    to="/kdrama-recommendations"
-                    className="mt-6 inline-flex items-center text-purple-700 font-bold hover:text-purple-900 transition-colors"
-                  >
-                    View Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
-                  </Link>
-                </div>
-              </motion.div>
+      {/* 2. Side-by-Side: Watching & Listening Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Watching Section */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-purple-100 flex flex-col md:flex-row h-full group"
+          >
+            <div className="md:w-2/5 relative h-64 md:h-auto overflow-hidden">
+              <img
+                src={currentDramaImg}
+                alt={currentKDrama.title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:bg-gradient-to-r"></div>
+              <div className="absolute top-4 left-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest">
+                  <SafeIcon icon={FiTv} className="mr-2" /> {currentKDrama.status}
+                </span>
+              </div>
             </div>
-          </div>
+
+            <div className="md:w-3/5 p-8 flex flex-col justify-center">
+              <h3 className="text-xs font-black text-purple-600 uppercase tracking-[0.2em] mb-2">Currently Watching</h3>
+              <h2 className="text-3xl font-serif font-bold text-gray-900 mb-4 leading-tight">{currentKDrama.title}</h2>
+              <p className="text-gray-600 italic mb-6 leading-relaxed">"{currentKDrama.description}"</p>
+              <Link
+                to="/kdrama-recommendations"
+                className="inline-flex items-center text-purple-700 font-black text-xs uppercase tracking-wider hover:text-purple-900 transition-colors"
+              >
+                More Recs <SafeIcon icon={FiArrowRight} className="ml-2" />
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Spotify Playlist Section */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900 rounded-[2.5rem] overflow-hidden shadow-2xl p-10 flex flex-col justify-center relative group"
+          >
+            <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-opacity">
+              <SafeIcon icon={FiMusic} className="text-[12rem] text-white" />
+            </div>
+            
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 border border-white/20">
+                <SafeIcon icon={FiMusic} className="text-3xl text-purple-200" />
+              </div>
+              
+              <h3 className="text-xs font-black text-purple-300 uppercase tracking-[0.2em] mb-2">Daily Soundtrack</h3>
+              <h2 className="text-4xl font-serif font-bold text-white mb-4">Magic Shop Vibes</h2>
+              <p className="text-purple-100/80 mb-10 max-w-sm leading-relaxed text-lg">
+                The perfect playlist for a work-from-home afternoon or cozy evening reflection.
+              </p>
+              
+              <a
+                href={SPOTIFY_PLAYLIST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-10 py-5 bg-white text-purple-900 font-black rounded-full hover:bg-purple-50 transition-all shadow-xl uppercase tracking-widest text-xs"
+              >
+                <SafeIcon icon={FiPlay} className="mr-3" /> Open on Spotify
+              </a>
+            </div>
+          </motion.div>
+
         </div>
       </div>
 
       {/* Latest Stories */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
-          <div>
-            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Latest Stories</h2>
-            <p className="text-gray-600 max-w-xl">
-              Fresh reflections on motherhood, ARMY life, and the little moments that make it all worthwhile.
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-32">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+          <div className="max-w-2xl">
+            <span className="inline-block text-purple-600 font-black uppercase tracking-[0.3em] text-xs mb-4">Journal</span>
+            <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-4 leading-tight">Latest Stories</h2>
+            <p className="text-gray-600 text-xl leading-relaxed font-light">
+              Reflections on motherhood, ARMY life, and the little moments that make it all worthwhile.
             </p>
           </div>
-
           <Link
             to="/blog"
-            className="mt-6 md:mt-0 inline-flex items-center px-6 py-3 bg-white border border-purple-200 text-purple-700 font-bold rounded-full hover:bg-purple-50 transition-all"
+            className="inline-flex items-center px-10 py-4 bg-white border border-purple-200 text-purple-700 font-bold rounded-full hover:bg-purple-50 transition-all shadow-sm uppercase tracking-widest text-xs"
           >
-            View All Posts <SafeIcon icon={FiArrowRight} className="ml-2" />
+            View All <SafeIcon icon={FiArrowRight} className="ml-2" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
           {posts && posts.slice(0, 6).map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
         </div>
       </div>
 
-      {/* KDrama Recommendations */}
-      <div className="bg-gradient-to-b from-white to-purple-50 py-20 mb-24">
+      {/* KDrama Recommendations Section */}
+      <div className="bg-white py-32 mb-32 border-y border-purple-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="text-center max-w-3xl mx-auto mb-16"
+            className="text-center max-w-3xl mx-auto mb-20"
           >
-            <span className="inline-block py-2 px-6 rounded-full bg-purple-100 text-purple-800 font-medium text-sm mb-6">
-              K-Drama Recommendations
+            <span className="inline-block py-2 px-6 rounded-full bg-purple-50 text-purple-700 font-black text-[10px] uppercase tracking-widest mb-6 border border-purple-100">
+              Curated Reviews
             </span>
-
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-8">
               Must-Watch Shows
             </h2>
-
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              As a K-drama-loving ARMY mom, these are the shows I recommend to anyone looking for their next emotional rollercoaster.
+            <p className="text-xl text-gray-600 leading-relaxed font-light">
+              As a K-drama-loving ARMY mom, these are the emotional rollercoasters I recommend to my closest friends.
             </p>
           </motion.div>
 
           <KdramaGrid />
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-16">
             <Link
               to="/kdrama-recommendations"
-              className="inline-flex items-center px-8 py-3 bg-white border border-purple-200 text-purple-700 font-bold rounded-full hover:bg-purple-50 transition-all"
+              className="inline-flex items-center px-12 py-5 bg-purple-600 text-white font-black rounded-full hover:bg-purple-700 transition-all shadow-2xl shadow-purple-900/20 uppercase tracking-widest text-xs"
             >
-              View All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
+              All Recommendations <SafeIcon icon={FiArrowRight} className="ml-2" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Featured Stories */}
+      {/* Featured Stories (Editor's Picks) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <SafeIcon icon={FiStar} className="text-purple-600 text-xl" />
-              <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Editor's Picks</span>
-            </div>
-            <h2 className="text-3xl font-serif font-bold text-gray-900">Featured Stories</h2>
-          </div>
+        <div className="flex items-center space-x-6 mb-16">
+           <div className="h-px bg-purple-200 flex-1"></div>
+           <div className="flex items-center space-x-3">
+              <SafeIcon icon={FiStar} className="text-purple-600 text-2xl" />
+              <span className="text-purple-600 font-black uppercase tracking-[0.4em] text-sm">Editor's Picks</span>
+           </div>
+           <div className="h-px bg-purple-200 flex-1"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
           {featuredPosts.map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
@@ -269,14 +271,15 @@ const Home = () => {
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
+          className="mt-32 bg-purple-900 rounded-[5rem] overflow-hidden relative text-center py-28 px-6 shadow-3xl"
         >
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-800 via-purple-900 to-indigo-900 opacity-95"></div>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
-          <div className="relative z-10 max-w-2xl mx-auto">
+          <div className="relative z-10 max-w-3xl mx-auto">
             <div
               ref={footerVideoRef}
-              className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500"
+              className="w-28 h-28 bg-white/10 backdrop-blur-xl rounded-3xl overflow-hidden flex items-center justify-center mx-auto mb-10 shadow-2xl rotate-3 border border-white/20"
             >
               {isFooterInView && (
                 <video
@@ -285,26 +288,26 @@ const Home = () => {
                   loop
                   muted
                   playsInline
-                  className="w-full h-full object-cover transform scale-110"
+                  className="w-full h-full object-cover transform scale-125"
                 />
               )}
             </div>
 
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
-              Join the Bangtan Mom Community
+            <h2 className="text-4xl md:text-7xl font-serif font-bold text-white mb-8">
+              The Magic Shop
             </h2>
 
-            <p className="text-purple-100 mb-8 text-lg">
-              Get new posts, cozy reflections, and K-drama recs sent straight to your inbox.
+            <p className="text-purple-100 mb-12 text-2xl font-light leading-relaxed">
+              Get new stories, cozy reflections, and K-drama recs sent straight to your inbox.
             </p>
 
-            <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto" onSubmit={(e) => e.preventDefault()}>
               <input
                 type="email"
                 placeholder="Your email address"
-                className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
+                className="flex-1 px-8 py-5 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all text-lg"
               />
-              <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">
+              <button className="px-10 py-5 bg-white text-purple-900 font-black rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 uppercase tracking-widest text-xs">
                 Subscribe
               </button>
             </form>
