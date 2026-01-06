@@ -19,11 +19,12 @@ const { FiTv, FiArrowRight, FiStar } = FiIcons;
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
   
-  // Hooks for video visibility and error handling
+  // 2) Add necessary hooks for video handling and visibility
   const footerVideoRef = useRef(null);
   const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
   const [heroVideoError, setHeroVideoError] = useState(false);
 
+  // Filter for handpicked/featured stories
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
     return posts
@@ -31,6 +32,7 @@ const Home = () => {
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [posts]);
 
+  // Identify the most recent post for the hero bento card
   const mostRecentPost = posts && posts.length > 0 ? posts[0] : null;
 
   const currentKDrama = {
@@ -42,7 +44,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen pb-20 bg-primary-50">
-      {/* Hero Header */}
+      {/* Hero Header Section */}
       <div className="relative pt-20 pb-32 overflow-hidden">
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -54,12 +56,12 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Bento Grid Hero Area */}
+      {/* 3) Bento Grid Hero Area with Restored Video Behavior */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
           {mostRecentPost && (
             <div className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-purple-900 h-[400px] lg:h-full">
-              {/* Conditional Video Background with Fallback */}
+              {/* Conditional Video Background with Fallback Logic */}
               {!heroVideoError ? (
                 <video
                   autoPlay
@@ -98,16 +100,15 @@ const Home = () => {
             </div>
           )}
 
+          {/* Right Column Bento Items */}
           <div className="flex flex-col gap-6 w-full lg:h-full">
             <div className="flex-1 bg-purple-900 rounded-3xl overflow-hidden shadow-lg relative group">
               <SafeImage src={currentKDrama.image} alt="K-Drama" fallback={KDRAMA_PLACEHOLDER} className="absolute inset-0 w-full h-full object-cover opacity-60" />
               <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 to-black/50" />
               <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <SafeIcon icon={FiTv} />
-                    <span className="text-xs font-bold uppercase tracking-widest text-purple-200">Watching</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <SafeIcon icon={FiTv} />
+                  <span className="text-xs font-bold uppercase tracking-widest text-purple-200">Watching</span>
                 </div>
                 <div>
                   <h3 className="text-xl font-bold mb-1">{currentKDrama.title}</h3>
@@ -122,7 +123,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured Section */}
+      {/* K-Drama Corner Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900">K-Drama Corner</h2>
@@ -133,7 +134,7 @@ const Home = () => {
         <KdramaGrid />
       </div>
 
-      {/* Handpicked Stories */}
+      {/* 4) Handpicked Stories with Restored "Editor's Picks" Branding */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col mb-8">
           <div className="flex items-center space-x-2 mb-2">
@@ -147,18 +148,19 @@ const Home = () => {
             </Link>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-24">
           {featuredPosts.map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
         </div>
 
-        {/* Community CTA Section */}
+        {/* 5) Restored "Join the Bangtan Mom Community" CTA Section */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
+          className="bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
           <div className="relative z-10 max-w-2xl mx-auto">
