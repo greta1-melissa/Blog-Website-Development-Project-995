@@ -7,19 +7,23 @@ import KdramaGrid from '../components/KdramaGrid';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
-import { stripHtml } from '../utils/textUtils';
-import { formatDate } from '../utils/dateUtils';
 import { 
   ANIMATED_LOGO_VIDEO_URL, 
-  BLOG_PLACEHOLDER,
+  FEATURED_STORY_VIDEO_URL, 
+  BLOG_PLACEHOLDER, 
   KDRAMA_PLACEHOLDER 
 } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
+const { FiTv, FiArrowRight, FiStar } = FiIcons;
 
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
   
+  // Hooks for video visibility and error handling
+  const footerVideoRef = useRef(null);
+  const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
+  const [heroVideoError, setHeroVideoError] = useState(false);
+
   const featuredPosts = useMemo(() => {
     if (!posts || posts.length === 0) return [];
     return posts
@@ -54,14 +58,29 @@ const Home = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 mb-24">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[500px]">
           {mostRecentPost && (
-            <div className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-white h-[400px] lg:h-full">
-              {/* Refactored: Using SafeImage for Hero instead of hardcoded video */}
-              <SafeImage 
-                src={mostRecentPost.image || mostRecentPost.image_url} 
-                alt={mostRecentPost.title}
-                fallback={BLOG_PLACEHOLDER}
-                className="absolute inset-0 w-full h-full object-cover transform scale-105 group-hover:scale-110 transition-transform duration-1000"
-              />
+            <div className="lg:col-span-2 group relative rounded-3xl overflow-hidden shadow-xl bg-purple-900 h-[400px] lg:h-full">
+              {/* Conditional Video Background with Fallback */}
+              {!heroVideoError ? (
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  onError={() => setHeroVideoError(true)}
+                  className="absolute inset-0 w-full h-full object-cover opacity-60 transform scale-105 group-hover:scale-110 transition-transform duration-1000"
+                >
+                  <source src={FEATURED_STORY_VIDEO_URL} type="video/mp4" />
+                </video>
+              ) : (
+                <SafeImage 
+                  src={mostRecentPost.image || mostRecentPost.image_url} 
+                  alt={mostRecentPost.title} 
+                  fallback={BLOG_PLACEHOLDER}
+                  className="absolute inset-0 w-full h-full object-cover opacity-60 transform scale-105 group-hover:scale-110 transition-transform duration-1000"
+                />
+              )}
+              
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/40 to-transparent" />
               <div className="absolute bottom-0 left-0 p-8 text-white">
                 <div className="flex items-center gap-2 mb-3">
@@ -97,7 +116,7 @@ const Home = () => {
               </div>
             </div>
             <div className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30">
-              <iframe src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7" width="100%" height="100%" frameBorder="0" allow="autoplay;encrypted-media;fullscreen" title="Spotify" className="absolute inset-0" />
+              <iframe src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7" width="100%" height="100%" frameBorder="0" allow="autoplay; encrypted-media; fullscreen" title="Spotify" className="absolute inset-0" />
             </div>
           </div>
         </div>
@@ -116,17 +135,60 @@ const Home = () => {
 
       {/* Handpicked Stories */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-serif font-bold text-gray-900">Handpicked for You</h2>
-          <Link to="/" className="text-purple-600 font-bold flex items-center hover:text-purple-800">
-            Browse All <SafeIcon icon={FiArrowRight} className="ml-2" />
-          </Link>
+        <div className="flex flex-col mb-8">
+          <div className="flex items-center space-x-2 mb-2">
+            <SafeIcon icon={FiStar} className="text-purple-600 text-xl" />
+            <span className="text-purple-600 font-bold uppercase tracking-widest text-sm">Editor's Picks</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-serif font-bold text-gray-900">Handpicked for You</h2>
+            <Link to="/" className="text-purple-600 font-bold flex items-center hover:text-purple-800">
+              Browse All <SafeIcon icon={FiArrowRight} className="ml-2" />
+            </Link>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {featuredPosts.map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
         </div>
+
+        {/* Community CTA Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-24 bg-purple-900 rounded-[2.5rem] overflow-hidden relative text-center py-20 px-6"
+        >
+          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div className="relative z-10 max-w-2xl mx-auto">
+            <div ref={footerVideoRef} className="w-24 h-24 bg-purple-600 rounded-2xl overflow-hidden flex items-center justify-center mx-auto mb-6 shadow-lg shadow-purple-900/50 rotate-3 border-4 border-purple-500">
+              {isFooterInView && (
+                <video
+                  src={ANIMATED_LOGO_VIDEO_URL}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover transform scale-110"
+                />
+              )}
+            </div>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
+              Join the Bangtan Mom Community
+            </h2>
+            <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
+              <input
+                type="email"
+                placeholder="Your email address"
+                className="flex-1 px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/20 transition-all"
+              />
+              <button className="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full shadow-lg shadow-purple-900/50 transition-all hover:scale-105">
+                Subscribe
+              </button>
+            </form>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
