@@ -11,13 +11,13 @@ import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar, FiHeart } = FiIcons;
+const { FiTv, FiArrowRight, FiCalendar, FiStar } = FiIcons;
 
 const Home = () => {
   // Keep current functionality: only published posts
   const { publishedPosts: posts } = useBlog();
 
-  // Lazy load ref for footer video (performance)
+  // Lazy load ref for footer video
   const footerVideoRef = useRef(null);
   const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
 
@@ -53,7 +53,6 @@ const Home = () => {
     return [...posts].sort((a, b) => getPostTime(b) - getPostTime(a))[0];
   }, [posts]);
 
-  // Keep the original Zip (4) “Currently Watching” card content + image vibe
   const currentKDrama = {
     title: "Would You Marry Me?",
     episode: "Choi Woo Sik",
@@ -107,8 +106,8 @@ const Home = () => {
           </motion.div>
 
           {/* Bento Grid */}
-          <div className="relative z-20 -mb-10">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[520px]">
+          <div className="relative z-20 mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[600px]">
               {/* Featured Story Video Card (LEFT) */}
               {mostRecentPost ? (
                 <motion.div
@@ -204,17 +203,17 @@ const Home = () => {
                   initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
-                  className="flex-1 bg-black rounded-3xl shadow-lg relative overflow-hidden border border-purple-500/30 min-h-[240px]"
+                  className="bg-black rounded-3xl shadow-lg overflow-hidden border border-purple-500/30 h-[260px] sm:h-[280px] lg:h-[260px]"
                 >
                   <iframe
-                    src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=0"
+                    src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=1"
                     width="100%"
                     height="100%"
                     frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                     loading="lazy"
                     title="My Bangtan Faves Playlist"
-                    className="absolute inset-0 w-full h-full"
+                    className="w-full h-full"
                   ></iframe>
                 </motion.div>
               </div>
