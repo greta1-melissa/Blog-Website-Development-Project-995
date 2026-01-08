@@ -3,7 +3,6 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import KdramaGrid from '../components/KdramaGrid';
-import ProductCard from '../components/ProductCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
@@ -11,7 +10,35 @@ import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar, FiCoffee, FiBookOpen, FiSun, FiMoon, FiShoppingBag, FiHeart, FiZap, FiCheck } = FiIcons;
+const { FiTv, FiArrowRight, FiStar, FiCoffee, FiBookOpen, FiMoon, FiShoppingBag, FiHeart, FiZap, FiCheck } = FiIcons;
+
+// Beautiful sample products to show when the database is empty
+const DEFAULT_PRODUCTS = [
+  {
+    id: 'sample-1',
+    title: "Laneige Lip Sleeping Mask",
+    content: "The ultimate K-Beauty staple. I put this on every night and wake up with the softest lips. It's that tiny ritual of luxury that makes the evening feel complete.",
+    image: "https://images.unsplash.com/photo-1596462502278-27bfdc4033c8?w=800&fit=crop",
+    subcategory: "Skincare",
+    date: new Date().toISOString()
+  },
+  {
+    id: 'sample-2',
+    title: "BTS 'Proof' Anthology Album",
+    content: "More than just music, it's a history of growth. This anthology sits on my shelf as a constant reminder to keep pursuing my own 'Proof' of happiness.",
+    image: "https://images.unsplash.com/photo-1619983081563-430f63602796?w=800&fit=crop",
+    subcategory: "Music",
+    date: new Date().toISOString()
+  },
+  {
+    id: 'sample-3',
+    title: "Breville Bambino Plus",
+    content: "My morning savior. It makes the perfect micro-foam for my lattes, making my 5 AM 'ritual' feel like a high-end cafe experience in my own kitchen.",
+    image: "https://images.unsplash.com/photo-1510972527921-ce03766a1cf1?w=800&fit=crop",
+    subcategory: "Home Cafe",
+    date: new Date().toISOString()
+  }
+];
 
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
@@ -22,8 +49,10 @@ const Home = () => {
     return posts.filter(p => p.category !== 'Product Recommendations').slice(0, 4);
   }, [posts]);
 
+  // Use DB products if available, otherwise use our beautiful defaults
   const productRecs = useMemo(() => {
-    return posts.filter(p => p.category === 'Product Recommendations').slice(0, 3);
+    const dbRecs = posts.filter(p => p.category === 'Product Recommendations').slice(0, 3);
+    return dbRecs.length > 0 ? dbRecs : DEFAULT_PRODUCTS;
   }, [posts]);
 
   const meTimeRituals = [
@@ -60,7 +89,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white pb-24 font-sans">
-      {/* 1. HERO SECTION (Unchanged) */}
+      {/* 1. HERO SECTION */}
       <div className="relative pt-20 pb-28 overflow-hidden bg-purple-50/50">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-pink-200/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
@@ -94,11 +123,11 @@ const Home = () => {
             </h1>
 
             <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed font-sans">
-              A cozy corner for moms navigating motherhood with a little bit of chaos, a lot of love, and the perfect K-Pop playlist. Grab a coffee and stay a while.
+              A cozy corner for moms navigating motherhood with a little bit of chaos, a lot of love, and the perfect K-Pop playlist.
             </p>
           </motion.div>
 
-          {/* 2. BENTO SECTION (Unchanged) */}
+          {/* 2. BENTO SECTION */}
           <div className="relative z-20 mb-12">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[600px]">
               <motion.div
@@ -151,14 +180,14 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 3. PERSONAL RITUALS (Floating Gallery Style) */}
+      {/* 3. PERSONAL RITUALS */}
       <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center text-center mb-20">
             <div className="p-3 bg-pink-50 rounded-2xl mb-4">
               <SafeIcon icon={FiHeart} className="text-3xl text-pink-500" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6 font-serif">Small Joys: Self-Care & Me Time</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Small Joys: Self-Care & Me Time</h2>
             <p className="text-xl text-gray-500 max-w-2xl leading-relaxed font-sans">Carving out quiet moments in the beautiful chaos.</p>
           </div>
 
@@ -180,7 +209,7 @@ const Home = () => {
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg ${ritual.color}`}>
                     <SafeIcon icon={ritual.icon} className="text-2xl" />
                   </div>
-                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4 font-serif">{ritual.title}</h3>
+                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{ritual.title}</h3>
                   <p className="text-gray-600 leading-relaxed text-sm font-sans">{ritual.desc}</p>
                 </div>
               </motion.div>
@@ -189,13 +218,13 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. LATEST STORIES (Editorial List Style) */}
+      {/* 4. LATEST STORIES */}
       <section className="py-24 bg-purple-50/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-16 px-4">
             <div className="max-w-lg">
               <span className="text-purple-600 font-bold uppercase tracking-widest text-xs mb-2 block font-sans">The Journal</span>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 font-serif">Latest Stories</h2>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Latest Stories</h2>
             </div>
             <Link to="/blog" className="hidden md:flex items-center gap-2 text-purple-600 font-bold hover:gap-4 transition-all font-sans">
               View Journal <SafeIcon icon={FiArrowRight} />
@@ -221,7 +250,7 @@ const Home = () => {
                     <span>{formatDate(post.date)}</span>
                   </div>
                   <Link to={`/post/${post.id}`}>
-                    <h3 className="text-2xl font-serif font-bold text-gray-900 group-hover:text-white mb-3 transition-colors font-serif">
+                    <h3 className="text-2xl font-serif font-bold text-gray-900 group-hover:text-white mb-3 transition-colors">
                       {post.title}
                     </h3>
                   </Link>
@@ -240,7 +269,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. MUST-WATCH SHOWS (Cinema Night Style) */}
+      {/* 5. MUST-WATCH SHOWS */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white to-transparent opacity-5" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -249,7 +278,7 @@ const Home = () => {
               <SafeIcon icon={FiZap} className="text-yellow-400" />
               <span className="text-xs font-bold uppercase tracking-widest text-white">The Watchlist</span>
             </div>
-            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6 font-serif text-white">Must-Watch Shows</h2>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6 text-white">Must-Watch Shows</h2>
             <p className="text-gray-400 text-lg max-w-xl mx-auto font-sans">Handpicked emotional rollercoasters and swoon-worthy stories.</p>
           </div>
 
@@ -267,8 +296,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 6. NEW: PRODUCT RECOMMENDATIONS (Boutique Shelf Style) */}
-      <section className="py-24 bg-orange-50/30">
+      {/* 6. PRODUCT RECOMMENDATIONS (Boutique Shelf Style - Populated) */}
+      <section className="py-24 bg-orange-50/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
             <div className="max-w-xl">
@@ -278,7 +307,7 @@ const Home = () => {
                 </div>
                 <span className="text-orange-600 font-bold uppercase tracking-widest text-xs font-sans">The Shop Edit</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 font-serif">Melissa's Faves</h2>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Melissa's Essentials</h2>
               <p className="text-gray-500 mt-4 text-lg font-sans">I only recommend what I actually use in my real life. No filler, just the good stuff.</p>
             </div>
             <Link to="/products" className="mt-6 md:mt-0 inline-flex items-center text-gray-900 font-bold border-b-2 border-orange-200 hover:border-orange-500 transition-all pb-1 font-sans">
@@ -309,8 +338,9 @@ const Home = () => {
                     {[1, 2, 3, 4, 5].map(s => (
                       <SafeIcon key={s} icon={FiStar} className="text-orange-400 text-xs fill-current" />
                     ))}
+                    <span className="ml-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest font-sans">{product.subcategory}</span>
                   </div>
-                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors font-serif leading-tight">
+                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors leading-tight">
                     {product.title}
                   </h3>
                   <p className="text-gray-500 text-sm line-clamp-2 mb-8 font-sans leading-relaxed">
@@ -326,7 +356,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 7. JOIN THE COMMUNITY (Unchanged) */}
+      {/* 7. JOIN THE COMMUNITY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
@@ -344,7 +374,7 @@ const Home = () => {
                 />
               )}
             </div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6 font-serif">Join the Community</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">Join the Community</h2>
             <p className="text-purple-100 text-lg mb-10 font-sans">Get cozy reflections and recs sent to your inbox.</p>
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
               <input type="email" placeholder="Email address" className="flex-1 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 font-sans" />
