@@ -7,6 +7,7 @@ import BlogCard from '../components/BlogCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
+import { stripHtml } from '../utils/textUtils';
 
 const { FiArrowRight, FiHeart, FiShoppingTag, FiCoffee, FiBookOpen, FiMoon, FiClock } = FiIcons;
 
@@ -68,10 +69,13 @@ const RECOMMENDED_PRODUCTS = [
 ];
 
 const Home = () => {
-  const { publishedPosts: posts } = useBlog();
+  const { publishedPosts: posts, isLoading: postsLoading } = useBlog();
 
+  // Filter 3 latest stories (excluding products)
   const latestStories = useMemo(() => {
-    return posts.filter(p => p.category !== 'Product Recommendations').slice(0, 3);
+    return posts
+      .filter(p => p.category !== 'Product Recommendations')
+      .slice(0, 3);
   }, [posts]);
 
   const meTimeRituals = [
@@ -123,7 +127,7 @@ const Home = () => {
       </section>
 
       {/* 2. BENTO SECTION */}
-      <section className="bg-purple-100/30 pb-24">
+      <section className="bg-purple-100/30 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative z-20">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[600px]">
@@ -157,20 +161,75 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. LATEST STORIES */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-16 px-4">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block font-sans">Latest from the heart</span>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Recent Stories</h2>
-            </div>
-            <Link to="/blog" className="text-purple-700 font-bold hover:gap-4 transition-all flex items-center gap-2 pb-2 font-sans">View Journal <SafeIcon icon={FiArrowRight} /></Link>
+      {/* 3. LATEST STORIES (Horizontal Layout) */}
+      <section className="py-20 bg-purple-50/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-12">
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Latest Stories</h2>
+            <Link to="/blog" className="text-purple-700 font-bold hover:gap-4 transition-all flex items-center gap-2 pb-2 font-sans">
+              View Journal <SafeIcon icon={FiArrowRight} />
+            </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {latestStories.map((post, index) => (
-              <BlogCard key={post.id} post={post} index={index} />
-            ))}
+          
+          <div className="flex flex-col gap-6">
+            {postsLoading && (
+              <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-gray-200">
+                <p className="text-gray-500 font-sans">Loading stories...</p>
+              </div>
+            )}
+
+            {!postsLoading && latestStories.length === 0 && (
+              <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-gray-200">
+                <p className="text-gray-500 font-sans">No stories found. Start by adding some in the Admin panel!</p>
+              </div>
+            )}
+
+            {latestStories.map((post, index) => {
+               const isFirst = index === 0;
+               return (
+                 <Link key={post.id} to={`/post/${post.id}`} className="block group">
+                   <motion.div 
+                     initial={{ opacity: 0, y: 20 }}
+                     whileInView={{ opacity: 1, y: 0 }}
+                     viewport={{ once: true }}
+                     transition={{ delay: index * 0.1 }}
+                     className={`relative flex flex-col md:flex-row items-center gap-6 md:gap-10 p-6 md:p-8 rounded-[2.5rem] transition-all duration-300 ${
+                       isFirst 
+                         ? 'bg-[#110C1D] text-white shadow-xl hover:shadow-2xl hover:-translate-y-1' 
+                         : 'bg-white text-gray-900 shadow-sm hover:shadow-xl border border-gray-100 hover:-translate-y-1'
+                     }`}
+                   >
+                     {/* Image */}
+                     <div className="w-full md:w-[300px] lg:w-[380px] aspect-video md:aspect-[4/3] shrink-0 rounded-2xl overflow-hidden shadow-md">
+                       <SafeImage 
+                         src={post.image || post.image_url} 
+                         alt={post.title} 
+                         className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" 
+                       />
+                     </div>
+                     
+                     {/* Content */}
+                     <div className="flex-1 flex flex-col justify-center text-left py-2">
+                       <h3 className={`text-2xl md:text-3xl font-serif font-bold mb-4 leading-tight ${isFirst ? 'text-white' : 'text-gray-900'}`}>
+                         {post.title}
+                       </h3>
+                       <p className={`text-sm md:text-base leading-relaxed mb-0 line-clamp-3 ${isFirst ? 'text-gray-300' : 'text-gray-600'}`}>
+                         {post.excerpt || stripHtml(post.content).substring(0, 160)}...
+                       </p>
+                     </div>
+
+                     {/* Arrow Button */}
+                     <div className={`shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:translate-x-2 ${
+                        isFirst 
+                          ? 'bg-white text-gray-900' 
+                          : 'bg-white border border-gray-100 text-purple-600 shadow-sm group-hover:border-purple-200'
+                     }`}>
+                        <SafeIcon icon={FiArrowRight} className="text-xl" />
+                     </div>
+                   </motion.div>
+                 </Link>
+               )
+            })}
           </div>
         </div>
       </section>
