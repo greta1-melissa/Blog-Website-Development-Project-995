@@ -8,60 +8,72 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
-import { KDRAMA_PLACEHOLDER } from '../config/assets';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiStar, FiCoffee, FiBookOpen, FiMoon, FiShoppingBag, FiHeart, FiZap, FiCheck, FiShoppingTag } = FiIcons;
+const { FiTv, FiArrowRight, FiHeart, FiShoppingTag, FiCoffee, FiBookOpen, FiMoon, FiZap, FiShoppingBag, FiClock } = FiIcons;
 
-const DEFAULT_PRODUCTS = [
+const RECOMMENDED_PRODUCTS = [
   {
-    id: 'sample-1',
+    id: 'rec-1',
     title: "Laneige Lip Sleeping Mask",
-    content: "The ultimate K-Beauty staple. I put this on every night and wake up with the softest lips. It's that tiny ritual of luxury.",
+    category: "Self-care",
+    why: "The ultimate K-Beauty staple. I put this on every night and wake up with the softest lips. It's that tiny ritual of luxury that makes the evening feel complete.",
+    bestFor: "Dry lips and overnight recovery",
     image: "https://images.unsplash.com/photo-1596462502278-27bfdc4033c8?w=800&fit=crop",
-    subcategory: "Skincare"
+    color: "bg-pink-50 text-pink-700"
   },
   {
-    id: 'sample-2',
-    title: "BTS 'Proof' Anthology",
-    content: "More than just music, it's a history of growth. This anthology sits on my shelf as a constant reminder to keep pursuing my own 'Proof' of happiness.",
-    image: "https://images.unsplash.com/photo-1619983081563-430f63602796?w=800&fit=crop",
-    subcategory: "Music"
+    id: 'rec-2',
+    title: "BT21 Koya Plushie",
+    category: "BTS Mood",
+    why: "Because sometimes you just need a sleepy blue koala on your desk to remind you to take a nap. It brings a smile to my face during long work calls.",
+    bestFor: "Desk company and ARMY cozy vibes",
+    image: "https://images.unsplash.com/photo-1559449182-2435534c034a?w=800&fit=crop",
+    color: "bg-blue-50 text-blue-700"
   },
   {
-    id: 'sample-3',
-    title: "Breville Bambino Plus",
-    content: "My morning savior. It makes the perfect micro-foam for my lattes, making my 5 AM 'ritual' feel like a high-end cafe.",
+    id: 'rec-3',
+    title: "Ceramic Milk Frother",
+    category: "Home Cafe",
+    why: "My morning savior. It makes the perfect micro-foam for my lattes, making my 5 AM ritual feel like a high-end cafe experience.",
+    bestFor: "Perfecting your morning latte art",
     image: "https://images.unsplash.com/photo-1510972527921-ce03766a1cf1?w=800&fit=crop",
-    subcategory: "Home Cafe"
+    color: "bg-orange-50 text-orange-700"
   },
   {
-    id: 'sample-4',
+    id: 'rec-4',
     title: "Kindle Paperwhite",
-    content: "My nightly sanctuary. Transitioning from blue light to e-ink has saved my sleep and my sanity. It's the best investment for a busy mom's brain.",
+    category: "Mom Life",
+    why: "Transitioning from blue light to e-ink has saved my sleep and my sanity. It's the best investment for a busy mom's brain during quiet hours.",
+    bestFor: "Late night reading without the eye strain",
     image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&fit=crop",
-    subcategory: "Wellness"
+    color: "bg-purple-50 text-purple-700"
   },
   {
-    id: 'sample-5',
+    id: 'rec-5',
+    title: "Himalayan Salt Lamp",
+    category: "Wellness",
+    why: "The soft orange glow creates the perfect ambiance for my evening K-drama binges. It's instantly calming after a chaotic day.",
+    bestFor: "Creating a cozy evening sanctuary",
+    image: "https://images.unsplash.com/photo-1541123638424-3927515099b1?w=800&fit=crop",
+    color: "bg-red-50 text-red-700"
+  },
+  {
+    id: 'rec-6',
     title: "Lululemon Align Leggings",
-    content: "The uniform of the modern mom. I rejected the hype for years until I finally put them on. They feel like a second skin during morning yoga or afternoon errands.",
+    category: "Mom Uniform",
+    why: "I rejected the hype for years until I finally put them on. They feel like a second skin during morning yoga or afternoon errands.",
+    bestFor: "All-day comfort and stretch",
     image: "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=800&fit=crop",
-    subcategory: "Lifestyle"
+    color: "bg-emerald-50 text-emerald-700"
   }
 ];
 
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
-  const footerVideoRef = useRef(null);
-  const isFooterInView = useInView(footerVideoRef, { once: true, margin: "200px" });
 
   const latestStories = useMemo(() => {
     return posts.filter(p => p.category !== 'Product Recommendations').slice(0, 4);
-  }, [posts]);
-
-  const productRecs = useMemo(() => {
-    const dbRecs = posts.filter(p => p.category === 'Product Recommendations').slice(0, 5);
-    return dbRecs.length >= 5 ? dbRecs : DEFAULT_PRODUCTS;
   }, [posts]);
 
   const meTimeRituals = [
@@ -90,7 +102,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white pb-24 font-sans">
-      {/* 1. HERO SECTION - Deepened purple-100 */}
+      {/* 1. HERO SECTION */}
       <div className="relative pt-20 pb-28 overflow-hidden bg-purple-100/50">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -142,12 +154,12 @@ const Home = () => {
         </div>
       </div>
 
-      {/* RITUALS SECTION */}
+      {/* 2. RITUALS SECTION */}
       <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center text-center mb-20">
             <div className="p-3 bg-pink-50 rounded-2xl mb-4"><SafeIcon icon={FiHeart} className="text-3xl text-pink-500" /></div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6 font-serif">Small Joys: Self-Care & Me Time</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Small Joys: Self-Care & Me Time</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {meTimeRituals.map((ritual, index) => (
@@ -164,140 +176,117 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 6. PRODUCT RECOMMENDATIONS - BOUTIQUE MASONRY */}
-      <section className="py-32 bg-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center mb-24">
-            <span className="flex items-center gap-2 text-purple-700 font-black uppercase tracking-[0.2em] text-[10px] mb-6">
-              <SafeIcon icon={FiShoppingTag} /> Curated Picks
-            </span>
-            <h2 className="text-5xl md:text-7xl font-serif font-bold text-gray-900 leading-none mb-8">
-              Melissa's <span className="text-purple-200">Essentials.</span>
-            </h2>
-            <p className="text-gray-400 text-sm max-w-[400px] leading-relaxed uppercase tracking-widest font-bold">
-              Items I use daily to keep the magic alive at home.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20">
-            {/* Item 1: Large Statement */}
-            <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="lg:col-span-8 group">
-              <div className="relative aspect-[16/10] rounded-[4rem] overflow-hidden bg-purple-100/40 border-[1.5rem] border-purple-100/40 shadow-2xl">
-                <SafeImage src={productRecs[0].image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-              </div>
-              <div className="mt-12 max-w-xl">
-                <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 mb-4 block">{productRecs[0].subcategory}</span>
-                <h3 className="text-4xl font-serif font-bold text-gray-900 mb-6">{productRecs[0].title}</h3>
-                <p className="text-gray-500 leading-relaxed text-lg mb-8">{stripHtml(productRecs[0].content)}</p>
-                <Link to={`/post/${productRecs[0].id}`} className="inline-flex items-center text-sm font-bold text-purple-700 border-b-2 border-purple-100 hover:border-purple-600 transition-all pb-1">
-                  Full Review <SafeIcon icon={FiArrowRight} className="ml-2" />
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* Item 2: Staggered Right */}
-            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="lg:col-span-4 flex flex-col justify-center">
-              <div className="aspect-[4/5] rounded-[3rem] overflow-hidden bg-pink-100/40 border-[1rem] border-pink-100/40 shadow-xl group">
-                <SafeImage src={productRecs[1].image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              </div>
-              <div className="mt-8">
-                <span className="text-[10px] font-black uppercase tracking-widest text-pink-600 mb-2 block">{productRecs[1].subcategory}</span>
-                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{productRecs[1].title}</h3>
-                <Link to={`/post/${productRecs[1].id}`} className="text-sm font-bold text-gray-400 hover:text-purple-600 transition-colors">Explore</Link>
-              </div>
-            </motion.div>
-
-            {/* Item 3 & 4: Masonry Row 2 */}
-            <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="lg:col-span-5 pt-12">
-              <div className="aspect-square rounded-[3rem] overflow-hidden bg-orange-100/40 border-[1rem] border-orange-100/40 shadow-xl group">
-                <SafeImage src={productRecs[2].image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              </div>
-              <div className="mt-8">
-                <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-2 block">{productRecs[2].subcategory}</span>
-                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{productRecs[2].title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed line-clamp-2">{stripHtml(productRecs[2].content)}</p>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="lg:col-span-7 lg:mt-32">
-              <div className="relative aspect-[16/9] rounded-[4rem] overflow-hidden bg-emerald-100/40 border-[1.5rem] border-emerald-100/40 shadow-2xl group">
-                <SafeImage src={productRecs[3].image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-              </div>
-              <div className="mt-10 flex justify-between items-start">
-                <div className="max-w-md">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block">{productRecs[3].subcategory}</span>
-                  <h3 className="text-3xl font-serif font-bold text-gray-900 mb-4">{productRecs[3].title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed line-clamp-2">{stripHtml(productRecs[3].content)}</p>
-                </div>
-                <Link to={`/post/${productRecs[3].id}`} className="mt-6 w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center hover:bg-purple-600 transition-all">
-                  <SafeIcon icon={FiArrowRight} />
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* Item 5: The "Lululemon" Pick - Tall Center */}
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="lg:col-span-12 flex justify-center pt-24">
-              <div className="max-w-4xl w-full flex flex-col md:flex-row items-center gap-16">
-                <div className="w-full md:w-1/2 aspect-[3/4] rounded-[5rem] overflow-hidden bg-purple-100/40 border-[2rem] border-purple-100 shadow-2xl group">
-                  <SafeImage src={productRecs[4].image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                </div>
-                <div className="w-full md:w-1/2">
-                  <span className="inline-flex items-center px-4 py-1 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-[0.2em] mb-8">The Daily Uniform</span>
-                  <h3 className="text-5xl font-serif font-bold text-gray-900 mb-8 leading-tight">{productRecs[4].title}</h3>
-                  <p className="text-gray-500 text-lg leading-relaxed mb-10 italic">"{stripHtml(productRecs[4].content)}"</p>
-                  <Link to={`/post/${productRecs[4].id}`} className="px-12 py-5 bg-gray-900 text-white rounded-full font-bold hover:bg-purple-600 transition-all shadow-xl">
-                    View My Review
-                  </Link>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* JOURNAL SECTION */}
-      <section className="py-24 bg-purple-100/40">
+      {/* 3. LATEST STORIES (JOURNAL) - Brought back & polished */}
+      <section className="py-24 bg-purple-50/50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-16 px-4">
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Latest Stories</h2>
-            <Link to="/blog" className="text-purple-700 font-bold hover:gap-4 transition-all flex items-center gap-2">View Journal <SafeIcon icon={FiArrowRight} /></Link>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block">Latest from the heart</span>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Recent Stories</h2>
+            </div>
+            <Link to="/blog" className="text-purple-700 font-bold hover:gap-4 transition-all flex items-center gap-2 pb-2">View Journal <SafeIcon icon={FiArrowRight} /></Link>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {latestStories.map((post) => (
-              <motion.div key={post.id} className="group bg-white hover:bg-purple-900 rounded-[2rem] p-6 transition-all duration-500 flex flex-col md:flex-row items-center gap-8 shadow-sm hover:shadow-2xl">
-                <div className="w-full md:w-56 h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100">
-                  <SafeImage src={post.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="group bg-white hover:bg-purple-900 rounded-[2.5rem] p-6 transition-all duration-500 flex flex-col md:flex-row items-center gap-8 shadow-sm hover:shadow-2xl border border-purple-100/50">
+                <div className="w-full md:w-64 h-44 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100">
+                  <SafeImage src={post.image} fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                  <h3 className="text-2xl font-serif font-bold text-gray-900 group-hover:text-white mb-3">{post.title}</h3>
-                  <p className="text-gray-500 group-hover:text-purple-100 line-clamp-2 text-sm">{stripHtml(post.content)}</p>
+                  <div className="flex items-center justify-center md:justify-start gap-4 mb-3 text-[10px] font-bold uppercase tracking-widest text-purple-500 group-hover:text-purple-200">
+                    <span className="flex items-center gap-1"><SafeIcon icon={FiClock} /> {post.readTime || '3 min'}</span>
+                    <span>•</span>
+                    <span>{post.category}</span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 group-hover:text-white mb-3 transition-colors">{post.title}</h3>
+                  <p className="text-gray-500 group-hover:text-purple-100/80 line-clamp-2 text-sm leading-relaxed">{stripHtml(post.content)}</p>
                 </div>
-                <Link to={`/post/${post.id}`} className="w-14 h-14 rounded-full border border-purple-200 flex items-center justify-center text-purple-600 group-hover:bg-white transition-all"><SafeIcon icon={FiArrowRight} /></Link>
+                <Link to={`/post/${post.id}`} className="w-14 h-14 rounded-full border border-purple-200 flex items-center justify-center text-purple-600 group-hover:bg-white group-hover:border-white transition-all"><SafeIcon icon={FiArrowRight} /></Link>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* KDRAMA SECTION */}
+      {/* 4. KDRAMA SECTION */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6">Must-Watch Shows</h2>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-4 block">The Watchlist</span>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6">Must-Watch Dramas</h2>
           </div>
           <KdramaGrid />
         </div>
       </section>
 
-      {/* COMMUNITY CTA */}
+      {/* 5. PRODUCT RECOMMENDATIONS - MASONRY LAYOUT (Placed before CTA) */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20">
+            <span className="flex items-center justify-center gap-2 text-purple-700 font-bold uppercase tracking-[0.2em] text-[10px] mb-4">
+              <SafeIcon icon={FiShoppingTag} /> Curated Picks
+            </span>
+            <h2 className="text-4xl md:text-6xl font-serif font-bold text-gray-900 mb-6 leading-tight">Handpicked Essentials</h2>
+            <p className="text-xl text-gray-500 max-w-2xl mx-auto font-sans">
+              Things that make my days a little brighter and my nights a little cozier.
+            </p>
+          </div>
+
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+            {RECOMMENDED_PRODUCTS.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="break-inside-avoid group relative bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+              >
+                <div className="relative overflow-hidden">
+                  <SafeImage 
+                    src={product.image} 
+                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" 
+                  />
+                  <div className="absolute top-6 left-6">
+                    <span className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${product.color} shadow-sm backdrop-blur-md`}>
+                      {product.category}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="p-8">
+                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{product.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 font-sans">
+                    {product.why}
+                  </p>
+                  
+                  <div className="pt-6 border-t border-gray-50 mb-8">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Best for:</p>
+                    <p className="text-sm font-bold text-purple-700">{product.bestFor}</p>
+                  </div>
+
+                  <Link 
+                    to="/products"
+                    className="w-full inline-flex items-center justify-center px-6 py-4 bg-gray-950 text-white rounded-2xl font-bold text-sm group-hover:bg-purple-600 transition-colors duration-300"
+                  >
+                    See why I recommend it <SafeIcon icon={FiArrowRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 6. COMMUNITY CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} className="bg-purple-900 rounded-[4rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl">
           <div className="relative z-10 max-w-2xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">Join the Community</h2>
             <p className="text-purple-100 text-lg mb-10">Get cozy reflections and recs sent to your inbox.</p>
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <input type="email" placeholder="Email address" className="flex-1 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white" />
-              <button className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full transition-all">Subscribe</button>
+              <input type="email" placeholder="Email address" className="flex-1 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder:text-purple-300 outline-none focus:ring-2 focus:ring-purple-400" />
+              <button className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full transition-all shadow-lg">Subscribe</button>
             </form>
           </div>
         </motion.div>
