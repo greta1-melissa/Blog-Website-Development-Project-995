@@ -3,6 +3,7 @@ import { motion, useInView } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import KdramaGrid from '../components/KdramaGrid';
+import ProductCard from '../components/ProductCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
@@ -10,7 +11,7 @@ import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiTv, FiArrowRight, FiCalendar, FiStar, FiCoffee, FiBookOpen, FiSun, FiMoon, FiShoppingBag, FiHeart, FiZap } = FiIcons;
+const { FiTv, FiArrowRight, FiCalendar, FiStar, FiCoffee, FiBookOpen, FiSun, FiMoon, FiShoppingBag, FiHeart, FiZap, FiCheck } = FiIcons;
 
 const Home = () => {
   const { publishedPosts: posts } = useBlog();
@@ -19,6 +20,10 @@ const Home = () => {
 
   const latestStories = useMemo(() => {
     return posts.filter(p => p.category !== 'Product Recommendations').slice(0, 4);
+  }, [posts]);
+
+  const productRecs = useMemo(() => {
+    return posts.filter(p => p.category === 'Product Recommendations').slice(0, 3);
   }, [posts]);
 
   const meTimeRituals = [
@@ -110,7 +115,7 @@ const Home = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 text-white">
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold mb-4">Latest Story</span>
-                  <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight">Finding Your Own Magic Shop</h2>
+                  <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 leading-tight text-white">Finding Your Own Magic Shop</h2>
                   <Link to="/blog" className="inline-flex items-center font-bold text-white border-b-2 border-white/50 hover:border-white transition-all pb-1">
                     Read full story <SafeIcon icon={FiArrowRight} className="ml-2" />
                   </Link>
@@ -134,7 +139,7 @@ const Home = () => {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-serif font-bold text-gray-900 mb-2">{currentKDrama.title}</h3>
-                    <p className="text-gray-600 italic text-sm leading-relaxed">"{currentKDrama.description}"</p>
+                    <p className="text-gray-600 italic text-sm leading-relaxed font-sans">"{currentKDrama.description}"</p>
                   </div>
                 </motion.div>
                 <div className="bg-black rounded-3xl shadow-lg overflow-hidden border border-purple-500/30 h-[260px]">
@@ -146,15 +151,15 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 3. REDESIGNED: PERSONAL RITUALS (Floating Gallery Style) */}
+      {/* 3. PERSONAL RITUALS (Floating Gallery Style) */}
       <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center text-center mb-20">
             <div className="p-3 bg-pink-50 rounded-2xl mb-4">
               <SafeIcon icon={FiHeart} className="text-3xl text-pink-500" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Small Joys: Self-Care & Me Time</h2>
-            <p className="text-xl text-gray-500 max-w-2xl leading-relaxed">Carving out quiet moments in the beautiful chaos.</p>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6 font-serif">Small Joys: Self-Care & Me Time</h2>
+            <p className="text-xl text-gray-500 max-w-2xl leading-relaxed font-sans">Carving out quiet moments in the beautiful chaos.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -175,8 +180,8 @@ const Home = () => {
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg ${ritual.color}`}>
                     <SafeIcon icon={ritual.icon} className="text-2xl" />
                   </div>
-                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4">{ritual.title}</h3>
-                  <p className="text-gray-600 leading-relaxed text-sm">{ritual.desc}</p>
+                  <h3 className="text-2xl font-serif font-bold text-gray-900 mb-4 font-serif">{ritual.title}</h3>
+                  <p className="text-gray-600 leading-relaxed text-sm font-sans">{ritual.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -184,15 +189,15 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. REDESIGNED: LATEST STORIES (Editorial List Style) */}
+      {/* 4. LATEST STORIES (Editorial List Style) */}
       <section className="py-24 bg-purple-50/30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-16 px-4">
             <div className="max-w-lg">
-              <span className="text-purple-600 font-bold uppercase tracking-widest text-xs mb-2 block">The Journal</span>
-              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900">Latest Stories</h2>
+              <span className="text-purple-600 font-bold uppercase tracking-widest text-xs mb-2 block font-sans">The Journal</span>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 font-serif">Latest Stories</h2>
             </div>
-            <Link to="/blog" className="hidden md:flex items-center gap-2 text-purple-600 font-bold hover:gap-4 transition-all">
+            <Link to="/blog" className="hidden md:flex items-center gap-2 text-purple-600 font-bold hover:gap-4 transition-all font-sans">
               View Journal <SafeIcon icon={FiArrowRight} />
             </Link>
           </div>
@@ -209,18 +214,18 @@ const Home = () => {
                 <div className="w-full md:w-56 h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100">
                   <SafeImage src={post.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-3 text-[10px] font-bold uppercase tracking-widest text-purple-600 group-hover:text-purple-200">
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-4 mb-3 text-[10px] font-bold uppercase tracking-widest text-purple-600 group-hover:text-purple-200 font-sans">
                     <span>{post.category}</span>
                     <span className="w-1 h-1 bg-current rounded-full" />
                     <span>{formatDate(post.date)}</span>
                   </div>
                   <Link to={`/post/${post.id}`}>
-                    <h3 className="text-2xl font-serif font-bold text-gray-900 group-hover:text-white mb-3 transition-colors">
+                    <h3 className="text-2xl font-serif font-bold text-gray-900 group-hover:text-white mb-3 transition-colors font-serif">
                       {post.title}
                     </h3>
                   </Link>
-                  <p className="text-gray-500 group-hover:text-purple-100 line-clamp-2 text-sm leading-relaxed transition-colors">
+                  <p className="text-gray-500 group-hover:text-purple-100 line-clamp-2 text-sm leading-relaxed transition-colors font-sans">
                     {stripHtml(post.content)}
                   </p>
                 </div>
@@ -232,36 +237,28 @@ const Home = () => {
               </motion.div>
             ))}
           </div>
-          
-          <div className="mt-12 text-center md:hidden">
-            <Link to="/blog" className="inline-flex items-center px-8 py-3 bg-purple-600 text-white rounded-full font-bold">
-              View All Stories
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* 5. REDESIGNED: MUST-WATCH SHOWS (Cinema Night Style) */}
+      {/* 5. MUST-WATCH SHOWS (Cinema Night Style) */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white to-transparent opacity-5" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 mb-6 font-sans">
               <SafeIcon icon={FiZap} className="text-yellow-400" />
-              <span className="text-xs font-bold uppercase tracking-widest">The Watchlist</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-white">The Watchlist</span>
             </div>
-            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6">Must-Watch Shows</h2>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6 font-serif text-white">Must-Watch Shows</h2>
             <p className="text-gray-400 text-lg max-w-xl mx-auto font-sans">Handpicked emotional rollercoasters and swoon-worthy stories.</p>
           </div>
 
           <div className="relative">
-            {/* We reuse the KdramaGrid but the parent container styles it for a cinema feel */}
             <div className="cinema-grid-wrapper">
               <KdramaGrid />
             </div>
-            
             <div className="mt-20 flex justify-center">
-              <Link to="/kdrama-recommendations" className="group flex items-center gap-4 px-10 py-4 bg-white text-black rounded-full font-bold hover:bg-purple-500 hover:text-white transition-all duration-300">
+              <Link to="/kdrama-recommendations" className="group flex items-center gap-4 px-10 py-4 bg-white text-black rounded-full font-bold hover:bg-purple-500 hover:text-white transition-all duration-300 font-sans">
                 Explore Full Library
                 <SafeIcon icon={FiArrowRight} className="group-hover:translate-x-2 transition-transform" />
               </Link>
@@ -270,7 +267,66 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 6. JOIN THE COMMUNITY (Unchanged) */}
+      {/* 6. NEW: PRODUCT RECOMMENDATIONS (Boutique Shelf Style) */}
+      <section className="py-24 bg-orange-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16">
+            <div className="max-w-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+                  <SafeIcon icon={FiShoppingBag} />
+                </div>
+                <span className="text-orange-600 font-bold uppercase tracking-widest text-xs font-sans">The Shop Edit</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 font-serif">Melissa's Faves</h2>
+              <p className="text-gray-500 mt-4 text-lg font-sans">I only recommend what I actually use in my real life. No filler, just the good stuff.</p>
+            </div>
+            <Link to="/products" className="mt-6 md:mt-0 inline-flex items-center text-gray-900 font-bold border-b-2 border-orange-200 hover:border-orange-500 transition-all pb-1 font-sans">
+              Browse All Picks <SafeIcon icon={FiArrowRight} className="ml-2" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {productRecs.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-orange-100 flex flex-col group"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <SafeImage src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                  <div className="absolute top-6 left-6">
+                    <span className="bg-white/90 backdrop-blur-md text-gray-900 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm flex items-center gap-1">
+                      <SafeIcon icon={FiCheck} className="text-green-500" /> Verified Fave
+                    </span>
+                  </div>
+                </div>
+                <div className="p-8 flex flex-col flex-1">
+                  <div className="flex items-center gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <SafeIcon key={s} icon={FiStar} className="text-orange-400 text-xs fill-current" />
+                    ))}
+                  </div>
+                  <h3 className="text-xl font-serif font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors font-serif leading-tight">
+                    {product.title}
+                  </h3>
+                  <p className="text-gray-500 text-sm line-clamp-2 mb-8 font-sans leading-relaxed">
+                    {stripHtml(product.content)}
+                  </p>
+                  <Link to={`/post/${product.id}`} className="mt-auto inline-flex items-center justify-center w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-orange-600 transition-all font-sans shadow-lg shadow-gray-200">
+                    Read Review
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 7. JOIN THE COMMUNITY (Unchanged) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
@@ -288,11 +344,11 @@ const Home = () => {
                 />
               )}
             </div>
-            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">Join the Community</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6 font-serif">Join the Community</h2>
             <p className="text-purple-100 text-lg mb-10 font-sans">Get cozy reflections and recs sent to your inbox.</p>
             <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input type="email" placeholder="Email address" className="flex-1 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-              <button className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full transition-all shadow-lg shadow-black/20">Subscribe</button>
+              <input type="email" placeholder="Email address" className="flex-1 px-8 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 font-sans" />
+              <button className="px-10 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-full transition-all shadow-lg shadow-black/20 font-sans">Subscribe</button>
             </form>
           </div>
         </motion.div>
