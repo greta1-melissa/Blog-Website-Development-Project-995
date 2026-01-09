@@ -7,70 +7,84 @@ import SafeImage from '../common/SafeImage';
 import { useKdrama } from '../contexts/KdramaContext';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowRight, FiMessageCircle, FiChevronRight, FiChevronLeft } = FiIcons;
+const { FiArrowRight, FiChevronRight, FiChevronLeft, FiStar } = FiIcons;
 
-const KdramaCard = ({ drama, index, focusState }) => {
-  // Define styles based on focus state
-  const getStyles = () => {
-    switch (focusState) {
-      case 'isFocus':
-        return "scale-[1.18] z-20 opacity-100 shadow-[0_20px_50px_rgba(168,85,247,0.4)] border-purple-400/50 blur-0";
-      case 'isNear':
-        return "scale-[0.96] z-10 opacity-70 border-white/10 blur-[1px]";
-      case 'isFar':
-        return "scale-[0.88] z-0 opacity-40 border-white/5 blur-[3px]";
-      default:
-        return "scale-100 opacity-100 blur-0";
-    }
-  };
+// The "Elite 8" Selection
+const MUST_WATCH_LIST = [
+  { id: 'scarlet-heart', title: 'Scarlet Heart Ryeo', tags: ['Historical', 'Tragedy'], image: 'https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?w=800' },
+  { id: 'mr-queen', title: 'Mr. Queen', tags: ['Comedy', 'Body Swap'], image: 'https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=800' },
+  { id: 'cloy', title: 'Crash Landing on You', tags: ['Romance', 'Drama'], image: 'https://images.unsplash.com/photo-1518181282240-721245c38981?w=800' },
+  { id: 'reply-1988', title: 'Reply 1988', tags: ['Family', 'Slice of Life'], image: 'https://images.unsplash.com/photo-1516589174184-c685245d4b63?w=800' },
+  { id: 'itaewon-class', title: 'Itaewon Class', tags: ['Revenge', 'Business'], image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800' },
+  { id: 'goblin', title: 'Goblin', tags: ['Fantasy', 'Romance'], image: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=800' },
+  { id: 'hotel-del-luna', title: 'Hotel Del Luna', tags: ['Supernatural', 'Fashion'], image: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=800' },
+  { id: 'kingdom', title: 'Kingdom', tags: ['Zombies', 'Political'], image: 'https://images.unsplash.com/photo-1580226330962-4217f2252a12?w=800' }
+];
+
+const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) => {
+  // Determine scale and appearance
+  let scale = 0.92;
+  let opacity = 0.5;
+  let zIndex = 1;
+  let blur = "blur(2px)";
+  let shadow = "none";
+
+  if (isFocused) {
+    scale = 1.18;
+    opacity = 1;
+    zIndex = 30;
+    blur = "blur(0px)";
+    shadow = "0 25px 60px rgba(168, 85, 247, 0.5)";
+  } else if (isCenterFallback) {
+    scale = 1.08;
+    opacity = 0.9;
+    zIndex = 10;
+    blur = "blur(0px)";
+    shadow = "0 10px 30px rgba(168, 85, 247, 0.2)";
+  }
 
   return (
     <motion.div
-      layout
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className={`shrink-0 w-[280px] md:w-[350px] scroll-snap-align-center px-4 py-12 transition-all duration-300 ease-out transform ${getStyles()}`}
+      onPointerEnter={() => onHover(drama.id)}
+      onPointerLeave={onLeave}
+      animate={{ scale, opacity, zIndex }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      style={{ filter: blur, boxShadow: shadow }}
+      className="shrink-0 w-[300px] md:w-[380px] scroll-snap-align-center px-4 py-16 relative"
     >
-      <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block">
-        <div className="relative aspect-[2/3] rounded-[2.5rem] overflow-hidden bg-purple-950/20 border-2 transition-colors duration-500">
+      <Link to={`/kdrama-recommendations/${drama.id}`} className="block">
+        <div className={`relative aspect-[2/3] rounded-[3rem] overflow-hidden bg-purple-950/40 border-2 transition-colors duration-500 ${isFocused ? 'border-purple-400' : 'border-white/5'}`}>
           <SafeImage 
-            src={drama.image_url || drama.image} 
+            src={drama.image} 
             alt={drama.title} 
             fallback={KDRAMA_PLACEHOLDER} 
             className="w-full h-full object-cover" 
-            loading="lazy" 
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
           
-          <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-opacity duration-500 ${focusState === 'isFocus' ? 'opacity-90' : 'opacity-70'}`} />
-          
-          {focusState === 'isFocus' && (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(168,85,247,0.4),transparent_70%)] pointer-events-none" />
-          )}
-
-          <div className="absolute top-6 left-6 z-10">
-            {drama.tags && drama.tags.slice(0, 1).map((tag, idx) => (
-              <span key={idx} className="px-4 py-1.5 bg-white/10 backdrop-blur-md text-white text-[10px] font-black rounded-full border border-white/20 uppercase tracking-[0.2em]">
+          {/* Tags */}
+          <div className="absolute top-8 left-8 flex gap-2">
+            {drama.tags.map((tag, i) => (
+              <span key={i} className="px-3 py-1 bg-white/10 backdrop-blur-md text-white text-[9px] font-black rounded-full border border-white/20 uppercase tracking-widest">
                 {tag}
               </span>
             ))}
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
-            <h3 className={`text-xl md:text-2xl font-serif font-bold text-white mb-3 leading-tight transition-colors duration-300 ${focusState === 'isFocus' ? 'text-purple-300' : ''}`}>
+          {/* Content */}
+          <div className="absolute bottom-0 left-0 right-0 p-10">
+            <h3 className="text-2xl font-serif font-bold text-white mb-4 leading-tight">
               {drama.title}
             </h3>
-            
-            {focusState === 'isFocus' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <p className="text-gray-400 text-xs leading-relaxed mb-6 line-clamp-2 font-sans">
-                  {drama.synopsis_short}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center text-[10px] font-black text-purple-400 uppercase tracking-widest">
-                    Full Review <SafeIcon icon={FiArrowRight} className="ml-2" />
+            <AnimatePresence>
+              {isFocused && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <span className="inline-flex items-center text-[10px] font-black text-purple-400 uppercase tracking-[0.2em]">
+                    Read Review <SafeIcon icon={FiArrowRight} className="ml-2" />
                   </span>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </Link>
@@ -79,52 +93,49 @@ const KdramaCard = ({ drama, index, focusState }) => {
 };
 
 const KdramaGrid = () => {
-  const { kdramas, isLoading } = useKdrama();
   const scrollContainerRef = useRef(null);
   const scrollRaf = useRef(null);
-  const [focusIndex, setFocusIndex] = useState(1);
-  const [isMouseIn, setIsMouseIn] = useState(false);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [centerId, setCenterId] = useState(null);
   const [hoverStartTime, setHoverStartTime] = useState(null);
 
-  // Track Focus (Mouse vs Center)
-  const updateFocus = useCallback((event) => {
+  // Update center-most card ID
+  const updateCenterCard = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const container = scrollContainerRef.current;
-    const children = container.querySelectorAll('.scroll-snap-align-center');
+    const scrollCenter = container.scrollLeft + container.clientWidth / 2;
+    const cards = container.querySelectorAll('.scroll-snap-align-center');
     
-    let targetX;
-    if (event && event.type === 'mousemove') {
-      targetX = event.clientX;
-    } else {
-      // Center fallback
-      targetX = container.getBoundingClientRect().left + container.clientWidth / 2;
-    }
-
-    let closestIdx = 0;
+    let closestId = null;
     let minDistance = Infinity;
 
-    children.forEach((child, idx) => {
-      const rect = child.getBoundingClientRect();
-      const childCenter = rect.left + rect.width / 2;
-      const distance = Math.abs(targetX - childCenter);
+    cards.forEach((card, idx) => {
+      if (idx === 0 || idx === cards.length - 1) return; // Skip spacers
+      const rect = card.getBoundingClientRect();
+      const cardCenter = container.scrollLeft + rect.left + rect.width / 2;
+      const distance = Math.abs(scrollCenter - cardCenter);
+      
       if (distance < minDistance) {
         minDistance = distance;
-        closestIdx = idx;
+        closestId = MUST_WATCH_LIST[idx - 1]?.id;
       }
     });
 
-    setFocusIndex(closestIdx);
+    setCenterId(closestId);
   }, []);
 
-  // Accelerated Scroll Logic
+  // Auto-Scroll Logic with Acceleration
   const startAutoScroll = (direction) => {
-    setHoverStartTime(Date.now());
+    if (hoveredId) return; // Don't scroll if focusing a card
+    const startTime = Date.now();
+    setHoverStartTime(startTime);
+
     const scroll = () => {
       if (scrollContainerRef.current) {
-        const elapsed = Date.now() - (hoverStartTime || Date.now());
-        const speed = elapsed > 300 ? 38 : 22; // Ramp up speed
+        const elapsed = Date.now() - startTime;
+        const speed = elapsed > 300 ? 36 : 22; // Accelerated speed
         scrollContainerRef.current.scrollLeft += direction * speed;
-        updateFocus(); // Keep spotlight updated while scrolling
+        updateCenterCard();
         scrollRaf.current = requestAnimationFrame(scroll);
       }
     };
@@ -137,63 +148,86 @@ const KdramaGrid = () => {
   };
 
   useEffect(() => {
+    updateCenterCard();
     const container = scrollContainerRef.current;
     if (container) {
-      container.addEventListener('scroll', () => !isMouseIn && updateFocus());
-      updateFocus();
+      container.addEventListener('scroll', updateCenterCard);
     }
-    return () => container?.removeEventListener('scroll', updateFocus);
-  }, [updateFocus, isMouseIn, isLoading]);
+    return () => container?.removeEventListener('scroll', updateCenterCard);
+  }, [updateCenterCard]);
 
-  const displayList = kdramas.slice(0, 4);
+  // Handle Mouse Over Container for Scroll Zones
+  const handleMouseMove = (e) => {
+    const container = e.currentTarget;
+    const { left, width } = container.getBoundingClientRect();
+    const mouseX = e.clientX - left;
+    const zoneWidth = width * 0.20;
 
-  if (isLoading) return <div className="h-[500px] flex items-center justify-center text-purple-400">Loading...</div>;
+    if (mouseX < zoneWidth) {
+      if (!hoverStartTime) startAutoScroll(-1);
+    } else if (mouseX > width - zoneWidth) {
+      if (!hoverStartTime) startAutoScroll(1);
+    } else {
+      stopAutoScroll();
+    }
+  };
 
   return (
     <div 
-      className="relative group/carousel -mx-4 px-4 h-[700px] flex flex-col justify-center overflow-hidden"
-      onMouseMove={(e) => { setIsMouseIn(true); updateFocus(e); }}
-      onMouseLeave={() => { setIsMouseIn(false); updateFocus(); stopAutoScroll(); }}
+      className="relative group/main -mx-4 px-4 h-[750px] flex flex-col justify-center overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => { stopAutoScroll(); setHoveredId(null); }}
     >
-      {/* Turbo Scroll Zones */}
-      <div className="absolute left-0 top-0 bottom-0 w-[20%] z-40 cursor-w-resize" onMouseEnter={() => startAutoScroll(-1)} onMouseLeave={stopAutoScroll} />
-      <div className="absolute right-0 top-0 bottom-0 w-[20%] z-40 cursor-e-resize" onMouseEnter={() => startAutoScroll(1)} onMouseLeave={stopAutoScroll} />
+      {/* Scroll Zones Overlay (Visual Cues) */}
+      <div className="absolute left-0 top-0 bottom-0 w-[20%] z-40 cursor-w-resize pointer-events-none group-hover/main:bg-gradient-to-r from-purple-900/10 to-transparent transition-opacity" />
+      <div className="absolute right-0 top-0 bottom-0 w-[20%] z-40 cursor-e-resize pointer-events-none group-hover/main:bg-gradient-to-l from-purple-900/10 to-transparent transition-opacity" />
 
-      {/* Main Carousel */}
+      {/* Viewport Container */}
       <div 
         ref={scrollContainerRef}
         className="flex items-center gap-0 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-10"
         style={{ scrollPadding: '0 25%' }}
       >
-        <div className="shrink-0 w-[25vw] md:w-[35vw]" />
+        {/* Spacer for Centering */}
+        <div className="shrink-0 w-[25vw] md:w-[35vw] scroll-snap-align-center" />
         
-        {displayList.map((drama, index) => (
+        {MUST_WATCH_LIST.map((drama) => (
           <KdramaCard 
             key={drama.id} 
             drama={drama} 
-            index={index} 
-            focusState={focusIndex === index + 1 ? 'isFocus' : Math.abs(focusIndex - (index + 1)) === 1 ? 'isNear' : 'isFar'}
+            isFocused={hoveredId === drama.id}
+            isCenterFallback={!hoveredId && centerId === drama.id}
+            onHover={setHoveredId}
+            onLeave={() => setHoveredId(null)}
           />
         ))}
 
         {/* View All Card */}
-        <div className={`shrink-0 w-[280px] md:w-[350px] scroll-snap-align-center px-4 transition-all duration-300 ${focusIndex === displayList.length + 1 ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`}>
-          <Link to="/kdrama-recommendations" className="flex flex-col items-center justify-center aspect-[2/3] rounded-[2.5rem] border-2 border-dashed border-white/20 hover:border-purple-500/50 bg-white/5">
-            <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center mb-4">
-              <SafeIcon icon={FiArrowRight} className="text-2xl text-white" />
+        <div className="shrink-0 w-[300px] md:w-[380px] scroll-snap-align-center px-4 opacity-40 hover:opacity-100 transition-opacity">
+          <Link to="/kdrama-recommendations" className="flex flex-col items-center justify-center aspect-[2/3] rounded-[3rem] border-2 border-dashed border-white/20 hover:border-purple-500 bg-white/5">
+            <div className="w-20 h-20 rounded-full bg-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/40">
+              <SafeIcon icon={FiChevronRight} className="text-3xl text-white" />
             </div>
-            <span className="text-white font-serif text-xl font-bold">Explore All</span>
+            <span className="text-white font-serif text-2xl font-bold">Full Archive</span>
           </Link>
         </div>
 
-        <div className="shrink-0 w-[25vw] md:w-[35vw]" />
+        {/* Spacer for Centering */}
+        <div className="shrink-0 w-[25vw] md:w-[35vw] scroll-snap-align-center" />
       </div>
 
-      {/* Navigation Indicators */}
-      <div className="flex justify-center gap-3 mt-8">
-        {displayList.map((_, i) => (
-          <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${focusIndex === i + 1 ? 'w-12 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'w-3 bg-white/10'}`} />
-        ))}
+      {/* Progress Line */}
+      <div className="flex justify-center items-center gap-4 mt-12">
+        <div className="h-px w-24 bg-gradient-to-r from-transparent to-purple-500/50" />
+        <div className="flex gap-2">
+          {MUST_WATCH_LIST.map((drama) => (
+            <div 
+              key={drama.id} 
+              className={`h-1.5 rounded-full transition-all duration-500 ${ (hoveredId === drama.id || (!hoveredId && centerId === drama.id)) ? 'w-10 bg-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.8)]' : 'w-2 bg-white/10'}`} 
+            />
+          ))}
+        </div>
+        <div className="h-px w-24 bg-gradient-to-l from-transparent to-purple-500/50" />
       </div>
     </div>
   );
