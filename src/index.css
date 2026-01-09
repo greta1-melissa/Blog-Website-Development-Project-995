@@ -2,144 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-}
-
-/* 
-  Article Content Styling 
-  Refined for tighter, smoother reading experience
-*/
-.article-content {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 1rem 0;
-  line-height: 1.7; /* Good readability */
-  font-size: 1.125rem; /* ~18px */
-  color: #374151; /* gray-700 */
-}
-
-.article-content p {
-  margin-top: 0;
-  margin-bottom: 1rem; /* Tightened from 1.1rem to 1rem */
-}
-
-.article-content p:last-child {
-  margin-bottom: 0;
-}
-
-/* Lists */
-.article-content ul,
-.article-content ol {
-  margin-top: 0.5rem;
-  margin-bottom: 1rem;
-  padding-left: 1.5rem;
-}
-
-.article-content ul {
-  list-style-type: disc;
-}
-
-.article-content ol {
-  list-style-type: decimal;
-}
-
-.article-content li {
-  margin-bottom: 0;
-  color: #374151;
-  padding-left: 0.25rem; /* Slight indent for text from bullet */
-}
-
-.article-content li + li {
-  margin-top: 0.25rem; /* Very small gap between list items */
-}
-
-/* Nested lists */
-.article-content ul ul,
-.article-content ol ul,
-.article-content ul ol,
-.article-content ol ol {
-  margin-top: 0.25rem;
-  margin-bottom: 0.25rem;
-}
-
-/* Headings within content */
-.article-content h1, 
-.article-content h2, 
-.article-content h3,
-.article-content h4 {
-  font-weight: 700;
-  color: #111827;
-  line-height: 1.3;
-}
-
-.article-content h2 { 
-  margin-top: 1.75rem; /* Distinct section break */
-  margin-bottom: 0.75rem; /* Close to content */
-  font-size: 1.75rem; 
-  color: #581c87; 
-}
-
-.article-content h3 { 
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 1.5rem; 
-}
-
-.article-content h4 { 
-  margin-top: 1.25rem;
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem; 
-}
-
-/* Handle empty paragraphs from editors */
-.article-content p:empty {
-  display: none;
-}
-
-/* Images */
-.article-content img {
-  border-radius: 0.75rem;
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-  max-width: 100%;
-  height: auto;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Blockquotes */
-.article-content blockquote {
-  border-left-width: 4px;
-  border-color: #d8b4fe;
-  padding: 1rem 1.5rem;
-  font-style: italic;
-  color: #4b5563;
-  background-color: #fcfaff;
-  border-radius: 0 0.5rem 0.5rem 0;
-  margin: 1.5rem 0;
-}
-
-/* Mobile optimization */
-@media (max-width: 640px) {
-  .article-content {
-    font-size: 1rem;
-    line-height: 1.6;
-    padding: 0.5rem 0;
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scroll-snap-type-x {
+    scroll-snap-type: x mandatory;
+  }
+  .scroll-snap-align-center {
+    scroll-snap-align: center;
+  }
+}
+
+/* Premium Perspective and Transitions */
+.scroll-snap-align-center {
+  perspective: 1000px;
+  backface-visibility: hidden;
+  will-change: transform, opacity, filter;
 }
