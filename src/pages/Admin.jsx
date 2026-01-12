@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import BlogPostManagement from '../components/BlogPostManagement';
 import KdramaManagement from '../components/KdramaManagement';
+import ProductManagement from '../components/ProductManagement';
 import UserManagement from './UserManagement';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiShield, FiLogOut, FiTv, FiBookOpen, FiUsers, FiBarChart2, FiArrowLeft } = FiIcons;
+const { FiShield, FiLogOut, FiTv, FiBookOpen, FiUsers, FiBarChart2, FiArrowLeft, FiShoppingBag } = FiIcons;
 
 const Admin = () => {
   const { isAdmin, logout, user } = useAuth();
@@ -29,6 +30,7 @@ const Admin = () => {
 
   const tabs = [
     { id: 'posts', label: 'Blog Posts', icon: FiBookOpen },
+    { id: 'products', label: 'Products', icon: FiShoppingBag },
     { id: 'kdramas', label: 'K-Dramas', icon: FiTv },
     { id: 'users', label: 'Users', icon: FiUsers },
     { id: 'overview', label: 'Overview', icon: FiBarChart2 }
@@ -55,19 +57,14 @@ const Admin = () => {
               <SafeIcon icon={FiLogOut} className="mr-2" /> Sign Out
             </button>
           </div>
-
           {/* Tab Navigation */}
           <div className="mt-8 overflow-x-auto no-scrollbar">
             <nav className="flex space-x-1 p-1 bg-gray-100 rounded-xl w-fit">
               {tabs.map((tab) => (
-                <button 
-                  key={tab.id} 
-                  onClick={() => setActiveTab(tab.id)} 
-                  className={`flex items-center px-6 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${
-                    activeTab === tab.id 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                  }`}
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-6 py-2.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
                 >
                   <SafeIcon icon={tab.icon} className={`mr-2 ${activeTab === tab.id ? 'text-purple-600' : 'text-gray-400'}`} />
                   {tab.label}
@@ -88,6 +85,7 @@ const Admin = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'posts' && <BlogPostManagement />}
+            {activeTab === 'products' && <ProductManagement />}
             {activeTab === 'kdramas' && <KdramaManagement />}
             {activeTab === 'users' && <UserManagement />}
             {activeTab === 'overview' && (
@@ -105,7 +103,6 @@ const Admin = () => {
                     </div>
                   </div>
                 </div>
-                {/* Add more overview cards as needed */}
               </div>
             )}
           </motion.div>
