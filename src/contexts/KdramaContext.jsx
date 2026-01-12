@@ -40,7 +40,6 @@ export const KdramaProvider = ({ children }) => {
         ...item,
         id: item.id || `temp-${Date.now()}-${index}`,
         title: item.title || 'Untitled',
-        // DEFENSIVE: Always coerce slug to trimmed string
         slug: String(item.slug || item.id || `drama-${index}`).trim(),
         tags: Array.isArray(item.tags) ? item.tags : (item.tags ? String(item.tags).split(',').map(t => t.trim()) : []),
         synopsis_short: item.synopsis_short || item.synopsis || '',
@@ -63,15 +62,14 @@ export const KdramaProvider = ({ children }) => {
       if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
         currentData = normalizeData(json.data);
       } else {
-        // Fallback to seed data if DB is empty
         currentData = normalizeData(initialSeedData);
       }
       
-      // Sort by display order if available, otherwise by title
+      // Global sort by display order
       currentData.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
       setKdramas(currentData);
     } catch (error) {
-      console.warn("KdramaContext: Fetching from DB failed, using seed data.", error);
+      console.warn("KdramaContext: Fetching failed, using seeds.", error);
       setKdramas(normalizeData(initialSeedData));
     } finally {
       setIsLoading(false);
@@ -95,13 +93,10 @@ export const KdramaProvider = ({ children }) => {
 
   const updateKdrama = async (id, updates) => {
     try {
-      // Ensure slug is always a string in the payload
       if (updates.slug !== undefined) {
         updates.slug = String(updates.slug ?? '').trim();
       }
-      
       await ncbUpdate(TABLE_NAME, id, updates);
-      // Wait for fetch to ensure state is perfectly synced with DB
       await fetchKdramas();
     } catch (err) {
       console.error("Failed to update drama", err);
@@ -127,10 +122,19 @@ export const KdramaProvider = ({ children }) => {
     );
   };
 
-  // Memoize featured dramas for components that need a curated subset
+  /**
+   * Filter logic: 
+   * 1. Filter only is_featured_on_home
+   * 2. Sort by display_order
+   * 3. Take first 8
+   */
   const featuredKdramas = useMemo(() => {
-    const featured = kdramas.filter(d => d.is_featured_on_home);
-    return (featured.length > 0 ? featured : kdramas);
+    const featured = kdramas.filter(d => d.is_featured_on_home === true);
+    // If no dramas are featured, fallback to newest ones so section isn't empty
+    const source = featured.length > 0 ? featured : kdramas;
+    return source
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+      .slice(0, 8);
   }, [kdramas]);
 
   return (
