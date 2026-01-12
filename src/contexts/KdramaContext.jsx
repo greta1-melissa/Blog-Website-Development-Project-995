@@ -67,7 +67,8 @@ export const KdramaProvider = ({ children }) => {
         currentData = normalizeData(initialSeedData);
       }
       
-      currentData.sort((a, b) => a.display_order - b.display_order);
+      // Sort by display order if available, otherwise by title
+      currentData.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
       setKdramas(currentData);
     } catch (error) {
       console.warn("KdramaContext: Fetching from DB failed, using seed data.", error);
@@ -94,10 +95,14 @@ export const KdramaProvider = ({ children }) => {
 
   const updateKdrama = async (id, updates) => {
     try {
+      // Ensure slug is always a string in the payload
+      if (updates.slug !== undefined) {
+        updates.slug = String(updates.slug ?? '').trim();
+      }
+      
       await ncbUpdate(TABLE_NAME, id, updates);
-      setKdramas(prev => prev.map(d => 
-        String(d.id) === String(id) ? { ...d, ...updates } : d
-      ));
+      // Wait for fetch to ensure state is perfectly synced with DB
+      await fetchKdramas();
     } catch (err) {
       console.error("Failed to update drama", err);
       throw err;
@@ -122,9 +127,10 @@ export const KdramaProvider = ({ children }) => {
     );
   };
 
+  // Memoize featured dramas for components that need a curated subset
   const featuredKdramas = useMemo(() => {
     const featured = kdramas.filter(d => d.is_featured_on_home);
-    return (featured.length > 0 ? featured : kdramas).slice(0, 8);
+    return (featured.length > 0 ? featured : kdramas);
   }, [kdramas]);
 
   return (

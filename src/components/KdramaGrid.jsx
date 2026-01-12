@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
@@ -7,39 +7,39 @@ import SafeImage from '../common/SafeImage';
 import { useKdrama } from '../contexts/KdramaContext';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowRight, FiChevronRight, FiStar } = FiIcons;
+const { FiArrowRight, FiChevronRight } = FiIcons;
 
-const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) => {
-  // Determine scale and appearance based on focus state
-  // Landscape focus logic: Focused = 1.15, Center = 1.08, Others = 0.9
+const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave, index }) => {
+  // Determine scale and appearance based on focus/center state
   let scale = 0.9;
   let opacity = 0.4;
-  let zIndex = 1;
+  let zIndex = 10;
   let blur = "blur(4px)";
   let shadow = "none";
 
   if (isFocused) {
     scale = 1.15;
     opacity = 1;
+    zIndex = 40;
+    blur = "blur(0px)";
+    shadow = "0 25px 60px rgba(168,85,247,0.4)";
+  } else if (isCenterFallback) {
+    scale = 1.05;
+    opacity = 0.9;
     zIndex = 30;
     blur = "blur(0px)";
-    shadow = "0 20px 50px rgba(168, 85, 247, 0.4)";
-  } else if (isCenterFallback) {
-    scale = 1.08;
-    opacity = 0.85;
-    zIndex = 10;
-    blur = "blur(0px)";
-    shadow = "0 10px 30px rgba(168, 85, 247, 0.15)";
+    shadow = "0 15px 40px rgba(168,85,247,0.15)";
   }
 
   return (
     <motion.div
+      data-id={drama.id}
       onPointerEnter={() => onHover(drama.id)}
       onPointerLeave={onLeave}
       animate={{ scale, opacity, zIndex }}
-      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
       style={{ filter: blur, boxShadow: shadow }}
-      className="shrink-0 w-[400px] md:w-[520px] scroll-snap-align-center px-6 py-20 relative"
+      className="kdrama-card-container shrink-0 w-[350px] md:w-[500px] scroll-snap-align-center px-4 py-20 relative"
     >
       <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block">
         <div className={`relative aspect-video rounded-[2.5rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-500 ${isFocused ? 'border-purple-400' : 'border-white/5'}`}>
@@ -50,28 +50,24 @@ const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) =>
             className="w-full h-full object-cover" 
           />
           
-          {/* Subtle Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
           
-          {/* Genre Pill */}
           <div className="absolute top-6 left-6">
             <span className="px-3 py-1 bg-black/40 backdrop-blur-md text-white text-[9px] font-black rounded-full border border-white/10 uppercase tracking-widest">
               {drama.tags?.[0] || 'Drama'}
             </span>
           </div>
 
-          {/* Bottom Content */}
           <div className="absolute bottom-0 left-0 right-0 p-8">
             <h3 className="text-2xl md:text-3xl font-serif font-bold text-white mb-2 leading-tight">
               {drama.title}
             </h3>
-            
             <AnimatePresence>
-              {isFocused && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  exit={{ opacity: 0, x: -10 }}
+              {(isFocused || isCenterFallback) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
                   className="flex items-center justify-between"
                 >
                   <p className="text-gray-300 text-xs font-sans line-clamp-1 max-w-[70%] italic">
@@ -94,53 +90,43 @@ const KdramaGrid = () => {
   const { kdramas, isLoading } = useKdrama();
   const scrollContainerRef = useRef(null);
   const scrollRaf = useRef(null);
-  
   const [hoveredId, setHoveredId] = useState(null);
   const [centerId, setCenterId] = useState(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
 
-  // Take up to 8 cards for the spotlight
-  const displayList = useMemo(() => {
-    return kdramas.slice(0, 8);
-  }, [kdramas]);
+  // Intersection Observer to detect the centered card reliably
+  useEffect(() => {
+    if (isLoading || kdramas.length === 0) return;
 
-  // Logic to find the card closest to the horizontal center of the viewport
-  const updateCenterCard = useCallback(() => {
-    if (!scrollContainerRef.current || displayList.length === 0) return;
-    
-    const container = scrollContainerRef.current;
-    const scrollCenter = container.scrollLeft + container.clientWidth / 2;
-    const cards = container.querySelectorAll('.scroll-snap-align-center');
-    
-    let closestId = null;
-    let minDistance = Infinity;
+    const options = {
+      root: scrollContainerRef.current,
+      rootMargin: '0px -40% 0px -40%', // Targeted focus on the middle 20% of the container
+      threshold: 0.5
+    };
 
-    // Skip the first and last elements which are spacers
-    cards.forEach((card, idx) => {
-      if (idx === 0 || idx === cards.length - 1) return;
-      
-      const rect = card.getBoundingClientRect();
-      const cardCenter = container.scrollLeft + rect.left + rect.width / 2;
-      const distance = Math.abs(scrollCenter - cardCenter);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestId = displayList[idx - 1]?.id;
-      }
-    });
+    const callback = (entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('data-id');
+          if (id) setCenterId(id);
+        }
+      });
+    };
 
-    setCenterId(closestId);
-  }, [displayList]);
+    const observer = new IntersectionObserver(callback, options);
+    const cards = scrollContainerRef.current.querySelectorAll('.kdrama-card-container');
+    cards.forEach(card => observer.observe(card));
 
-  // Handle Edge Hover Auto-Scrolling
+    return () => observer.disconnect();
+  }, [kdramas, isLoading]);
+
   const startAutoScroll = (direction) => {
-    if (hoveredId) return; // Prioritize manual card focus
-    
+    if (hoveredId) return; // Don't scroll if user is manually hovering a card
     setIsAutoScrolling(true);
+    
     const scroll = () => {
       if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft += direction * 18; // Smooth moderate speed
-        updateCenterCard();
+        scrollContainerRef.current.scrollLeft += direction * 12;
         scrollRaf.current = requestAnimationFrame(scroll);
       }
     };
@@ -152,20 +138,11 @@ const KdramaGrid = () => {
     setIsAutoScrolling(false);
   };
 
-  useEffect(() => {
-    updateCenterCard();
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', updateCenterCard);
-    }
-    return () => container?.removeEventListener('scroll', updateCenterCard);
-  }, [updateCenterCard, displayList]);
-
   const handleMouseMove = (e) => {
     const container = e.currentTarget;
     const { left, width } = container.getBoundingClientRect();
     const mouseX = e.clientX - left;
-    const zoneWidth = width * 0.20; // 20% width zones on each side
+    const zoneWidth = width * 0.15; // 15% interactive zones on edges
 
     if (mouseX < zoneWidth) {
       if (!isAutoScrolling) startAutoScroll(-1);
@@ -188,36 +165,40 @@ const KdramaGrid = () => {
     <div 
       className="relative group/main -mx-4 px-4 h-[600px] flex flex-col justify-center overflow-hidden"
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => { stopAutoScroll(); setHoveredId(null); }}
+      onMouseLeave={() => {
+        stopAutoScroll();
+        setHoveredId(null);
+      }}
     >
-      {/* Invisible Hover Zones Indicators (Visual Cue) */}
-      <div className="absolute left-0 top-0 bottom-0 w-[15%] z-40 cursor-w-resize pointer-events-none group-hover/main:bg-gradient-to-r from-purple-500/5 to-transparent transition-opacity" />
-      <div className="absolute right-0 top-0 bottom-0 w-[15%] z-40 cursor-e-resize pointer-events-none group-hover/main:bg-gradient-to-l from-purple-500/5 to-transparent transition-opacity" />
+      {/* Edge Gradients for Depth */}
+      <div className="absolute left-0 top-0 bottom-0 w-32 z-40 pointer-events-none bg-gradient-to-r from-gray-950 to-transparent opacity-80" />
+      <div className="absolute right-0 top-0 bottom-0 w-32 z-40 pointer-events-none bg-gradient-to-l from-gray-950 to-transparent opacity-80" />
 
       {/* The Carousel */}
       <div 
         ref={scrollContainerRef}
-        className="flex items-center gap-0 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
-        style={{ scrollPadding: '0 25%' }}
+        className="flex items-center gap-0 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-10"
+        style={{ scrollPadding: '0 30%' }}
       >
         {/* Leading Spacer */}
-        <div className="shrink-0 w-[20vw] md:w-[30vw] scroll-snap-align-center" />
+        <div className="shrink-0 w-[30vw] pointer-events-none" />
         
-        {displayList.map((drama) => (
+        {kdramas.map((drama, idx) => (
           <KdramaCard 
             key={drama.id} 
             drama={drama} 
-            isFocused={hoveredId === drama.id}
-            isCenterFallback={!hoveredId && centerId === drama.id}
+            index={idx}
+            isFocused={hoveredId === drama.id} 
+            isCenterFallback={!hoveredId && centerId === String(drama.id)}
             onHover={setHoveredId}
             onLeave={() => setHoveredId(null)}
           />
         ))}
 
         {/* Closing "Explore All" Card */}
-        <div className="shrink-0 w-[400px] md:w-[520px] scroll-snap-align-center px-6 opacity-30 hover:opacity-100 transition-opacity">
-          <Link to="/kdrama-recommendations" className="flex flex-col items-center justify-center aspect-video rounded-[2.5rem] border-2 border-dashed border-white/20 hover:border-purple-500 bg-white/5 group/link">
-            <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center mb-4 group-hover/link:scale-110 transition-transform">
+        <div className="shrink-0 w-[400px] md:w-[500px] scroll-snap-align-center px-4">
+          <Link to="/kdrama-recommendations" className="flex flex-col items-center justify-center aspect-video rounded-[2.5rem] border-2 border-dashed border-white/20 hover:border-purple-500 bg-white/5 group/link transition-all duration-500">
+            <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center mb-4 group-hover/link:scale-110 transition-transform shadow-lg shadow-purple-500/20">
               <SafeIcon icon={FiChevronRight} className="text-2xl text-white" />
             </div>
             <span className="text-white font-serif text-xl font-bold">View Full Watchlist</span>
@@ -225,19 +206,21 @@ const KdramaGrid = () => {
         </div>
 
         {/* Trailing Spacer */}
-        <div className="shrink-0 w-[20vw] md:w-[30vw] scroll-snap-align-center" />
+        <div className="shrink-0 w-[30vw] pointer-events-none" />
       </div>
 
-      {/* Minimal Progress Line */}
-      <div className="flex justify-center items-center gap-6 mt-8">
-        <div className="flex gap-2">
-          {displayList.map((drama) => (
-            <div 
-              key={drama.id} 
-              className={`h-1 rounded-full transition-all duration-500 ${ (hoveredId === drama.id || (!hoveredId && centerId === drama.id)) ? 'w-12 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)]' : 'w-3 bg-white/10'}`} 
-            />
-          ))}
-        </div>
+      {/* Progress Dots */}
+      <div className="flex justify-center items-center gap-2 mt-8 z-40">
+        {kdramas.map((drama) => (
+          <div 
+            key={drama.id} 
+            className={`h-1 rounded-full transition-all duration-500 ${
+              (hoveredId === drama.id || (!hoveredId && centerId === String(drama.id))) 
+                ? 'w-10 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)]' 
+                : 'w-2 bg-white/20'
+            }`} 
+          />
+        ))}
       </div>
     </div>
   );
