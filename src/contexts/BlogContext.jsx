@@ -174,7 +174,9 @@ export const BlogProvider = ({ children }) => {
       await fetchPosts();
       return result.id;
     } catch (err) {
-      throw new Error("Failed to create post");
+      console.error("Add Post Error:", err);
+      // EXPOSE THE ACTUAL ERROR MESSAGE
+      throw new Error(err.message || "Failed to create post. Please try again.");
     }
   };
 
@@ -183,7 +185,8 @@ export const BlogProvider = ({ children }) => {
       await ncbUpdate(TABLE_NAME, id, updates);
       await fetchPosts();
     } catch (err) {
-      throw new Error("Failed to update post");
+      console.error("Update Post Error:", err);
+      throw new Error(err.message || "Failed to update post");
     }
   };
 
@@ -192,7 +195,8 @@ export const BlogProvider = ({ children }) => {
       await ncbDelete(TABLE_NAME, id);
       setPosts(prev => prev.filter(p => String(p.id) !== String(id)));
     } catch (err) {
-      throw new Error("Failed to delete post");
+      console.error("Delete Post Error:", err);
+      throw new Error(err.message || "Failed to delete post");
     }
   };
 

@@ -7,17 +7,21 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
+import { useBlog } from '../contexts/BlogContext'; // Added useBlog
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
+import { ensureUniqueSlug } from '../utils/slugUtils'; // Added slug utils
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiStar, FiAlertTriangle, FiShoppingBag } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiStar, FiAlertTriangle, FiShoppingBag, FiAlignLeft } = FiIcons;
 
 const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
   const { user } = useAuth();
+  const { posts } = useBlog(); // Need posts to check for duplicate slugs
   const [formData, setFormData] = useState({
     title: '',
     subcategory: 'General',
     rating: 5,
     content: '',
+    excerpt: '', // Added field
     image: '',
     status: 'published'
   });
@@ -32,6 +36,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
         subcategory: product.subcategory || 'General',
         rating: product.rating || 5,
         content: product.content || '',
+        excerpt: product.excerpt || '', // Populate excerpt
         image: product.image || product.image_url || '',
         status: product.status || 'published'
       });
@@ -42,6 +47,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
         subcategory: 'General',
         rating: 5,
         content: '',
+        excerpt: '', // Clear excerpt
         image: '',
         status: 'published'
       });
@@ -51,6 +57,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     let finalValue = name === 'rating' ? parseInt(value) : value;
+
     if (name === 'image' && typeof finalValue === 'string') {
       finalValue = normalizeDropboxSharedUrl(finalValue);
     }
@@ -60,11 +67,15 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     setIsUploading(true);
     try {
       const data = new FormData();
       data.append('file', file);
-      const res = await fetch('/api/upload-to-dropbox', { method: 'POST', body: data });
+      const res = await fetch('/api/upload-to-dropbox', {
+        method: 'POST',
+        body: data
+      });
       const result = await res.json();
       if (res.ok && result.success) {
         setFormData(prev => ({ ...prev, image: result.proxyUrl }));
@@ -83,15 +94,22 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
     if (isSaving) return;
     setIsSaving(true);
     setErrorMessage('');
+
     try {
+      // FIX: Generate unique slug to prevent creation errors
+      const currentSlug = product?.slug || '';
+      const finalSlug = currentSlug || ensureUniqueSlug(formData.title, posts, product?.id);
+
       await onSave(product?.id, {
         ...formData,
+        slug: finalSlug, // Include generated slug
         author: user?.name || 'BangtanMom',
         date: product?.date || new Date().toISOString()
       });
       onClose();
     } catch (error) {
-      setErrorMessage(error.message);
+      console.error("Save failed:", error);
+      setErrorMessage(error.message || "Failed to save product. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -102,8 +120,19 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col" >
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+        >
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
             <h2 className="text-xl font-bold text-gray-900 flex items-center">
               <SafeIcon icon={FiShoppingBag} className="mr-2 text-purple-600" />
@@ -117,7 +146,8 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
             {errorMessage && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
-                <SafeIcon icon={FiAlertTriangle} className="mr-2" /> {errorMessage}
+                <SafeIcon icon={FiAlertTriangle} className="mr-2" />
+                {errorMessage}
               </div>
             )}
 
@@ -125,17 +155,37 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Product Name *</label>
-                  <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-medium" required placeholder="e.g. Lavender Sleep Mist" />
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-medium"
+                    required
+                    placeholder="e.g. Lavender Sleep Mist"
+                  />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Subcategory</label>
-                    <input type="text" name="subcategory" value={formData.subcategory} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm" placeholder="Skincare, Tech, etc." />
+                    <input
+                      type="text"
+                      name="subcategory"
+                      value={formData.subcategory}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                      placeholder="Skincare, Tech, etc."
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Star Rating (1-5)</label>
-                    <select name="rating" value={formData.rating} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none bg-white text-sm">
+                    <select
+                      name="rating"
+                      value={formData.rating}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none bg-white text-sm"
+                    >
                       {[5, 4, 3, 2, 1].map(num => (
                         <option key={num} value={num}>{num} Stars</option>
                       ))}
@@ -148,9 +198,22 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Product Image</label>
                   <div className="space-y-3">
-                    <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none" />
+                    <input
+                      type="url"
+                      name="image"
+                      value={formData.image}
+                      onChange={handleChange}
+                      placeholder="Image URL..."
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none"
+                    />
                     <div className="relative">
-                      <input type="file" id="product-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
+                      <input
+                        type="file"
+                        id="product-upload"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept="image/*"
+                      />
                       <label htmlFor="product-upload" className="flex items-center justify-center w-full px-4 py-2 border border-dashed border-purple-300 text-purple-600 rounded-xl cursor-pointer hover:bg-purple-50 transition-colors text-sm font-medium">
                         {isUploading ? <span className="animate-pulse">Uploading...</span> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload Photo</>}
                       </label>
@@ -165,17 +228,42 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
               </div>
             </div>
 
+            {/* NEW: Short Description Field */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Review / Description *</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">
+                <SafeIcon icon={FiAlignLeft} className="inline mr-1 mb-0.5" /> 
+                Short Description (Card Summary)
+              </label>
+              <textarea
+                name="excerpt"
+                value={formData.excerpt}
+                onChange={handleChange}
+                rows="3"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed"
+                placeholder="A brief summary shown on the card (max 150 chars recommended)..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Full Review / Details *</label>
               <div className="rounded-xl overflow-hidden border border-gray-200">
-                <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[300px]" />
+                <ReactQuill
+                  theme="snow"
+                  value={formData.content}
+                  onChange={(val) => setFormData(p => ({ ...p, content: val }))}
+                  className="bg-white min-h-[300px]"
+                />
               </div>
             </div>
           </form>
 
           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-white rounded-xl border border-gray-200 transition-colors">Cancel</button>
-            <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 transition-all flex items-center" >
+            <button
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="px-10 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 transition-all flex items-center"
+            >
               {isSaving ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> : <SafeIcon icon={FiSave} className="mr-2" />}
               {product ? 'Update Recommendation' : 'Publish Recommendation'}
             </button>

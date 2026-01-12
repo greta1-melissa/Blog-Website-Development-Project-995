@@ -26,7 +26,9 @@ const ProductCard = ({ product, index }) => {
   };
 
   const subcategory = product.subcategory || 'General';
-  const cleanDescription = stripHtml(product.content);
+  
+  // Prioritize the new Short Description (excerpt) if available, otherwise strip HTML from content
+  const description = product.excerpt || stripHtml(product.content);
 
   return (
     <motion.div
@@ -67,8 +69,9 @@ const ProductCard = ({ product, index }) => {
           </h3>
         </Link>
 
+        {/* Updated to use the smart description logic */}
         <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 font-sans">
-          {cleanDescription.substring(0, 150)}...
+          {description.substring(0, 150)}...
         </p>
 
         <div className="flex items-center justify-between pt-4 border-t border-purple-50">
