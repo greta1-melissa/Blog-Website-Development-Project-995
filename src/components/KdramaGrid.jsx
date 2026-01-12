@@ -10,7 +10,6 @@ import { KDRAMA_PLACEHOLDER } from '../config/assets';
 const { FiArrowRight, FiChevronLeft, FiChevronRight } = FiIcons;
 
 const KdramaCard = ({ drama, isDragging, isCenter }) => {
-  // Center: 1.12 scale, Sides: 0.88 scale. Disable hover zoom during drag.
   const scale = isCenter ? 1.12 : 0.88;
   const opacity = isCenter ? 1 : 0.4;
   const zIndex = isCenter ? 40 : 20;
@@ -22,11 +21,11 @@ const KdramaCard = ({ drama, isDragging, isCenter }) => {
       animate={{ scale, opacity, zIndex }}
       transition={{ type: "spring", stiffness: 200, damping: 25 }}
       style={{ filter: blur }}
-      className="kdrama-card-container shrink-0 w-[80vw] sm:w-[55vw] md:w-[40vw] lg:w-[32vw] xl:w-[28vw] snap-center px-4 py-20 relative select-none"
+      className="kdrama-card-container shrink-0 w-[75vw] sm:w-[50vw] md:w-[40vw] lg:w-[30vw] xl:w-[28vw] snap-center px-4 py-20 relative select-none"
     >
       <Link 
         to={`/kdrama-recommendations/${drama.slug || drama.id}`} 
-        className={`block ${isDragging ? 'pointer-events-none' : ''}`}
+        className={`block outline-none ${isDragging ? 'pointer-events-none' : ''}`}
       >
         <div className={`relative aspect-video rounded-[2.5rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-500 ${isCenter ? 'border-purple-400/50 shadow-2xl shadow-purple-500/20' : 'border-white/5'}`}>
           <SafeImage src={drama.image_url || drama.image} alt={drama.title} fallback={KDRAMA_PLACEHOLDER} className="w-full h-full object-cover pointer-events-none" />
@@ -80,7 +79,6 @@ const KdramaGrid = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  // Update center ID based on proximity to viewport center
   const updateCenterCard = useCallback(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
@@ -104,11 +102,8 @@ const KdramaGrid = () => {
     setCanScrollRight(container.scrollLeft < (container.scrollWidth - container.offsetWidth - 10));
   }, []);
 
-  // Throttled scroll handling
   const onScroll = () => {
     updateCenterCard();
-    
-    // Debounced snap to center
     clearTimeout(snapTimerRef.current);
     if (!isDragging) {
       snapTimerRef.current = setTimeout(() => {
@@ -116,11 +111,10 @@ const KdramaGrid = () => {
         if (closest) {
           closest.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
-      }, 150);
+      }, 200);
     }
   };
 
-  // Drag logic
   const handleMouseDown = (e) => {
     setIsDragging(true);
     setStartX(e.pageX - containerRef.current.offsetLeft);
@@ -137,7 +131,6 @@ const KdramaGrid = () => {
 
   const stopDragging = () => setIsDragging(false);
 
-  // Initial setup: Center 2nd card
   useEffect(() => {
     if (!isLoading && featuredKdramas.length > 0) {
       setTimeout(() => {
@@ -146,30 +139,33 @@ const KdramaGrid = () => {
           cards[1].scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
         }
         updateCenterCard();
-      }, 100);
+      }, 300);
     }
   }, [isLoading, featuredKdramas, updateCenterCard]);
 
-  // Continuous Scroll (Press & Hold)
-  const startContinuousScroll = (direction) => {
+  const startContinuousScroll = (e, direction) => {
+    e.stopPropagation();
+    e.preventDefault();
     const step = () => {
       if (containerRef.current) {
         containerRef.current.scrollLeft += direction * 8;
         rafRef.current = requestAnimationFrame(step);
       }
     };
-    // Delay continuous scroll slightly to differentiate from click
     longPressTimerRef.current = setTimeout(() => {
       rafRef.current = requestAnimationFrame(step);
     }, 200);
   };
 
-  const stopContinuousScroll = () => {
+  const stopContinuousScroll = (e) => {
+    if (e) e.stopPropagation();
     clearTimeout(longPressTimerRef.current);
     cancelAnimationFrame(rafRef.current);
   };
 
-  const scrollStep = (direction) => {
+  const scrollStep = (e, direction) => {
+    e.stopPropagation();
+    e.preventDefault();
     const cardWidth = containerRef.current?.querySelector('.kdrama-card-container')?.offsetWidth || 400;
     containerRef.current?.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
   };
@@ -177,76 +173,88 @@ const KdramaGrid = () => {
   if (isLoading) return <div className="h-[500px] flex items-center justify-center animate-pulse text-purple-400 font-bold uppercase tracking-widest">Loading...</div>;
 
   return (
-    <div className="relative -mx-4 px-4 h-[650px] flex flex-col justify-center overflow-hidden">
+    <div className="relative w-full max-w-[100vw] overflow-hidden">
       {/* Debug Info */}
-      <div className="absolute top-0 left-0 right-0 text-center py-2 z-50 pointer-events-none">
+      <div className="text-center py-2 z-50 pointer-events-none">
         <span className="text-[10px] font-mono text-purple-400/50 uppercase tracking-widest">
           Featured: {featuredKdramas.length} | Rendering: {Math.min(featuredKdramas.length, 8)}
         </span>
       </div>
 
-      {/* Decorative Overlays (Interaction-Safe) */}
-      <div className="absolute left-0 top-0 bottom-0 w-32 md:w-64 z-30 bg-gradient-to-r from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-32 md:w-64 z-30 bg-gradient-to-l from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
-
-      {/* Navigation Arrows */}
-      <div className="absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-50">
-        <button 
-          onPointerDown={() => startContinuousScroll(-1)}
-          onPointerUp={stopContinuousScroll}
-          onPointerLeave={stopContinuousScroll}
-          onClick={() => scrollStep(-1)}
-          disabled={!canScrollLeft}
-          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
-            canScrollLeft 
-            ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
-            : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-          }`}
-        >
-          <SafeIcon icon={FiChevronLeft} className="text-2xl" />
-        </button>
-      </div>
-
-      <div className="absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-50">
-        <button 
-          onPointerDown={() => startContinuousScroll(1)}
-          onPointerUp={stopContinuousScroll}
-          onPointerLeave={stopContinuousScroll}
-          onClick={() => scrollStep(1)}
-          disabled={!canScrollRight}
-          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
-            canScrollRight 
-            ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
-            : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-          }`}
-        >
-          <SafeIcon icon={FiChevronRight} className="text-2xl" />
-        </button>
-      </div>
-
-      {/* Scrollable Container */}
-      <div 
-        ref={containerRef}
-        onScroll={onScroll}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={stopDragging}
-        onMouseLeave={stopDragging}
-        className={`flex items-center no-scrollbar overflow-x-auto py-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        style={{ scrollSnapType: 'x mandatory', scrollPadding: '0 34%' }}
-      >
-        <div className="shrink-0 w-[10vw] sm:w-[22vw] lg:w-[34vw]" />
+      {/* 3-Column Layout: [Left Gutter] [Carousel] [Right Gutter] */}
+      <div className="grid grid-cols-[48px_1fr_48px] md:grid-cols-[80px_1fr_80px] lg:grid-cols-[100px_1fr_100px] items-center">
         
-        {featuredKdramas.slice(0, 8).map((drama) => (
-          <KdramaCard 
-            key={drama.id} 
-            drama={drama} 
-            isDragging={isDragging}
-            isCenter={centerId === String(drama.id)} 
-          />
-        ))}
+        {/* Left Gutter */}
+        <div className="flex justify-center z-50">
+          <button 
+            onPointerDown={(e) => startContinuousScroll(e, -1)}
+            onPointerUp={stopContinuousScroll}
+            onPointerLeave={stopContinuousScroll}
+            onClick={(e) => scrollStep(e, -1)}
+            disabled={!canScrollLeft}
+            className={`w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+              canScrollLeft 
+              ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
+              : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed opacity-30'
+            }`}
+          >
+            <SafeIcon icon={FiChevronLeft} className="text-xl md:text-2xl" />
+          </button>
+        </div>
 
-        <div className="shrink-0 w-[10vw] sm:w-[22vw] lg:w-[34vw]" />
+        {/* Center: Scroll Container */}
+        <div className="relative h-[600px] flex flex-col justify-center overflow-hidden">
+          {/* Decorative Overlays (Interaction-Safe) */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 md:w-32 z-30 bg-gradient-to-r from-gray-950 to-transparent pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 md:w-32 z-30 bg-gradient-to-l from-gray-950 to-transparent pointer-events-none" />
+
+          <div 
+            ref={containerRef}
+            onScroll={onScroll}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={stopDragging}
+            onMouseLeave={stopDragging}
+            className={`flex items-center no-scrollbar overflow-x-auto py-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            style={{ 
+              scrollSnapType: 'x mandatory', 
+              scrollPadding: '0 30%',
+              scrollbarWidth: 'none'
+            }}
+          >
+            {/* Spacers for Centering first/last items */}
+            <div className="shrink-0 w-[20vw] md:w-[35vw]" />
+            
+            {featuredKdramas.slice(0, 8).map((drama) => (
+              <KdramaCard 
+                key={drama.id} 
+                drama={drama} 
+                isDragging={isDragging}
+                isCenter={centerId === String(drama.id)} 
+              />
+            ))}
+
+            <div className="shrink-0 w-[20vw] md:w-[35vw]" />
+          </div>
+        </div>
+
+        {/* Right Gutter */}
+        <div className="flex justify-center z-50">
+          <button 
+            onPointerDown={(e) => startContinuousScroll(e, 1)}
+            onPointerUp={stopContinuousScroll}
+            onPointerLeave={stopContinuousScroll}
+            onClick={(e) => scrollStep(e, 1)}
+            disabled={!canScrollRight}
+            className={`w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+              canScrollRight 
+              ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
+              : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed opacity-30'
+            }`}
+          >
+            <SafeIcon icon={FiChevronRight} className="text-xl md:text-2xl" />
+          </button>
+        </div>
       </div>
 
       {/* Indicators */}
