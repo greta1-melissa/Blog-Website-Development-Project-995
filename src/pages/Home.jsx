@@ -3,35 +3,31 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBlog } from '../contexts/BlogContext';
 import KdramaGrid from '../components/KdramaGrid';
+import ProductCard from '../components/ProductCard';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 
-const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon } = FiIcons;
+const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon, FiShoppingBag, FiStar } = FiIcons;
 
 const Home = () => {
   const { publishedPosts: posts, isLoading: postsLoading, fetchPosts } = useBlog();
 
-  // FORCE REFRESH ON MOUNT to ensure we aren't seeing stale cache
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
-  // DEBUG LOGGING - Check browser console (F12) to see this
-  useEffect(() => {
-    if (!postsLoading) {
-      console.log(`UI Debug - Published Posts: ${posts.length}`);
-      posts.forEach((p, i) => console.log(`Story ${i+1}: "${p.title}" [Status: ${p.status}]`));
-    }
-  }, [posts, postsLoading]);
-
-  // Take the top 8 published stories
   const latestStories = useMemo(() => {
     return posts.slice(0, 8);
   }, [posts]);
 
-  // Dynamic Featured Story (Top of the list)
+  const productPicks = useMemo(() => {
+    return posts
+      .filter(p => p.category === 'Product Recommendations')
+      .slice(0, 3);
+  }, [posts]);
+
   const featuredStory = latestStories[0] || {
     id: 'placeholder',
     title: "Finding Your Own Magic Shop",
@@ -102,7 +98,6 @@ const Home = () => {
                   </Link>
                 </div>
               </motion.div>
-
               <div className="flex flex-col gap-6 lg:h-full">
                 <div className="flex-1 bg-white rounded-[2.5rem] overflow-hidden shadow-lg border border-purple-100 flex flex-col">
                   <div className="relative h-40 lg:h-48">
@@ -131,7 +126,6 @@ const Home = () => {
               View Journal <SafeIcon icon={FiArrowRight} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
-
           <div className="flex flex-col gap-8">
             {postsLoading ? (
               <div className="text-center py-20 bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
@@ -145,21 +139,10 @@ const Home = () => {
                 const isFirst = index === 0;
                 return (
                   <Link key={post.id} to={`/post/${post.id}`} className="block group">
-                    <motion.div
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className={`relative flex flex-col md:flex-row items-stretch gap-8 p-6 md:p-10 rounded-[3rem] transition-all duration-500 transform hover:scale-[1.015] active:scale-[0.99] ${
-                        isFirst 
-                          ? 'bg-[#110C1D] hover:bg-[#1a1429] text-white shadow-2xl hover:shadow-purple-900/30' 
-                          : 'bg-white hover:bg-purple-50/80 text-gray-900 shadow-sm hover:shadow-xl border border-gray-100 hover:border-purple-200'
-                      }`}
-                    >
+                    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className={`relative flex flex-col md:flex-row items-stretch gap-8 p-6 md:p-10 rounded-[3rem] transition-all duration-500 transform hover:scale-[1.015] active:scale-[0.99] ${isFirst ? 'bg-[#110C1D] hover:bg-[#1a1429] text-white shadow-2xl hover:shadow-purple-900/30' : 'bg-white hover:bg-purple-50/80 text-gray-900 shadow-sm hover:shadow-xl border border-gray-100 hover:border-purple-200'}`} >
                       <div className="w-full md:w-[320px] lg:w-[420px] aspect-video md:aspect-[4/3] shrink-0 rounded-[2rem] overflow-hidden shadow-lg border border-white/10">
                         <SafeImage src={post.image || post.image_url} alt={post.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000 ease-out" />
                       </div>
-
                       <div className="flex-1 flex flex-col justify-center py-4">
                         <div className="flex items-center gap-3 mb-6">
                           <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] font-sans ${isFirst ? 'bg-white/10 text-white' : 'bg-purple-100/50 text-purple-700'}`}>
@@ -173,7 +156,6 @@ const Home = () => {
                           {post.excerpt || stripHtml(post.content).substring(0, 180)}...
                         </p>
                       </div>
-
                       <div className="hidden lg:flex items-center justify-center shrink-0">
                         <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-12 ${isFirst ? 'bg-white text-[#110C1D] shadow-lg group-hover:bg-purple-400 group-hover:text-white' : 'bg-gray-950 text-white shadow-lg group-hover:bg-purple-600 group-hover:shadow-purple-200'}`}>
                           <SafeIcon icon={FiArrowRight} className="text-2xl transform group-hover:translate-x-1 transition-transform" />
@@ -195,9 +177,9 @@ const Home = () => {
       {/* MUST WATCH SHOWS */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-20">
+          <div className="text-center mb-10">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-4 block font-sans">The Watchlist</span>
-            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6">Must-Watch Dramas</h2>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold">Must-Watch Dramas</h2>
           </div>
           <KdramaGrid />
         </div>
@@ -224,6 +206,33 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* RESTORED PRODUCT RECOMMENDATIONS SECTION (NEW LOCATION) */}
+      {productPicks.length > 0 && (
+        <section className="py-24 bg-white border-t border-purple-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-12">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block font-sans">Curated for You</span>
+                <h2 className="text-4xl font-serif font-bold text-gray-900">Melissa's Must-Have Picks</h2>
+              </div>
+              <Link to="/products" className="hidden sm:flex items-center gap-2 text-purple-700 font-bold hover:gap-3 transition-all font-sans">
+                Shop All <SafeIcon icon={FiArrowRight} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {productPicks.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+            <div className="mt-10 text-center sm:hidden">
+              <Link to="/products" className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-full font-bold shadow-lg shadow-purple-200 font-sans">
+                Explore All Picks <SafeIcon icon={FiShoppingBag} />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* JOIN A COMMUNITY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
