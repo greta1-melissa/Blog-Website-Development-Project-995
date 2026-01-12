@@ -9,12 +9,12 @@ import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
 const { FiArrowRight, FiChevronLeft, FiChevronRight } = FiIcons;
 
-const KdramaCard = ({ drama, isHovered, isCenter }) => {
-  // Requirements: center 1.12, sides 0.88. Hover gets a slight extra boost for feedback.
-  const scale = isHovered ? 1.15 : (isCenter ? 1.12 : 0.88);
-  const opacity = isHovered || isCenter ? 1 : 0.4;
-  const zIndex = isHovered ? 50 : (isCenter ? 40 : 20);
-  const blur = isHovered || isCenter ? "blur(0px)" : "blur(4px)";
+const KdramaCard = ({ drama, isDragging, isCenter }) => {
+  // Center: 1.12 scale, Sides: 0.88 scale. Disable hover zoom during drag.
+  const scale = isCenter ? 1.12 : 0.88;
+  const opacity = isCenter ? 1 : 0.4;
+  const zIndex = isCenter ? 40 : 20;
+  const blur = isCenter ? "blur(0px)" : "blur(4px)";
 
   return (
     <motion.div
@@ -22,11 +22,14 @@ const KdramaCard = ({ drama, isHovered, isCenter }) => {
       animate={{ scale, opacity, zIndex }}
       transition={{ type: "spring", stiffness: 200, damping: 25 }}
       style={{ filter: blur }}
-      className="kdrama-card-container shrink-0 w-[80vw] sm:w-[55vw] md:w-[40vw] lg:w-[30vw] xl:w-[28vw] snap-center px-4 py-20 relative"
+      className="kdrama-card-container shrink-0 w-[80vw] sm:w-[55vw] md:w-[40vw] lg:w-[32vw] xl:w-[28vw] snap-center px-4 py-20 relative select-none"
     >
-      <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block">
+      <Link 
+        to={`/kdrama-recommendations/${drama.slug || drama.id}`} 
+        className={`block ${isDragging ? 'pointer-events-none' : ''}`}
+      >
         <div className={`relative aspect-video rounded-[2.5rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-500 ${isCenter ? 'border-purple-400/50 shadow-2xl shadow-purple-500/20' : 'border-white/5'}`}>
-          <SafeImage src={drama.image_url || drama.image} alt={drama.title} fallback={KDRAMA_PLACEHOLDER} className="w-full h-full object-cover" />
+          <SafeImage src={drama.image_url || drama.image} alt={drama.title} fallback={KDRAMA_PLACEHOLDER} className="w-full h-full object-cover pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent" />
           
           <div className="absolute top-6 left-6">
@@ -65,151 +68,190 @@ const KdramaCard = ({ drama, isHovered, isCenter }) => {
 
 const KdramaGrid = () => {
   const { featuredKdramas, isLoading } = useKdrama();
-  const scrollContainerRef = useRef(null);
-  const requestRef = useRef();
+  const containerRef = useRef(null);
+  const rafRef = useRef();
+  const snapTimerRef = useRef();
+  const longPressTimerRef = useRef();
+  
   const [centerId, setCenterId] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
-  // Initial scroll to 2nd card (index 1)
-  useEffect(() => {
-    if (!isLoading && featuredKdramas.length > 1 && scrollContainerRef.current) {
-      const timer = setTimeout(() => {
-        const cards = scrollContainerRef.current.querySelectorAll('.kdrama-card-container');
-        if (cards[1]) {
-          cards[1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, featuredKdramas]);
+  // Update center ID based on proximity to viewport center
+  const updateCenterCard = useCallback(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const containerCenter = container.scrollLeft + container.offsetWidth / 2;
+    const cards = container.querySelectorAll('.kdrama-card-container');
+    
+    let closestId = null;
+    let minDistance = Infinity;
 
-  // Intersection Observer for center spotlight detection
-  useEffect(() => {
-    if (isLoading || featuredKdramas.length === 0) return;
-
-    const options = {
-      root: scrollContainerRef.current,
-      rootMargin: '0px -30% 0px -30%', // Window to detect the centered card
-      threshold: 0.5
-    };
-
-    const callback = (entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('data-id');
-          if (id) setCenterId(id);
-        }
-      });
-    };
-
-    const observer = new IntersectionObserver(callback, options);
-    const cards = scrollContainerRef.current.querySelectorAll('.kdrama-card-container');
-    cards.forEach(card => observer.observe(card));
-
-    return () => observer.disconnect();
-  }, [featuredKdramas, isLoading]);
-
-  // Continuous Smooth Hover-to-Scroll Logic
-  const startScrolling = useCallback((direction) => {
-    const scrollHandler = () => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft += direction * 6; // Scroll speed
-        requestRef.current = requestAnimationFrame(scrollHandler);
+    cards.forEach(card => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(containerCenter - cardCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestId = card.getAttribute('data-id');
       }
-    };
-    requestRef.current = requestAnimationFrame(scrollHandler);
+    });
+
+    setCenterId(closestId);
+    setCanScrollLeft(container.scrollLeft > 10);
+    setCanScrollRight(container.scrollLeft < (container.scrollWidth - container.offsetWidth - 10));
   }, []);
 
-  const stopScrolling = useCallback(() => {
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-    }
-  }, []);
-
-  // Click-to-Scroll step by step
-  const scrollByStep = (direction) => {
-    if (scrollContainerRef.current) {
-      const firstCard = scrollContainerRef.current.querySelector('.kdrama-card-container');
-      const stepWidth = firstCard ? firstCard.offsetWidth : 400;
-      scrollContainerRef.current.scrollBy({ left: direction * stepWidth, behavior: 'smooth' });
+  // Throttled scroll handling
+  const onScroll = () => {
+    updateCenterCard();
+    
+    // Debounced snap to center
+    clearTimeout(snapTimerRef.current);
+    if (!isDragging) {
+      snapTimerRef.current = setTimeout(() => {
+        const closest = containerRef.current?.querySelector(`[data-id="${centerId}"]`);
+        if (closest) {
+          closest.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }, 150);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="h-[500px] flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  // Drag logic
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setScrollLeft(containerRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    containerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const stopDragging = () => setIsDragging(false);
+
+  // Initial setup: Center 2nd card
+  useEffect(() => {
+    if (!isLoading && featuredKdramas.length > 0) {
+      setTimeout(() => {
+        const cards = containerRef.current?.querySelectorAll('.kdrama-card-container');
+        if (cards?.[1]) {
+          cards[1].scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+        }
+        updateCenterCard();
+      }, 100);
+    }
+  }, [isLoading, featuredKdramas, updateCenterCard]);
+
+  // Continuous Scroll (Press & Hold)
+  const startContinuousScroll = (direction) => {
+    const step = () => {
+      if (containerRef.current) {
+        containerRef.current.scrollLeft += direction * 8;
+        rafRef.current = requestAnimationFrame(step);
+      }
+    };
+    // Delay continuous scroll slightly to differentiate from click
+    longPressTimerRef.current = setTimeout(() => {
+      rafRef.current = requestAnimationFrame(step);
+    }, 200);
+  };
+
+  const stopContinuousScroll = () => {
+    clearTimeout(longPressTimerRef.current);
+    cancelAnimationFrame(rafRef.current);
+  };
+
+  const scrollStep = (direction) => {
+    const cardWidth = containerRef.current?.querySelector('.kdrama-card-container')?.offsetWidth || 400;
+    containerRef.current?.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
+  };
+
+  if (isLoading) return <div className="h-[500px] flex items-center justify-center animate-pulse text-purple-400 font-bold uppercase tracking-widest">Loading...</div>;
 
   return (
     <div className="relative -mx-4 px-4 h-[650px] flex flex-col justify-center overflow-hidden">
-      {/* Debug Line */}
+      {/* Debug Info */}
       <div className="absolute top-0 left-0 right-0 text-center py-2 z-50 pointer-events-none">
         <span className="text-[10px] font-mono text-purple-400/50 uppercase tracking-widest">
-          Featured returned: {featuredKdramas.length} | Rendered: {Math.min(featuredKdramas.length, 8)}
+          Featured: {featuredKdramas.length} | Rendering: {Math.min(featuredKdramas.length, 8)}
         </span>
       </div>
 
-      {/* Decorative Overlays - pointer-events-none ensures they don't block clicks/hover */}
-      <div className="absolute left-0 top-0 bottom-0 w-48 z-30 bg-gradient-to-r from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-48 z-30 bg-gradient-to-l from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
+      {/* Decorative Overlays (Interaction-Safe) */}
+      <div className="absolute left-0 top-0 bottom-0 w-32 md:w-64 z-30 bg-gradient-to-r from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-32 md:w-64 z-30 bg-gradient-to-l from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
 
-      {/* Navigation Arrows - Always visible */}
-      <div className="absolute left-6 md:left-12 top-1/2 -translate-y-1/2 z-50 flex items-center">
+      {/* Navigation Arrows */}
+      <div className="absolute left-4 md:left-12 top-1/2 -translate-y-1/2 z-50">
         <button 
-          onPointerEnter={() => startScrolling(-1)}
-          onPointerLeave={stopScrolling}
-          onClick={() => scrollByStep(-1)}
-          className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center hover:bg-purple-600 hover:border-purple-500 transition-all shadow-2xl active:scale-95"
-          aria-label="Scroll Left"
+          onPointerDown={() => startContinuousScroll(-1)}
+          onPointerUp={stopContinuousScroll}
+          onPointerLeave={stopContinuousScroll}
+          onClick={() => scrollStep(-1)}
+          disabled={!canScrollLeft}
+          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+            canScrollLeft 
+            ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
+            : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+          }`}
         >
           <SafeIcon icon={FiChevronLeft} className="text-2xl" />
         </button>
       </div>
 
-      <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 z-50 flex items-center">
+      <div className="absolute right-4 md:right-12 top-1/2 -translate-y-1/2 z-50">
         <button 
-          onPointerEnter={() => startScrolling(1)}
-          onPointerLeave={stopScrolling}
-          onClick={() => scrollByStep(1)}
-          className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center hover:bg-purple-600 hover:border-purple-500 transition-all shadow-2xl active:scale-95"
-          aria-label="Scroll Right"
+          onPointerDown={() => startContinuousScroll(1)}
+          onPointerUp={stopContinuousScroll}
+          onPointerLeave={stopContinuousScroll}
+          onClick={() => scrollStep(1)}
+          disabled={!canScrollRight}
+          className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+            canScrollRight 
+            ? 'bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-purple-600 active:scale-90' 
+            : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+          }`}
         >
           <SafeIcon icon={FiChevronRight} className="text-2xl" />
         </button>
       </div>
 
-      {/* Main Responsive Grid Container */}
+      {/* Scrollable Container */}
       <div 
-        ref={scrollContainerRef}
-        className="flex items-center gap-0 overflow-x-auto no-scrollbar snap-x snap-mandatory py-10 cursor-grab active:cursor-grabbing"
-        style={{ scrollPadding: '0 35%' }}
+        ref={containerRef}
+        onScroll={onScroll}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={stopDragging}
+        onMouseLeave={stopDragging}
+        className={`flex items-center no-scrollbar overflow-x-auto py-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        style={{ scrollSnapType: 'x mandatory', scrollPadding: '0 34%' }}
       >
-        {/* Padding for centering first/last cards (Responsive) */}
-        <div className="shrink-0 w-[10vw] sm:w-[20vw] lg:w-[35vw]" />
-
-        {featuredKdramas.map((drama) => (
-          <div 
+        <div className="shrink-0 w-[10vw] sm:w-[22vw] lg:w-[34vw]" />
+        
+        {featuredKdramas.slice(0, 8).map((drama) => (
+          <KdramaCard 
             key={drama.id} 
-            onPointerEnter={() => setHoveredId(drama.id)}
-            onPointerLeave={() => setHoveredId(null)}
-          >
-            <KdramaCard 
-              drama={drama} 
-              isHovered={hoveredId === drama.id}
-              isCenter={centerId === String(drama.id)}
-            />
-          </div>
+            drama={drama} 
+            isDragging={isDragging}
+            isCenter={centerId === String(drama.id)} 
+          />
         ))}
 
-        <div className="shrink-0 w-[10vw] sm:w-[20vw] lg:w-[35vw]" />
+        <div className="shrink-0 w-[10vw] sm:w-[22vw] lg:w-[34vw]" />
       </div>
 
-      {/* Pagination Indicators */}
+      {/* Indicators */}
       <div className="flex justify-center items-center gap-3 mt-4 z-40">
-        {featuredKdramas.map((drama) => (
+        {featuredKdramas.slice(0, 8).map((drama) => (
           <div 
             key={drama.id} 
             className={`h-1 rounded-full transition-all duration-700 ${
