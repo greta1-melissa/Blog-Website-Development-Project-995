@@ -22,9 +22,10 @@ const Home = () => {
     return posts.slice(0, 8);
   }, [posts]);
 
-  const productPicks = useMemo(() => {
+  // NEW: Filter specifically for the Product Recommendations category
+  const productPosts = useMemo(() => {
     return posts
-      .filter(p => p.category === 'Product Recommendations')
+      .filter(p => (p.category || '').trim() === 'Product Recommendations')
       .slice(0, 3);
   }, [posts]);
 
@@ -185,6 +186,43 @@ const Home = () => {
         </div>
       </section>
 
+      {/* PRODUCT RECOMMENDATIONS */}
+      <section className="py-24 bg-white border-t border-purple-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block font-sans">Curated for You</span>
+              <h2 className="text-4xl font-serif font-bold text-gray-900">Product Recommendations</h2>
+              <p className="text-gray-500 mt-2 font-sans italic">My current favorites</p>
+            </div>
+            <Link to="/products" className="hidden sm:flex items-center gap-2 text-purple-700 font-bold hover:gap-3 transition-all font-sans">
+              View All <SafeIcon icon={FiArrowRight} />
+            </Link>
+          </div>
+
+          {productPosts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {productPosts.map((post, i) => (
+                <ProductCard key={post.id || post.slug || i} product={post} index={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <SafeIcon icon={FiShoppingBag} className="text-2xl text-purple-600" />
+              </div>
+              <p className="text-gray-500 font-sans">No recommendations found yet. Check back soon!</p>
+            </div>
+          )}
+
+          <div className="mt-10 text-center sm:hidden">
+            <Link to="/products" className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-full font-bold shadow-lg shadow-purple-200 font-sans">
+              View All Picks <SafeIcon icon={FiShoppingBag} className="ml-2" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* SMALL JOYS */}
       <section className="py-24 bg-purple-50/50 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -206,33 +244,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* RESTORED PRODUCT RECOMMENDATIONS SECTION (NEW LOCATION) */}
-      {productPicks.length > 0 && (
-        <section className="py-24 bg-white border-t border-purple-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-12">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block font-sans">Curated for You</span>
-                <h2 className="text-4xl font-serif font-bold text-gray-900">Melissa's Must-Have Picks</h2>
-              </div>
-              <Link to="/products" className="hidden sm:flex items-center gap-2 text-purple-700 font-bold hover:gap-3 transition-all font-sans">
-                Shop All <SafeIcon icon={FiArrowRight} />
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {productPicks.map((product, index) => (
-                <ProductCard key={product.id} product={product} index={index} />
-              ))}
-            </div>
-            <div className="mt-10 text-center sm:hidden">
-              <Link to="/products" className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-full font-bold shadow-lg shadow-purple-200 font-sans">
-                Explore All Picks <SafeIcon icon={FiShoppingBag} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* JOIN A COMMUNITY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
