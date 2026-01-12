@@ -16,6 +16,7 @@ const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) =>
   let blur = "blur(4px)";
   let shadow = "none";
 
+  // Priority 1: Mouse Hover | Priority 2: Intersection Center
   if (isFocused) {
     scale = 1.15;
     opacity = 1;
@@ -38,17 +39,11 @@ const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) =>
       animate={{ scale, opacity, zIndex }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       style={{ filter: blur, boxShadow: shadow }}
-      className="kdrama-card-container shrink-0 w-[350px] md:w-[500px] scroll-snap-align-center px-4 py-20 relative"
+      className="kdrama-card-container shrink-0 w-[300px] md:w-[450px] snap-center px-4 py-20 relative"
     >
       <Link to={`/kdrama-recommendations/${drama.slug || drama.id}`} className="block">
         <div className={`relative aspect-video rounded-[2.5rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-500 ${isFocused ? 'border-purple-400' : 'border-white/5'}`}>
-          <SafeImage 
-            src={drama.image_url || drama.image} 
-            alt={drama.title} 
-            fallback={KDRAMA_PLACEHOLDER} 
-            className="w-full h-full object-cover" 
-          />
-          
+          <SafeImage src={drama.image_url || drama.image} alt={drama.title} fallback={KDRAMA_PLACEHOLDER} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
           
           <div className="absolute top-6 left-6">
@@ -88,24 +83,16 @@ const KdramaCard = ({ drama, isFocused, isCenterFallback, onHover, onLeave }) =>
 const KdramaGrid = () => {
   const { featuredKdramas, isLoading } = useKdrama();
   const scrollContainerRef = useRef(null);
-  const scrollRaf = useRef(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [centerId, setCenterId] = useState(null);
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
 
-  // DEBUG LOGGING
-  useEffect(() => {
-    if (!isLoading) {
-      console.log(`featured returned: ${featuredKdramas.length}, rendered: ${Math.min(featuredKdramas.length, 8)}`);
-    }
-  }, [featuredKdramas, isLoading]);
-
+  // Intersection Observer to detect which card is in the center of the viewport
   useEffect(() => {
     if (isLoading || featuredKdramas.length === 0) return;
 
     const options = {
       root: scrollContainerRef.current,
-      rootMargin: '0px -40% 0px -40%',
+      rootMargin: '0px -40% 0px -40%', // Tight window to detect the center-most card
       threshold: 0.5
     };
 
@@ -125,39 +112,6 @@ const KdramaGrid = () => {
     return () => observer.disconnect();
   }, [featuredKdramas, isLoading]);
 
-  const startAutoScroll = (direction) => {
-    if (hoveredId) return;
-    setIsAutoScrolling(true);
-    
-    const scroll = () => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft += direction * 12;
-        scrollRaf.current = requestAnimationFrame(scroll);
-      }
-    };
-    scrollRaf.current = requestAnimationFrame(scroll);
-  };
-
-  const stopAutoScroll = () => {
-    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
-    setIsAutoScrolling(false);
-  };
-
-  const handleMouseMove = (e) => {
-    const container = e.currentTarget;
-    const { left, width } = container.getBoundingClientRect();
-    const mouseX = e.clientX - left;
-    const zoneWidth = width * 0.15;
-
-    if (mouseX < zoneWidth) {
-      if (!isAutoScrolling) startAutoScroll(-1);
-    } else if (mouseX > width - zoneWidth) {
-      if (!isAutoScrolling) startAutoScroll(1);
-    } else {
-      stopAutoScroll();
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="h-[500px] flex items-center justify-center">
@@ -167,36 +121,33 @@ const KdramaGrid = () => {
   }
 
   return (
-    <div 
-      className="relative group/main -mx-4 px-4 h-[600px] flex flex-col justify-center overflow-hidden"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => {
-        stopAutoScroll();
-        setHoveredId(null);
-      }}
-    >
-      <div className="absolute left-0 top-0 bottom-0 w-32 z-40 pointer-events-none bg-gradient-to-r from-gray-950 to-transparent opacity-80" />
-      <div className="absolute right-0 top-0 bottom-0 w-32 z-40 pointer-events-none bg-gradient-to-l from-gray-950 to-transparent opacity-80" />
+    <div className="relative group/main -mx-4 px-4 h-[600px] flex flex-col justify-center overflow-hidden">
+      {/* Gradient Overlays with pointer-events enabled to allow interactions through them */}
+      <div className="absolute left-0 top-0 bottom-0 w-32 z-40 bg-gradient-to-r from-gray-950 to-transparent opacity-80" />
+      <div className="absolute right-0 top-0 bottom-0 w-32 z-40 bg-gradient-to-l from-gray-950 to-transparent opacity-80" />
 
+      {/* Main Scroll Container using native snap-x */}
       <div 
         ref={scrollContainerRef}
-        className="flex items-center gap-0 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-10"
-        style={{ scrollPadding: '0 30%' }}
+        className="flex items-center gap-0 overflow-x-auto no-scrollbar snap-x snap-mandatory py-10"
+        style={{ scrollPadding: '0 25%' }}
       >
-        <div className="shrink-0 w-[30vw] pointer-events-none" />
-        
+        {/* Padding for snap alignment */}
+        <div className="shrink-0 w-[20vw]" />
+
         {featuredKdramas.map((drama) => (
           <KdramaCard 
             key={drama.id} 
             drama={drama} 
-            isFocused={hoveredId === drama.id} 
+            isFocused={hoveredId === drama.id}
             isCenterFallback={!hoveredId && centerId === String(drama.id)}
             onHover={setHoveredId}
             onLeave={() => setHoveredId(null)}
           />
         ))}
 
-        <div className="shrink-0 w-[400px] md:w-[500px] scroll-snap-align-center px-4">
+        {/* View All Card */}
+        <div className="kdrama-card-container shrink-0 w-[300px] md:w-[450px] snap-center px-4 py-20 relative">
           <Link to="/kdrama-recommendations" className="flex flex-col items-center justify-center aspect-video rounded-[2.5rem] border-2 border-dashed border-white/20 hover:border-purple-400 bg-white/5 group/link transition-all duration-500">
             <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center mb-4 group-hover/link:scale-110 transition-transform shadow-lg shadow-purple-500/20">
               <SafeIcon icon={FiChevronRight} className="text-2xl text-white" />
@@ -205,9 +156,10 @@ const KdramaGrid = () => {
           </Link>
         </div>
 
-        <div className="shrink-0 w-[30vw] pointer-events-none" />
+        <div className="shrink-0 w-[20vw]" />
       </div>
 
+      {/* Pagination Indicators */}
       <div className="flex justify-center items-center gap-2 mt-8 z-40">
         {featuredKdramas.map((drama) => (
           <div 
