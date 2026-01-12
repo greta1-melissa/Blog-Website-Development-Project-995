@@ -10,7 +10,6 @@ import { KDRAMA_PLACEHOLDER } from '../config/assets';
 const { FiArrowRight, FiChevronLeft, FiChevronRight } = FiIcons;
 
 const KdramaCard = ({ drama, isDragging, isCenter }) => {
-  // Center: 1.15 scale, Sides: 0.85 scale for dramatic spotlight effect
   const scale = isCenter ? 1.15 : 0.85;
   const opacity = isCenter ? 1 : 0.4;
   const zIndex = isCenter ? 40 : 20;
@@ -22,16 +21,15 @@ const KdramaCard = ({ drama, isDragging, isCenter }) => {
       animate={{ scale, opacity, zIndex }}
       transition={{ type: "spring", stiffness: 180, damping: 22 }}
       style={{ filter: blur }}
-      className="kdrama-card-container shrink-0 w-[75vw] sm:w-[50vw] md:w-[45vw] lg:w-[34vw] xl:w-[30vw] snap-center px-6 py-28 relative select-none"
+      className="kdrama-card-container shrink-0 w-[60vw] sm:w-[40vw] md:w-[36vw] lg:w-[27vw] xl:w-[24vw] snap-center px-5 py-20 relative select-none"
     >
       <Link 
         to={`/kdrama-recommendations/${drama.slug || drama.id}`} 
-        className={`block outline-none rounded-[2rem] overflow-hidden ${isDragging ? 'pointer-events-none' : ''}`}
+        className={`block outline-none rounded-[1.5rem] overflow-hidden ${isDragging ? 'pointer-events-none' : ''}`}
       >
-        {/* Card Body: Portrait Aspect Ratio 2/3 */}
-        <div className={`relative aspect-[2/3] rounded-[2rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-700 ${
+        <div className={`relative aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-purple-950/40 border-2 transition-all duration-700 ${
           isCenter 
-            ? 'border-purple-400/60 shadow-[0_25px_60px_-15px_rgba(168,85,247,0.4)]' 
+            ? 'border-purple-400/60 shadow-[0_20px_50px_-12px_rgba(168,85,247,0.4)]' 
             : 'border-white/5 shadow-none'
         }`}>
           <SafeImage 
@@ -41,36 +39,35 @@ const KdramaCard = ({ drama, isDragging, isCenter }) => {
             className="w-full h-full object-cover pointer-events-none transform scale-105" 
           />
           
-          {/* Gradient Overlay (Pointer-events: none to allow Link clicks) */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
           
-          {/* Category Tag */}
-          <div className="absolute top-6 left-6 pointer-events-none">
-            <span className="px-3 py-1 bg-purple-600/80 backdrop-blur-md text-white text-[10px] font-black rounded-full border border-white/20 uppercase tracking-[0.2em]">
+          <div className="absolute top-5 left-5 pointer-events-none">
+            <span className="px-2.5 py-1 bg-purple-600/80 backdrop-blur-md text-white text-[9px] font-black rounded-full border border-white/20 uppercase tracking-[0.2em]">
               {drama.tags?.[0] || 'Drama'}
             </span>
           </div>
 
-          {/* Content Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 pointer-events-none">
-            <h3 className="text-2xl md:text-3xl xl:text-4xl font-serif font-bold text-white mb-4 leading-tight drop-shadow-lg">
+          {/* Adjusted padding and spacing for longer synopsis */}
+          <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6 lg:p-7 pointer-events-none">
+            <h3 className="text-xl md:text-2xl lg:text-3xl font-serif font-bold text-white mb-2 leading-tight drop-shadow-lg">
               {drama.title}
             </h3>
             
             <AnimatePresence>
               {isCenter && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
+                  exit={{ opacity: 0, y: 15 }}
                   transition={{ delay: 0.1 }}
-                  className="space-y-4"
+                  className="space-y-2"
                 >
-                  <p className="text-gray-200 text-sm md:text-base font-sans line-clamp-2 leading-relaxed italic opacity-90">
+                  {/* line-clamp-3 ensures up to 2-3 lines of text (approx 2 sentences) */}
+                  <p className="text-gray-200 text-xs md:text-[13px] font-sans line-clamp-3 leading-snug italic opacity-95">
                     {drama.synopsis_short}
                   </p>
                   
-                  <div className="flex items-center text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] pt-2">
+                  <div className="flex items-center text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] pt-1">
                     Full Review <SafeIcon icon={FiArrowRight} className="ml-2" />
                   </div>
                 </motion.div>
@@ -188,21 +185,18 @@ const KdramaGrid = () => {
     containerRef.current?.scrollBy({ left: direction * cardWidth, behavior: 'smooth' });
   };
 
-  if (isLoading) return <div className="h-[700px] flex items-center justify-center animate-pulse text-purple-400 font-bold uppercase tracking-widest">Loading...</div>;
+  if (isLoading) return <div className="h-[600px] flex items-center justify-center animate-pulse text-purple-400 font-bold uppercase tracking-widest">Loading...</div>;
 
   return (
     <div className="relative w-full max-w-[100vw] overflow-hidden">
-      {/* Debug Info */}
-      <div className="text-center py-4 z-50 pointer-events-none">
-        <span className="text-[10px] font-mono text-purple-400/50 uppercase tracking-[0.3em]">
-          Featured Collection: {Math.min(featuredKdramas.length, 8)} Items
+      <div className="text-center pb-4 z-50 pointer-events-none">
+        <span className="text-sm md:text-base font-sans font-bold text-purple-400/90 uppercase tracking-[0.3em]">
+          Featured K-Dramas: {Math.min(featuredKdramas.length, 8)} Items
         </span>
       </div>
 
-      {/* Side Gutter Layout */}
-      <div className="grid grid-cols-[56px_1fr_56px] md:grid-cols-[100px_1fr_100px] lg:grid-cols-[130px_1fr_130px] items-center">
+      <div className="grid grid-cols-[50px_1fr_50px] md:grid-cols-[90px_1fr_90px] lg:grid-cols-[120px_1fr_120px] items-center">
         
-        {/* Left Gutter */}
         <div className="flex justify-center z-50">
           <button 
             onPointerDown={(e) => startContinuousScroll(e, -1)}
@@ -210,19 +204,17 @@ const KdramaGrid = () => {
             onPointerLeave={stopContinuousScroll}
             onClick={(e) => scrollStep(e, -1)}
             disabled={!canScrollLeft}
-            className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+            className={`w-11 h-11 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
               canScrollLeft 
               ? 'bg-white/10 backdrop-blur-2xl border border-white/20 text-white hover:bg-purple-600 active:scale-95' 
               : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed opacity-20'
             }`}
           >
-            <SafeIcon icon={FiChevronLeft} className="text-2xl md:text-3xl" />
+            <SafeIcon icon={FiChevronLeft} className="text-xl md:text-2xl" />
           </button>
         </div>
 
-        {/* Center: Scroll Container (Taller for Portrait) */}
-        <div className="relative h-[850px] flex flex-col justify-center overflow-hidden">
-          {/* Decorative Overlays */}
+        <div className="relative h-[700px] flex flex-col justify-center overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-20 md:w-40 z-30 bg-gradient-to-r from-gray-950 to-transparent pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-20 md:w-40 z-30 bg-gradient-to-l from-gray-950 to-transparent pointer-events-none" />
 
@@ -233,15 +225,14 @@ const KdramaGrid = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={stopDragging}
             onMouseLeave={stopDragging}
-            className={`flex items-center no-scrollbar overflow-x-auto py-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`flex items-center no-scrollbar overflow-x-auto py-8 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             style={{ 
               scrollSnapType: 'x mandatory', 
-              scrollPadding: '0 33%',
+              scrollPadding: '0 38%',
               scrollbarWidth: 'none'
             }}
           >
-            {/* Spacers for Centering first/last items */}
-            <div className="shrink-0 w-[15vw] md:w-[25vw] lg:w-[33vw]" />
+            <div className="shrink-0 w-[20vw] md:w-[32vw] lg:w-[38vw]" />
             
             {featuredKdramas.slice(0, 8).map((drama) => (
               <KdramaCard 
@@ -252,11 +243,10 @@ const KdramaGrid = () => {
               />
             ))}
 
-            <div className="shrink-0 w-[15vw] md:w-[25vw] lg:w-[33vw]" />
+            <div className="shrink-0 w-[20vw] md:w-[32vw] lg:w-[38vw]" />
           </div>
         </div>
 
-        {/* Right Gutter */}
         <div className="flex justify-center z-50">
           <button 
             onPointerDown={(e) => startContinuousScroll(e, 1)}
@@ -264,26 +254,25 @@ const KdramaGrid = () => {
             onPointerLeave={stopContinuousScroll}
             onClick={(e) => scrollStep(e, 1)}
             disabled={!canScrollRight}
-            className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+            className={`w-11 h-11 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all shadow-2xl ${
               canScrollRight 
               ? 'bg-white/10 backdrop-blur-2xl border border-white/20 text-white hover:bg-purple-600 active:scale-95' 
               : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed opacity-20'
             }`}
           >
-            <SafeIcon icon={FiChevronRight} className="text-2xl md:text-3xl" />
+            <SafeIcon icon={FiChevronRight} className="text-xl md:text-2xl" />
           </button>
         </div>
       </div>
 
-      {/* Modern Pill Indicators */}
-      <div className="flex justify-center items-center gap-4 mt-2 z-40 pb-12">
+      <div className="flex justify-center items-center gap-3 mt-2 z-40 pb-8">
         {featuredKdramas.slice(0, 8).map((drama) => (
           <div 
             key={drama.id} 
-            className={`h-1.5 rounded-full transition-all duration-700 ${
+            className={`h-1 rounded-full transition-all duration-700 ${
               centerId === String(drama.id) 
-                ? 'w-16 bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,1)]' 
-                : 'w-3 bg-white/10'
+                ? 'w-12 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)]' 
+                : 'w-2.5 bg-white/10'
             }`} 
           />
         ))}
