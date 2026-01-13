@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
 import { getImageSrc } from '../utils/media.js';
-import { BLOG_PLACEHOLDER } from '../config/assets';
+import { BLOG_PLACEHOLDER, PLACEHOLDER_IMAGE } from '../config/assets';
 
 const BlogContext = createContext();
 
@@ -13,207 +13,157 @@ export const useBlog = () => {
   return context;
 };
 
-// --- START SEED DATA ---
 const SEED_PRODUCTS = [
   {
-    id: 'prod-1',
+    id: 'p1',
     title: 'Laneige Lip Sleeping Mask',
-    slug: 'laneige-lip-mask',
-    category: 'Product Recommendations',
     subcategory: 'Skincare',
     rating: 5,
     excerpt: 'The ultimate overnight treatment for soft, supple lips. A staple in my night routine.',
-    content: 'This mask has a softening balm texture that closely adheres to lips for quick absorption. Enriched with vitamin C and antioxidants, its Berry Mix Complex™ offers a nutritiously sweet and fragrant blend of raspberry, strawberry, cranberry, and blueberry extracts to indulge the senses.',
+    content: 'Enriched with vitamin C and antioxidants, its Berry Mix Complex™ offers a nutritiously sweet and fragrant blend.',
     image: 'https://images.unsplash.com/photo-1591130901020-ef93581c8fb9?w=800&q=80',
     date: '2024-01-20',
     status: 'published'
   },
   {
-    id: 'prod-2',
+    id: 'p2',
     title: 'BT21 Wireless Retro Keyboard',
-    slug: 'bt21-retro-keyboard',
-    category: 'Product Recommendations',
     subcategory: 'Tech',
     rating: 4,
     excerpt: 'Add a pop of purple to your desk with this satisfyingly clicky mechanical keyboard.',
-    content: 'Perfect for WFH moms! This keyboard features multi-device Bluetooth connectivity and a vintage typewriter feel. The round keys are not only cute but surprisingly comfortable for long writing sessions.',
+    content: 'Perfect for WFH moms! Features multi-device Bluetooth connectivity and a vintage typewriter feel.',
     image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
     date: '2024-01-19',
     status: 'published'
   },
   {
-    id: 'prod-3',
+    id: 'p3',
     title: 'Innisfree Green Tea Seed Serum',
-    slug: 'innisfree-green-tea-serum',
-    category: 'Product Recommendations',
     subcategory: 'Skincare',
     rating: 5,
     excerpt: 'A lightweight moisture-stabilizing serum that keeps my skin hydrated through the day.',
-    content: 'Infused with organic Jeju green tea and green tea seeds, this serum hydrates from deep within. It’s perfect for sensitive skin and layers beautifully under makeup without feeling sticky.',
+    content: 'Infused with organic Jeju green tea and green tea seeds, this serum hydrates from deep within.',
     image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
     date: '2024-01-18',
     status: 'published'
-  },
-  {
-    id: 'prod-4',
-    title: 'Dyson Airwrap Multi-Styler',
-    slug: 'dyson-airwrap-styler',
-    category: 'Product Recommendations',
-    subcategory: 'Hair Care',
-    rating: 5,
-    excerpt: 'The only tool I need for a salon-quality blowout at home in less than 20 minutes.',
-    content: 'It uses the Coanda effect to style hair without extreme heat. Whether you want voluminous curls or a smooth finish, this tool is worth every penny for busy moms who want to look put-together fast.',
-    image: 'https://images.unsplash.com/photo-1522338140262-f46f5913618a?w=800&q=80',
-    date: '2024-01-17',
-    status: 'published'
-  },
-  {
-    id: 'prod-5',
-    title: 'BTS "Proof" Anthology Album',
-    slug: 'bts-proof-album',
-    category: 'Product Recommendations',
-    subcategory: 'Collectibles',
-    rating: 5,
-    excerpt: 'A beautiful journey through Bangtan history. The perfect centerpiece for any ARMY shelf.',
-    content: 'This anthology album embodies the history of BTS as they begin a new chapter as artists that have been active for nine years. Each CD is packed with hits, unreleased tracks, and solo favorites.',
-    image: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=800&q=80',
-    date: '2024-01-16',
-    status: 'published'
-  },
-  {
-    id: 'prod-6',
-    title: 'COSRX Snail Mucin Essence',
-    slug: 'cosrx-snail-mucin',
-    category: 'Product Recommendations',
-    subcategory: 'Skincare',
-    rating: 4,
-    excerpt: 'The secret to the "glass skin" look. It’s slightly gooey but absorbs like magic.',
-    content: 'Formulated with 96.3% Snail Secretion Filtrate, this essence protects the skin from moisture loss while improving skin elasticity. Snail mucin helps repair and soothes red, sensitive skin after breakouts by replenishing moisture.',
-    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80',
-    date: '2024-01-15',
-    status: 'published'
   }
 ];
-// --- END SEED DATA ---
 
 export const BlogProvider = ({ children }) => {
   const [posts, setPosts] = useState([]);
+  const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const TABLE_NAME = 'posts';
 
-  const normalizePost = useCallback((post) => {
-    const rawImage = post.image || post.image_url || post.featured_image_url || '';
-    const cleanImage = getImageSrc(rawImage, BLOG_PLACEHOLDER);
-    const rawStatus = (post.status || post.post_status || post.state || 'published').toString().toLowerCase().trim();
-    const isHandPicked = post.ishandpicked === 1 || post.ishandpicked === '1' || post.ishandpicked === true || post.isHandPicked === true || post.is_featured === true;
+  const TABLES = {
+    POSTS: 'posts',
+    PRODUCTS: 'product_recommendations'
+  };
+
+  const normalizeItem = useCallback((item, type = 'post') => {
+    const rawImage = item.image || item.image_url || item.featured_image_url || '';
+    const fallback = type === 'post' ? BLOG_PLACEHOLDER : PLACEHOLDER_IMAGE;
+    const cleanImage = getImageSrc(rawImage, fallback);
+    const rawStatus = (item.status || 'published').toString().toLowerCase().trim();
 
     return {
-      ...post,
-      id: post.id,
-      title: post.title || 'Untitled Story',
-      slug: post.slug || post.id || '',
-      category: (post.category || 'General').trim(),
-      subcategory: post.subcategory || '',
-      rating: post.rating || 5,
+      ...item,
+      id: item.id,
+      title: item.title || 'Untitled',
       status: rawStatus,
-      excerpt: post.excerpt || post.summary || '',
-      content: post.content || '',
+      category: item.category || (type === 'post' ? 'General' : 'Product'),
+      excerpt: item.excerpt || item.summary || item.short_blurb || '',
+      content: item.content || item.detailed_review || '',
       image: cleanImage,
-      image_url: cleanImage,
-      featured_image_url: cleanImage,
-      readTime: post.readtime || post.readTime || "3 min read",
-      isHandPicked: isHandPicked,
-      date: post.date || post.created_at || new Date().toISOString()
+      date: item.date || item.created_at || new Date().toISOString()
     };
   }, []);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await ncbReadAll(TABLE_NAME);
-      let data = Array.isArray(response) ? response : [];
-      
-      const productsInDb = data.filter(p => (p.category || '').trim() === 'Product Recommendations');
-      
-      // Merge with seed data if database is lean on products
-      if (productsInDb.length < 6) {
-        const existingTitles = new Set(data.map(p => p.title.toLowerCase()));
-        const uniqueSeeds = SEED_PRODUCTS.filter(s => !existingTitles.has(s.title.toLowerCase()));
-        data = [...data, ...uniqueSeeds];
+      // 1. Fetch Posts (Strictly stories)
+      const postsRes = await ncbReadAll(TABLES.POSTS);
+      const normalizedPosts = (Array.isArray(postsRes) ? postsRes : [])
+        .filter(p => (p.category || '').trim() !== 'Product Recommendations')
+        .map(p => normalizeItem(p, 'post'));
+
+      // 2. Fetch Products
+      const productsRes = await ncbReadAll(TABLES.PRODUCTS);
+      let normalizedProducts = (Array.isArray(productsRes) ? productsRes : [])
+        .map(p => normalizeItem(p, 'product'));
+
+      if (normalizedProducts.length === 0) {
+        normalizedProducts = SEED_PRODUCTS.map(p => normalizeItem(p, 'product'));
       }
 
-      const normalized = data.map(normalizePost).sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setPosts(normalized);
+      setPosts(normalizedPosts.sort((a,b) => new Date(b.date) - new Date(a.date)));
+      setProducts(normalizedProducts.sort((a,b) => new Date(b.date) - new Date(a.date)));
     } catch (err) {
       console.error('BlogContext: Fetch failed', err);
-      setPosts(SEED_PRODUCTS.map(normalizePost));
-      setError("Using sample data (Database connection issue).");
+      setError("Connection issue.");
     } finally {
       setIsLoading(false);
     }
-  }, [normalizePost]);
+  }, [normalizeItem]);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    fetchData();
+  }, [fetchData]);
 
-  const addPost = async (postData) => {
-    try {
-      const result = await ncbCreate(TABLE_NAME, postData);
-      await fetchPosts();
-      return result.id;
-    } catch (err) {
-      console.error("Add Post Error:", err);
-      throw new Error(err.message || "Failed to create post. Please try again.");
-    }
-  };
-
-  const updatePost = async (id, updates) => {
-    try {
-      await ncbUpdate(TABLE_NAME, id, updates);
-      await fetchPosts();
-    } catch (err) {
-      console.error("Update Post Error:", err);
-      throw new Error(err.message || "Failed to update post");
-    }
-  };
-
-  const deletePost = async (id) => {
-    try {
-      await ncbDelete(TABLE_NAME, id);
-      setPosts(prev => prev.filter(p => String(p.id) !== String(id)));
-    } catch (err) {
-      console.error("Delete Post Error:", err);
-      throw new Error(err.message || "Failed to delete post");
-    }
-  };
-
-  const categories = useMemo(() => {
-    const unique = [...new Set(posts.map(p => p.category))].filter(Boolean);
-    return unique.length > 0 ? unique : ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Product Recommendations', 'Career'];
-  }, [posts]);
-
+  // Helper for public pages
   const publishedPosts = useMemo(() => 
-    posts.filter(p => p.status === 'published' || p.status === 'active' || p.status === ''), 
-    [posts]
-  );
+    posts.filter(p => p.status === 'published'), 
+  [posts]);
+
+  // --- ACTIONS ---
+  const addPost = async (data) => {
+    const res = await ncbCreate(TABLES.POSTS, data);
+    await fetchData();
+    return res.id;
+  };
+  const updatePost = async (id, data) => {
+    await ncbUpdate(TABLES.POSTS, id, data);
+    await fetchData();
+  };
+  const deletePost = async (id) => {
+    await ncbDelete(TABLES.POSTS, id);
+    setPosts(prev => prev.filter(p => String(p.id) !== String(id)));
+  };
+
+  const addProduct = async (data) => {
+    const res = await ncbCreate(TABLES.PRODUCTS, data);
+    await fetchData();
+    return res.id;
+  };
+  const updateProduct = async (id, data) => {
+    await ncbUpdate(TABLES.PRODUCTS, id, data);
+    await fetchData();
+  };
+  const deleteProduct = async (id) => {
+    await ncbDelete(TABLES.PRODUCTS, id);
+    setProducts(prev => prev.filter(p => String(p.id) !== String(id)));
+  };
+
+  const categories = useMemo(() => ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Career'], []);
 
   return (
     <BlogContext.Provider value={{
-      posts, 
-      publishedPosts, 
-      categories, 
-      isLoading, 
-      error, 
-      addPost, 
-      updatePost, 
-      deletePost, 
-      fetchPosts,
-      getPost: (id) => posts.find(p => String(p.id) === String(id))
+      posts,
+      publishedPosts,
+      products,
+      isLoading,
+      error,
+      addPost,
+      updatePost,
+      deletePost,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      fetchData,
+      categories,
+      getPost: (id) => posts.find(p => String(p.id) === String(id)) || products.find(p => String(p.id) === String(id))
     }}>
       {children}
     </BlogContext.Provider>

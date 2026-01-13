@@ -12,14 +12,29 @@ export const useAuth = () => {
   return context;
 };
 
-// Admin credentials - Reads from Environment Variables for Security
-// Fallback values are provided for development convenience but should be overridden in production
+// Admin credentials
 const ADMIN_CREDENTIALS = {
   username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmom',
   password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   role: 'admin',
   email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
 };
+
+// --- MOCK USERS FOR TESTING ---
+const MOCK_ACCOUNTS = [
+  {
+    email: 'author@test.com',
+    name: 'Chloe Park',
+    role: 'author',
+    id: 'mock-author-123'
+  },
+  {
+    email: 'subscriber@test.com',
+    name: 'Min-ji Kim',
+    role: 'subscriber',
+    id: 'mock-subscriber-456'
+  }
+];
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,20 +64,21 @@ export const AuthProvider = ({ children }) => {
       }
       setIsLoading(false);
     };
-
     checkAuth();
   }, []);
 
   const login = async (userData) => {
     const { userId, token, newUser, email } = userData;
     
-    // Determine user role - default to subscriber
-    let role = 'subscriber';
+    // Check if this is one of our predefined mock accounts
+    const mockMatch = MOCK_ACCOUNTS.find(m => m.email === email);
+    let role = mockMatch ? mockMatch.role : 'subscriber';
+    
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
     }
 
-    const name = email?.split('@')[0] || 'User';
+    const name = mockMatch ? mockMatch.name : (email?.split('@')[0] || 'User');
 
     localStorage.setItem('userId', userId);
     localStorage.setItem('token', token);
@@ -71,30 +87,21 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('userName', name);
 
     setIsAuthenticated(true);
-    setUser({
-      id: userId,
-      role: role,
-      email: email,
-      name: name
-    });
+    setUser({ id: userId, role: role, email: email, name: name });
 
-    // CRITICAL: Sync new users to NCB so they appear in Admin Dashboard
     if (newUser) {
       try {
         const userPayload = {
-          name: name,
-          email: email,
+          name,
+          email,
           username: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-          role: role,
+          role,
           status: 'active',
           joinDate: new Date().toISOString().split('T')[0],
           lastLogin: new Date().toISOString().split('T')[0],
-          userId: userId // Store Quest ID for reference
+          userId
         };
-        // We don't await this to avoid blocking the UI transition
-        ncbCreate('users', userPayload).catch(err => 
-          console.error("Auth: Failed to sync new user to NCB", err)
-        );
+        await ncbCreate('users', userPayload);
         navigate('/onboarding');
       } catch (err) {
         console.error("Auth: Error during user sync", err);
@@ -105,39 +112,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Helper for instant mock login (bypassing SDK for dev convenience)
+  const bypassLogin = (mockEmail) => {
+    const mockMatch = MOCK_ACCOUNTS.find(m => m.email === mockEmail) || {
+      email: ADMIN_CREDENTIALS.email,
+      name: 'BangtanMom',
+      role: 'admin',
+      id: 'admin-bypass'
+    };
+
+    login({
+      userId: mockMatch.id,
+      token: 'mock-token-' + Date.now(),
+      newUser: false,
+      email: mockMatch.email
+    });
+  };
+
   const adminLogin = (credentials) => {
     const { username, password } = credentials;
-
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      const userId = 'admin-' + Date.now();
-      const token = 'admin-token-' + Date.now();
-
-      localStorage.setItem('userId', userId);
-      localStorage.setItem('token', token);
-      localStorage.setItem('userRole', 'admin');
-      localStorage.setItem('userEmail', ADMIN_CREDENTIALS.email);
-      localStorage.setItem('userName', 'BangtanMom');
-
-      setIsAuthenticated(true);
-      setUser({
-        id: userId,
-        role: 'admin',
-        email: ADMIN_CREDENTIALS.email,
-        name: 'BangtanMom'
-      });
-      navigate('/admin');
+      bypassLogin(ADMIN_CREDENTIALS.email);
       return true;
     }
     return false;
   };
 
   const logout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
-
+    localStorage.clear();
     setIsAuthenticated(false);
     setUser(null);
     navigate('/login');
@@ -145,11 +147,7 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (requiredRole) => {
     if (!user) return false;
-    const roleHierarchy = {
-      'subscriber': 1,
-      'author': 2,
-      'admin': 3
-    };
+    const roleHierarchy = { 'subscriber': 1, 'author': 2, 'admin': 3 };
     const userLevel = roleHierarchy[user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
     return userLevel >= requiredLevel;
@@ -157,7 +155,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => user?.role === 'admin';
   const isAuthor = () => user?.role === 'author' || user?.role === 'admin';
-  const isSubscriber = () => user?.role === 'subscriber' || user?.role === 'author' || user?.role === 'admin';
+  const isSubscriber = () => !!user;
 
   return (
     <AuthContext.Provider value={{
@@ -166,11 +164,13 @@ export const AuthProvider = ({ children }) => {
       isLoading,
       login,
       adminLogin,
+      bypassLogin, // Exported for the login helper
       logout,
       hasPermission,
       isAdmin,
       isAuthor,
-      isSubscriber
+      isSubscriber,
+      mockAccounts: MOCK_ACCOUNTS
     }}>
       {children}
     </AuthContext.Provider>
