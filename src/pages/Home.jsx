@@ -18,17 +18,21 @@ const Home = () => {
     fetchPosts();
   }, [fetchPosts]);
 
+  // CRITICAL FIX: Filter out Product Recommendations from the "Latest Stories" list
   const latestStories = useMemo(() => {
-    return posts.slice(0, 8);
+    return posts
+      .filter(p => (p.category || '').trim() !== 'Product Recommendations')
+      .slice(0, 8);
   }, [posts]);
 
-  // Updated: Filter specifically for the Product Recommendations and take 6 items
+  // CRITICAL FIX: Get specifically 6 Product Recommendations
   const productPosts = useMemo(() => {
     return posts
       .filter(p => (p.category || '').trim() === 'Product Recommendations')
       .slice(0, 6);
   }, [posts]);
 
+  // Ensure featured story is not a product
   const featuredStory = latestStories[0] || {
     id: 'placeholder',
     title: "Finding Your Own Magic Shop",
@@ -209,14 +213,14 @@ const Home = () => {
         </div>
       </section>
 
-      {/* PRODUCT RECOMMENDATIONS - UPDATED TO MASONRY AND 6 ITEMS */}
+      {/* PRODUCT RECOMMENDATIONS - MASONRY GRID (6 ITEMS) */}
       <section className="py-24 bg-white border-t border-purple-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-12">
             <div>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2 block font-sans">Curated for You</span>
               <h2 className="text-4xl font-serif font-bold text-gray-900">Product Recommendations</h2>
-              <p className="text-gray-500 mt-2 font-sans italic">My current favorites</p>
+              <p className="text-gray-500 mt-2 font-sans italic">My current favorites (6 Curated Items)</p>
             </div>
             <Link to="/products" className="hidden sm:flex items-center gap-2 text-purple-700 font-bold hover:gap-3 transition-all font-sans">
               View All <SafeIcon icon={FiArrowRight} />
@@ -226,7 +230,7 @@ const Home = () => {
           {productPosts.length > 0 ? (
             <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
               {productPosts.map((post, i) => (
-                <div key={post.id || post.slug || i} className="break-inside-avoid">
+                <div key={post.id || i} className="break-inside-avoid">
                   <ProductCard product={post} index={i} />
                 </div>
               ))}

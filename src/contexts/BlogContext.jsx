@@ -135,12 +135,10 @@ export const BlogProvider = ({ children }) => {
       const response = await ncbReadAll(TABLE_NAME);
       let data = Array.isArray(response) ? response : [];
       
-      // Filter for products to see if we have enough
       const productsInDb = data.filter(p => (p.category || '').trim() === 'Product Recommendations');
       
-      // If database has fewer than 6 products, merge with seed data to ensure a full experience
+      // Merge with seed data if database is lean on products
       if (productsInDb.length < 6) {
-        // Create a map of existing titles to avoid duplicates
         const existingTitles = new Set(data.map(p => p.title.toLowerCase()));
         const uniqueSeeds = SEED_PRODUCTS.filter(s => !existingTitles.has(s.title.toLowerCase()));
         data = [...data, ...uniqueSeeds];
