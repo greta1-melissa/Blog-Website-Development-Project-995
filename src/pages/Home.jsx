@@ -10,7 +10,7 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 
-const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon, FiUsers, FiStar, FiChevronRight } = FiIcons;
+const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon, FiUsers, FiStar, FiChevronRight, FiMusic, FiTv, FiSmile } = FiIcons;
 
 const Home = () => {
   const { publishedPosts, products, isLoading, fetchData } = useBlog();
@@ -20,10 +20,7 @@ const Home = () => {
     fetchData();
   }, [fetchData]);
 
-  // INDEPENDENT SOURCE 1: Blog Stories
   const latestStories = useMemo(() => publishedPosts.slice(0, 8), [publishedPosts]);
-
-  // INDEPENDENT SOURCE 2: Product Recommendations
   const productPicks = useMemo(() => products.slice(0, 6), [products]);
 
   const meTimeRituals = [
@@ -69,6 +66,61 @@ const Home = () => {
               )}
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* RESTORED BENTO / VIDEO SECTION */}
+      <section className="bg-purple-100/30 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <motion.div className="lg:col-span-2 bg-black rounded-[3rem] shadow-xl relative overflow-hidden group h-[400px] md:h-[600px]">
+              <video
+                src="https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=ym2k2ouz&raw=1"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover opacity-80"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+              <div className="absolute bottom-12 left-12 text-white">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-3 py-1 rounded-full mb-4 inline-block">
+                  Featured Journal
+                </span>
+                <h2 className="text-3xl md:text-5xl font-serif font-bold mb-4">Finding Your Magic Shop</h2>
+                <Link
+                  to="/blog"
+                  className="inline-flex items-center font-bold border-b-2 border-white/50 hover:border-white transition-all pb-1 text-sm uppercase tracking-widest"
+                >
+                  Read Story <SafeIcon icon={FiArrowRight} className="ml-2" />
+                </Link>
+              </div>
+            </motion.div>
+
+            <div className="flex flex-col gap-6">
+              <div className="flex-1 bg-white rounded-[2.5rem] overflow-hidden shadow-lg border border-purple-100 p-6 flex flex-col justify-end relative h-[280px]">
+                <SafeImage
+                  src="https://images.unsplash.com/photo-1634152962476-4b8a00e1915c?w=600&fit=crop"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="relative text-white">
+                  <h3 className="text-xl font-serif font-bold">Our Beloved Summer</h3>
+                  <p className="text-xs opacity-70">Rewatching currently...</p>
+                </div>
+              </div>
+
+              <div className="bg-black rounded-[2.5rem] shadow-lg overflow-hidden border border-purple-500/30 h-[300px]">
+                <iframe
+                  src="https://open.spotify.com/embed/playlist/484z3UpLGXc4qzy0IvVRQ7?utm_source=generator&theme=1"
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
