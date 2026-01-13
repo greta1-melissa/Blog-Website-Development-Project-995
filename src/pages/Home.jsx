@@ -240,11 +240,11 @@ const Home = () => {
               </p>
               {isAuthenticated ? (
                 <Link to="/forums" className="inline-flex items-center px-12 py-5 bg-white text-purple-900 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-purple-100 transition-all shadow-xl group">
-                  Go to Forums <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  JOIN FREE TODAY <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
               ) : (
                 <Link to="/login" className="inline-flex items-center px-12 py-5 bg-white text-purple-900 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-purple-100 transition-all shadow-xl group">
-                  Join Free Today <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  JOIN FREE TODAY <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
             </div>
