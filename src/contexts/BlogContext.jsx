@@ -46,6 +46,72 @@ const SEED_PRODUCTS = [
     image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
     date: '2024-01-18',
     status: 'published'
+  },
+  {
+    id: 'p4',
+    title: 'Galaxy Buds2 Pro (Bora Purple)',
+    subcategory: 'Tech',
+    rating: 5,
+    excerpt: 'Crystal clear audio for your BTS playlists. The noise cancellation is a lifesaver!',
+    content: '24-bit Hi-Fi sound quality and ergonomic design for long-term comfort. The Bora Purple color is perfection.',
+    image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80',
+    date: '2024-01-17',
+    status: 'published'
+  },
+  {
+    id: 'p5',
+    title: 'Cosrx Advanced Snail 96 Mucin',
+    subcategory: 'Skincare',
+    rating: 5,
+    excerpt: 'The secret to the "glass skin" look. Hydrating, soothing, and lightweight.',
+    content: 'Contains 96.3% Snail Secretion Filtrate. Helps repair skin damage and improves elasticity.',
+    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80',
+    date: '2024-01-16',
+    status: 'published'
+  },
+  {
+    id: 'p6',
+    title: 'Mediheal Tea Tree Mask Set',
+    subcategory: 'Skincare',
+    rating: 4,
+    excerpt: 'My go-to emergency mask for stressful weeks. Instantly calms redness.',
+    content: 'Formulated with tea tree leaf oil, pine needle, and portulaca oleracea extracts to control sebum production.',
+    image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc2069?w=800&q=80',
+    date: '2024-01-15',
+    status: 'published'
+  },
+  {
+    id: 'p7',
+    title: 'Hada Labo Hyaluronic Lotion',
+    subcategory: 'Skincare',
+    rating: 5,
+    excerpt: 'A Japanese classic. It holds moisture like nothing else I have tried.',
+    content: 'Features 4 types of Hyaluronic Acid to deeply hydrate and prep the skin for other products.',
+    image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=800&q=80',
+    date: '2024-01-14',
+    status: 'published'
+  },
+  {
+    id: 'p8',
+    title: 'BT21 Baby Tata Plush Pillow',
+    subcategory: 'Lifestyle',
+    rating: 5,
+    excerpt: 'The softest companion for my late-night K-Drama marathons. Pure comfort.',
+    content: 'Official BT21 merch. Made with ultra-soft fabric and premium stuffing for maximum huggability.',
+    image: 'https://images.unsplash.com/photo-1559454403-b8fb88521f11?w=800&q=80',
+    date: '2024-01-13',
+    status: 'published'
+  },
+  {
+    id: 'p9',
+    title: 'BTS Map of the Soul Lightstick',
+    subcategory: 'Lifestyle',
+    rating: 5,
+    excerpt: 'The pride of my collection. Waiting for the day we wave these in person again.',
+    content: 'Official Special Edition Army Bomb. Features Bluetooth syncing for concert experiences at home.',
+    image: 'https://images.unsplash.com/photo-1612833603922-3bb8c75ddf7d?w=800&q=80',
+    date: '2024-01-12',
+    status: 'published'
   }
 ];
 

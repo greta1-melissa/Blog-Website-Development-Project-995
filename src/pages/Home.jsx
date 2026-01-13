@@ -21,7 +21,7 @@ const Home = () => {
   }, [fetchData]);
 
   const latestStories = useMemo(() => publishedPosts.slice(0, 8), [publishedPosts]);
-  const productPicks = useMemo(() => products.slice(0, 6), [products]);
+  const productPicks = useMemo(() => products.slice(0, 12), [products]);
 
   const meTimeRituals = [
     {
@@ -60,7 +60,7 @@ const Home = () => {
               A cozy corner for moms navigating the chaos of parenting with a soundtrack of K-Pop and a heart full of stories.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/blog" className="px-10 py-4 bg-gray-900 text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-purple-900 transition-all shadow-xl">Explore Journal</Link>
+              <Link to="/forums" className="px-10 py-4 bg-gray-900 text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-purple-900 transition-all shadow-xl">Go to Forums</Link>
               {!isAuthenticated && (
                 <Link to="/login" className="px-10 py-4 bg-white text-gray-900 border border-gray-200 rounded-full font-black text-sm uppercase tracking-widest hover:border-purple-300 transition-all">Join Community</Link>
               )}
@@ -69,7 +69,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* RESTORED BENTO / VIDEO SECTION */}
+      {/* BENTO / VIDEO SECTION */}
       <section className="bg-purple-100/30 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
