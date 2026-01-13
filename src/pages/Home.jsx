@@ -22,11 +22,11 @@ const Home = () => {
     return posts.slice(0, 8);
   }, [posts]);
 
-  // NEW: Filter specifically for the Product Recommendations category
+  // Updated: Filter specifically for the Product Recommendations and take 6 items
   const productPosts = useMemo(() => {
     return posts
       .filter(p => (p.category || '').trim() === 'Product Recommendations')
-      .slice(0, 3);
+      .slice(0, 6);
   }, [posts]);
 
   const featuredStory = latestStories[0] || {
@@ -66,7 +66,11 @@ const Home = () => {
       <section className="relative pt-20 pb-12 overflow-hidden bg-purple-100/30">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-3xl mx-auto"
+          >
             <span className="inline-block py-2 px-6 rounded-full bg-purple-200/60 text-purple-800 font-bold text-sm mb-6 shadow-sm font-sans uppercase tracking-widest">
               💜 Welcome to the magic shop
             </span>
@@ -88,8 +92,19 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative z-20">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[600px]">
-              <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} className="lg:col-span-2 bg-black rounded-[3rem] shadow-xl relative overflow-hidden group border border-purple-200/40">
-                <video src="https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=ym2k2ouz&raw=1" autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover transform scale-105 group-hover:scale-110 transition-transform duration-1000" />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                className="lg:col-span-2 bg-black rounded-[3rem] shadow-xl relative overflow-hidden group border border-purple-200/40"
+              >
+                <video
+                  src="https://www.dropbox.com/scl/fi/kk5lebnsgklculhx1pdo8/cherry-blossom-laptop-moment.mp4?rlkey=1df4lj7n7f5mn5p4ppwbfg1aj&st=ym2k2ouz&raw=1"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover transform scale-105 group-hover:scale-110 transition-transform duration-1000"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[10px] font-black uppercase tracking-widest mb-4 font-sans">{featuredStory.category}</span>
@@ -99,6 +114,7 @@ const Home = () => {
                   </Link>
                 </div>
               </motion.div>
+
               <div className="flex flex-col gap-6 lg:h-full">
                 <div className="flex-1 bg-white rounded-[2.5rem] overflow-hidden shadow-lg border border-purple-100 flex flex-col">
                   <div className="relative h-40 lg:h-48">
@@ -127,6 +143,7 @@ const Home = () => {
               View Journal <SafeIcon icon={FiArrowRight} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
+
           <div className="flex flex-col gap-8">
             {postsLoading ? (
               <div className="text-center py-20 bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
@@ -140,7 +157,13 @@ const Home = () => {
                 const isFirst = index === 0;
                 return (
                   <Link key={post.id} to={`/post/${post.id}`} className="block group">
-                    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }} className={`relative flex flex-col md:flex-row items-stretch gap-8 p-6 md:p-10 rounded-[3rem] transition-all duration-500 transform hover:scale-[1.015] active:scale-[0.99] ${isFirst ? 'bg-[#110C1D] hover:bg-[#1a1429] text-white shadow-2xl hover:shadow-purple-900/30' : 'bg-white hover:bg-purple-50/80 text-gray-900 shadow-sm hover:shadow-xl border border-gray-100 hover:border-purple-200'}`} >
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className={`relative flex flex-col md:flex-row items-stretch gap-8 p-6 md:p-10 rounded-[3rem] transition-all duration-500 transform hover:scale-[1.015] active:scale-[0.99] ${isFirst ? 'bg-[#110C1D] hover:bg-[#1a1429] text-white shadow-2xl hover:shadow-purple-900/30' : 'bg-white hover:bg-purple-50/80 text-gray-900 shadow-sm hover:shadow-xl border border-gray-100 hover:border-purple-200'}`}
+                    >
                       <div className="w-full md:w-[320px] lg:w-[420px] aspect-video md:aspect-[4/3] shrink-0 rounded-[2rem] overflow-hidden shadow-lg border border-white/10">
                         <SafeImage src={post.image || post.image_url} alt={post.title} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000 ease-out" />
                       </div>
@@ -186,7 +209,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* PRODUCT RECOMMENDATIONS */}
+      {/* PRODUCT RECOMMENDATIONS - UPDATED TO MASONRY AND 6 ITEMS */}
       <section className="py-24 bg-white border-t border-purple-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-12">
@@ -201,9 +224,11 @@ const Home = () => {
           </div>
 
           {productPosts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
               {productPosts.map((post, i) => (
-                <ProductCard key={post.id || post.slug || i} product={post} index={i} />
+                <div key={post.id || post.slug || i} className="break-inside-avoid">
+                  <ProductCard product={post} index={i} />
+                </div>
               ))}
             </div>
           ) : (
@@ -230,9 +255,16 @@ const Home = () => {
             <div className="p-3 bg-pink-50 rounded-2xl mb-4"><SafeIcon icon={FiHeart} className="text-3xl text-pink-500" /></div>
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">Small Joys & Me Time</h2>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {meTimeRituals.map((ritual, index) => (
-              <motion.div key={index} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="relative group">
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="relative group"
+              >
                 <div className={`absolute -inset-4 ${index % 2 === 0 ? 'bg-purple-100/60' : 'bg-pink-100/60'} rounded-[3rem] -rotate-2 group-hover:rotate-0 transition-transform duration-500`} />
                 <div className="relative bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                   <div className="aspect-square rounded-3xl overflow-hidden mb-8 shadow-inner"><SafeImage src={ritual.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /></div>
@@ -247,7 +279,11 @@ const Home = () => {
 
       {/* JOIN A COMMUNITY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} className="bg-purple-900 rounded-[4rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          className="bg-purple-900 rounded-[4rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl"
+        >
           <div className="relative z-10 max-w-2xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-6">Join the Community</h2>
             <p className="text-purple-100 text-lg mb-10 font-sans">Get cozy reflections sent to your inbox.</p>

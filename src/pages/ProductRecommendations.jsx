@@ -31,7 +31,8 @@ const ProductRecommendations = () => {
     return productPosts.filter(post => {
       const matchesSearch = searchTerm === '' || 
         post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        post.content.toLowerCase().includes(searchTerm.toLowerCase());
+        post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesCategory = selectedCategory === '' || 
         (post.subcategory && post.subcategory === selectedCategory);
@@ -54,9 +55,10 @@ const ProductRecommendations = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
         {/* Header Section */}
         <div className="text-center mb-16">
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center justify-center p-3 bg-purple-100 rounded-2xl mb-6 shadow-sm"
@@ -78,25 +80,17 @@ const ProductRecommendations = () => {
           </div>
           
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
+            <button 
               onClick={() => setSelectedCategory('')}
-              className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border ${
-                selectedCategory === '' 
-                ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' 
-                : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-              }`}
+              className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border ${selectedCategory === '' ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50'}`}
             >
               All Picks
             </button>
             {productSubcategories.map(sub => (
-              <button
+              <button 
                 key={sub}
                 onClick={() => setSelectedCategory(sub)}
-                className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border ${
-                  selectedCategory === sub 
-                  ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50'
-                }`}
+                className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 border ${selectedCategory === sub ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50'}`}
               >
                 {sub}
               </button>
@@ -104,11 +98,11 @@ const ProductRecommendations = () => {
           </div>
         </div>
 
-        {/* Masonry Grid Layout */}
+        {/* Masonry Grid Layout using CSS Columns */}
         {filteredProducts.length > 0 ? (
           <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
             {filteredProducts.map((product, index) => (
-              <div key={product.id} className="break-inside-avoid">
+              <div key={product.id} className="break-inside-avoid mb-8">
                 <ProductCard product={product} index={index} />
               </div>
             ))}
@@ -144,6 +138,7 @@ const ProductRecommendations = () => {
             Some of the links on this page are affiliate links, meaning I may earn a small commission if you make a purchase through them, at no additional cost to you. I only recommend products I truly love and use myself!
           </p>
         </div>
+
       </div>
     </div>
   );

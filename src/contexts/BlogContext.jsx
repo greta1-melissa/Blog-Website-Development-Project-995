@@ -17,90 +17,80 @@ export const useBlog = () => {
 const SEED_PRODUCTS = [
   {
     id: 'prod-1',
-    title: 'Laneige Sleep Mask',
+    title: 'Laneige Lip Sleeping Mask',
+    slug: 'laneige-lip-mask',
     category: 'Product Recommendations',
     subcategory: 'Skincare',
     rating: 5,
-    content: 'The ultimate hydration booster. Wake up with glowing, plump skin thanks to this overnight miracle worker. It’s light, non-greasy, and smells like a dream.',
+    excerpt: 'The ultimate overnight treatment for soft, supple lips. A staple in my night routine.',
+    content: 'This mask has a softening balm texture that closely adheres to lips for quick absorption. Enriched with vitamin C and antioxidants, its Berry Mix Complex™ offers a nutritiously sweet and fragrant blend of raspberry, strawberry, cranberry, and blueberry extracts to indulge the senses.',
     image: 'https://images.unsplash.com/photo-1591130901020-ef93581c8fb9?w=800&q=80',
     date: '2024-01-20',
     status: 'published'
   },
   {
     id: 'prod-2',
-    title: 'Mediheal Pads',
+    title: 'BT21 Wireless Retro Keyboard',
+    slug: 'bt21-retro-keyboard',
     category: 'Product Recommendations',
-    subcategory: 'Skincare',
+    subcategory: 'Tech',
     rating: 4,
-    content: 'Convenient and effective. These toner pads are soaked in essence to calm and prep your skin in seconds. Perfect for busy mornings when you need a quick refresh.',
-    image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&q=80',
+    excerpt: 'Add a pop of purple to your desk with this satisfyingly clicky mechanical keyboard.',
+    content: 'Perfect for WFH moms! This keyboard features multi-device Bluetooth connectivity and a vintage typewriter feel. The round keys are not only cute but surprisingly comfortable for long writing sessions.',
+    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80',
     date: '2024-01-19',
     status: 'published'
   },
   {
     id: 'prod-3',
-    title: 'BT21 Royce Computer Desk Lamp',
+    title: 'Innisfree Green Tea Seed Serum',
+    slug: 'innisfree-green-tea-serum',
     category: 'Product Recommendations',
-    subcategory: 'Home & Tech',
+    subcategory: 'Skincare',
     rating: 5,
-    content: 'The cutest desk companion. This BT21 lamp offers multiple brightness levels and adds a touch of magic to any workspace. A must-have for any ARMY home office.',
-    image: 'https://images.unsplash.com/photo-1534073828943-f801091bb18c?w=800&q=80',
+    excerpt: 'A lightweight moisture-stabilizing serum that keeps my skin hydrated through the day.',
+    content: 'Infused with organic Jeju green tea and green tea seeds, this serum hydrates from deep within. It’s perfect for sensitive skin and layers beautifully under makeup without feeling sticky.',
+    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
     date: '2024-01-18',
     status: 'published'
   },
   {
     id: 'prod-4',
-    title: 'The Creme Shop BT21 Make Up Brush',
+    title: 'Dyson Airwrap Multi-Styler',
+    slug: 'dyson-airwrap-styler',
     category: 'Product Recommendations',
-    subcategory: 'Beauty',
+    subcategory: 'Hair Care',
     rating: 5,
-    content: 'Soft, synthetic bristles that blend like a dream. Plus, the BT21 character designs are absolutely adorable. High quality meets high cuteness.',
-    image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
+    excerpt: 'The only tool I need for a salon-quality blowout at home in less than 20 minutes.',
+    content: 'It uses the Coanda effect to style hair without extreme heat. Whether you want voluminous curls or a smooth finish, this tool is worth every penny for busy moms who want to look put-together fast.',
+    image: 'https://images.unsplash.com/photo-1522338140262-f46f5913618a?w=800&q=80',
     date: '2024-01-17',
     status: 'published'
   },
   {
     id: 'prod-5',
-    title: 'CosRX Sun Block',
+    title: 'BTS "Proof" Anthology Album',
+    slug: 'bts-proof-album',
     category: 'Product Recommendations',
-    subcategory: 'Skincare',
+    subcategory: 'Collectibles',
     rating: 5,
-    content: 'No white cast, no stickiness. Just pure protection. The Aloe Soothing Sun Cream is a cult favorite for a reason—it feels just like a moisturizer.',
-    image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=800&q=80',
+    excerpt: 'A beautiful journey through Bangtan history. The perfect centerpiece for any ARMY shelf.',
+    content: 'This anthology album embodies the history of BTS as they begin a new chapter as artists that have been active for nine years. Each CD is packed with hits, unreleased tracks, and solo favorites.',
+    image: 'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=800&q=80',
     date: '2024-01-16',
     status: 'published'
   },
   {
     id: 'prod-6',
-    title: 'Dyson Airwrap Multi-Styler',
-    category: 'Product Recommendations',
-    subcategory: 'Hair Care',
-    rating: 5,
-    content: 'An absolute game changer for busy mornings. It dries and styles simultaneously using air, not extreme heat. Perfect for achieving that salon blowout look in half the time.',
-    image: 'https://images.unsplash.com/photo-1522338140262-f46f5913618a?w=800&q=80',
-    date: '2024-01-15',
-    status: 'published'
-  },
-  {
-    id: 'prod-7',
-    title: 'BT21 Cooky Plush Pillow',
-    category: 'Product Recommendations',
-    subcategory: 'Collectibles',
-    rating: 5,
-    content: 'Soft, squishy, and impossibly pink! This Cooky plush is the perfect cuddle companion for K-drama marathons. High-quality stitching and super soft fabric.',
-    image: 'https://images.unsplash.com/photo-1559449182-2624ca46a8ce?w=800&q=80',
-    date: '2024-01-14',
-    status: 'published'
-  },
-  {
-    id: 'prod-8',
-    title: 'Innisfree Green Tea Seed Serum',
+    title: 'COSRX Snail Mucin Essence',
+    slug: 'cosrx-snail-mucin',
     category: 'Product Recommendations',
     subcategory: 'Skincare',
     rating: 4,
-    content: 'A lightweight, moisture-stabilizing serum that keeps your skin hydrated all day. Formulated with Jeju Green Tea, it absorbs instantly without any sticky residue.',
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
-    date: '2024-01-13',
+    excerpt: 'The secret to the "glass skin" look. It’s slightly gooey but absorbs like magic.',
+    content: 'Formulated with 96.3% Snail Secretion Filtrate, this essence protects the skin from moisture loss while improving skin elasticity. Snail mucin helps repair and soothes red, sensitive skin after breakouts by replenishing moisture.',
+    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80',
+    date: '2024-01-15',
     status: 'published'
   }
 ];
@@ -123,7 +113,7 @@ export const BlogProvider = ({ children }) => {
       id: post.id,
       title: post.title || 'Untitled Story',
       slug: post.slug || post.id || '',
-      category: post.category || 'General',
+      category: (post.category || 'General').trim(),
       subcategory: post.subcategory || '',
       rating: post.rating || 5,
       status: rawStatus,
@@ -145,9 +135,15 @@ export const BlogProvider = ({ children }) => {
       const response = await ncbReadAll(TABLE_NAME);
       let data = Array.isArray(response) ? response : [];
       
-      // If database is empty, use seed products as a starting point
-      if (data.length === 0) {
-        data = SEED_PRODUCTS;
+      // Filter for products to see if we have enough
+      const productsInDb = data.filter(p => (p.category || '').trim() === 'Product Recommendations');
+      
+      // If database has fewer than 6 products, merge with seed data to ensure a full experience
+      if (productsInDb.length < 6) {
+        // Create a map of existing titles to avoid duplicates
+        const existingTitles = new Set(data.map(p => p.title.toLowerCase()));
+        const uniqueSeeds = SEED_PRODUCTS.filter(s => !existingTitles.has(s.title.toLowerCase()));
+        data = [...data, ...uniqueSeeds];
       }
 
       const normalized = data.map(normalizePost).sort((a, b) => 
@@ -156,7 +152,6 @@ export const BlogProvider = ({ children }) => {
       setPosts(normalized);
     } catch (err) {
       console.error('BlogContext: Fetch failed', err);
-      // Fallback to seed data on error so the UI isn't empty
       setPosts(SEED_PRODUCTS.map(normalizePost));
       setError("Using sample data (Database connection issue).");
     } finally {
@@ -175,7 +170,6 @@ export const BlogProvider = ({ children }) => {
       return result.id;
     } catch (err) {
       console.error("Add Post Error:", err);
-      // EXPOSE THE ACTUAL ERROR MESSAGE
       throw new Error(err.message || "Failed to create post. Please try again.");
     }
   };
