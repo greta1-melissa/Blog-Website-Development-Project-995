@@ -61,9 +61,7 @@ const Home = () => {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/forums" className="px-10 py-4 bg-gray-900 text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-purple-900 transition-all shadow-xl">Go to Forums</Link>
-              {!isAuthenticated && (
-                <Link to="/login" className="px-10 py-4 bg-white text-gray-900 border border-gray-200 rounded-full font-black text-sm uppercase tracking-widest hover:border-purple-300 transition-all">Join Community</Link>
-              )}
+              <Link to="/login" className="px-10 py-4 bg-white text-gray-900 border border-gray-200 rounded-full font-black text-sm uppercase tracking-widest hover:border-purple-300 transition-all">Join Community</Link>
             </div>
           </motion.div>
         </div>
