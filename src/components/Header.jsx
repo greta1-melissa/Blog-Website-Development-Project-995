@@ -44,14 +44,14 @@ const Header = () => {
     <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/80 backdrop-blur-md shadow-sm border-b border-purple-100/50' : 'bg-white/50 backdrop-blur-sm'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
         <Link to="/" className="flex items-center space-x-3 group">
-          <SafeImage src={logo} alt="Logo" className="w-10 h-10 rounded-xl shadow-lg transform group-hover:-rotate-6 transition-all object-cover" />
-          <span className="text-2xl font-serif font-bold text-purple-900">Bangtan<span className="text-purple-500">Mom</span></span>
+          <SafeImage src={logo} alt="Logo" className="w-12 h-12 rounded-xl shadow-lg transform group-hover:-rotate-6 transition-all object-cover" />
+          <span className="text-3xl font-serif font-bold text-purple-900">Bangtan<span className="text-purple-500">Mom</span></span>
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center space-x-6">
+        <nav className="hidden md:flex items-center space-x-8">
           {navItems.map(({ path, label }) => (
-            <Link key={path} to={path} className={`text-sm font-medium transition-colors ${location.pathname === path ? 'text-purple-800' : 'text-gray-600 hover:text-purple-600'}`}>
+            <Link key={path} to={path} className={`text-base font-semibold transition-colors ${location.pathname === path ? 'text-purple-800' : 'text-gray-700 hover:text-purple-600'}`}>
               {label}
             </Link>
           ))}
@@ -59,22 +59,22 @@ const Header = () => {
             {isAuthenticated ? (
               <div className="relative">
                 <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold">{getUserInitials()}</div>
+                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">{getUserInitials()}</div>
                   <SafeIcon icon={FiChevronDown} className={`text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {isUserMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl py-2 z-50">
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl py-2 z-50 border border-purple-50">
                       {isAdmin && isAdmin() && (
-                        <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50">Admin Dashboard</Link>
+                        <Link to="/admin" className="block px-4 py-2 text-base text-gray-700 hover:bg-purple-50">Admin Dashboard</Link>
                       )}
-                      <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Sign Out</button>
+                      <button onClick={logout} className="w-full text-left px-4 py-2 text-base text-red-600 hover:bg-red-50">Sign Out</button>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             ) : (
-              <Link to="/login" className="px-5 py-2 bg-purple-900 text-white rounded-full text-sm font-semibold hover:bg-purple-700">Join Free</Link>
+              <Link to="/login" className="px-6 py-2.5 bg-purple-900 text-white rounded-full text-base font-bold hover:bg-purple-700 transition-all shadow-md">Join Free</Link>
             )}
           </div>
         </nav>
@@ -83,6 +83,40 @@ const Header = () => {
           <SafeIcon icon={isMenuOpen ? FiX : FiMenu} className="text-2xl" />
         </button>
       </div>
+
+      {/* Mobile Nav */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white border-b border-purple-100 overflow-hidden"
+          >
+            <div className="px-4 pt-4 pb-8 space-y-4">
+              {navItems.map(({ path, label }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`block text-lg font-semibold px-4 py-2 rounded-xl ${location.pathname === path ? 'bg-purple-50 text-purple-800' : 'text-gray-700 hover:bg-gray-50'}`}
+                >
+                  {label}
+                </Link>
+              ))}
+              {!isAuthenticated && (
+                <Link
+                  to="/login"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block text-center text-lg font-bold bg-purple-900 text-white py-4 rounded-2xl mt-6 shadow-lg"
+                >
+                  Join Free
+                </Link>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
