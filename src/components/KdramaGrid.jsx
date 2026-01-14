@@ -47,7 +47,6 @@ const KdramaCard = ({ drama, isDragging, isCenter }) => {
             </span>
           </div>
 
-          {/* Adjusted padding and spacing for longer synopsis */}
           <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6 lg:p-7 pointer-events-none">
             <h3 className="text-xl md:text-2xl lg:text-3xl font-serif font-bold text-white mb-2 leading-tight drop-shadow-lg">
               {drama.title}
@@ -62,7 +61,6 @@ const KdramaCard = ({ drama, isDragging, isCenter }) => {
                   transition={{ delay: 0.1 }}
                   className="space-y-2"
                 >
-                  {/* line-clamp-3 ensures up to 2-3 lines of text (approx 2 sentences) */}
                   <p className="text-gray-200 text-xs md:text-[13px] font-sans line-clamp-3 leading-snug italic opacity-95">
                     {drama.synopsis_short}
                   </p>
@@ -122,9 +120,13 @@ const KdramaGrid = () => {
     clearTimeout(snapTimerRef.current);
     if (!isDragging) {
       snapTimerRef.current = setTimeout(() => {
-        const closest = containerRef.current?.querySelector(`[data-id="${centerId}"]`);
+        if (!containerRef.current) return;
+        const closest = containerRef.current.querySelector(`[data-id="${centerId}"]`);
         if (closest) {
-          closest.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          // Replaced scrollIntoView with manual scrollLeft to prevent vertical jumping
+          const container = containerRef.current;
+          const targetScroll = closest.offsetLeft - (container.offsetWidth / 2) + (closest.offsetWidth / 2);
+          container.scrollTo({ left: targetScroll, behavior: 'smooth' });
         }
       }, 250);
     }
@@ -148,13 +150,20 @@ const KdramaGrid = () => {
 
   useEffect(() => {
     if (!isLoading && featuredKdramas.length > 0) {
+      // Small delay to ensure layout is ready
       setTimeout(() => {
-        const cards = containerRef.current?.querySelectorAll('.kdrama-card-container');
+        const container = containerRef.current;
+        if (!container) return;
+        
+        const cards = container.querySelectorAll('.kdrama-card-container');
         if (cards?.[1]) {
-          cards[1].scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+          // Manually set scrollLeft to avoid scrollIntoView's vertical jumping behavior
+          const card = cards[1];
+          const targetScroll = card.offsetLeft - (container.offsetWidth / 2) + (card.offsetWidth / 2);
+          container.scrollLeft = targetScroll;
         }
         updateCenterCard();
-      }, 400);
+      }, 100);
     }
   }, [isLoading, featuredKdramas, updateCenterCard]);
 
