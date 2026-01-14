@@ -20,22 +20,6 @@ const ADMIN_CREDENTIALS = {
   email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
 };
 
-// --- MOCK USERS FOR TESTING ---
-const MOCK_ACCOUNTS = [
-  {
-    email: 'author@test.com',
-    name: 'Chloe Park',
-    role: 'author',
-    id: 'mock-author-123'
-  },
-  {
-    email: 'subscriber@test.com',
-    name: 'Min-ji Kim',
-    role: 'subscriber',
-    id: 'mock-subscriber-456'
-  }
-];
-
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -70,15 +54,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (userData) => {
     const { userId, token, newUser, email } = userData;
     
-    // Check if this is one of our predefined mock accounts
-    const mockMatch = MOCK_ACCOUNTS.find(m => m.email === email);
-    let role = mockMatch ? mockMatch.role : 'subscriber';
-    
+    let role = 'subscriber';
     if (email === ADMIN_CREDENTIALS.email) {
       role = 'admin';
     }
 
-    const name = mockMatch ? mockMatch.name : (email?.split('@')[0] || 'User');
+    const name = email?.split('@')[0] || 'User';
 
     localStorage.setItem('userId', userId);
     localStorage.setItem('token', token);
@@ -112,21 +93,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Helper for instant mock login (bypassing SDK for dev convenience)
-  const bypassLogin = (mockEmail) => {
-    const mockMatch = MOCK_ACCOUNTS.find(m => m.email === mockEmail) || {
-      email: ADMIN_CREDENTIALS.email,
-      name: 'BangtanMom',
-      role: 'admin',
-      id: 'admin-bypass'
-    };
-
-    login({
-      userId: mockMatch.id,
-      token: 'mock-token-' + Date.now(),
-      newUser: false,
-      email: mockMatch.email
-    });
+  // Helper for admin bypass (keeping for admin login convenience)
+  const bypassLogin = (email) => {
+    if (email === ADMIN_CREDENTIALS.email) {
+      login({
+        userId: 'admin-bypass',
+        token: 'admin-token-' + Date.now(),
+        newUser: false,
+        email: ADMIN_CREDENTIALS.email
+      });
+    }
   };
 
   const adminLogin = (credentials) => {
@@ -164,13 +140,12 @@ export const AuthProvider = ({ children }) => {
       isLoading,
       login,
       adminLogin,
-      bypassLogin, // Exported for the login helper
+      bypassLogin,
       logout,
       hasPermission,
       isAdmin,
       isAuthor,
-      isSubscriber,
-      mockAccounts: MOCK_ACCOUNTS
+      isSubscriber
     }}>
       {children}
     </AuthContext.Provider>

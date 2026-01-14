@@ -4,13 +4,9 @@ import { QuestLogin } from '@questlabs/react-sdk';
 import { useAuth } from '../contexts/AuthContext';
 import questConfig from '../config/questConfig';
 import { LOGO_URL as logo } from '../config/assets';
-import * as FiIcons from 'react-icons/fi';
-import SafeIcon from '../common/SafeIcon';
-
-const { FiHeart, FiMusic, FiUser, FiEdit3, FiShield, FiArrowRight } = FiIcons;
 
 const Login = () => {
-  const { login, bypassLogin, mockAccounts } = useAuth();
+  const { login } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white overflow-hidden">
@@ -62,62 +58,6 @@ const Login = () => {
                 PrimaryButton: { backgroundColor: '#7E22CE', color: '#ffffff', borderRadius: '12px', padding: '16px', fontWeight: '600' }
               }} 
             />
-          </div>
-
-          {/* --- DEVELOPMENT TEST ACCOUNTS HELPER --- */}
-          <div className="mt-12 p-6 bg-purple-50 rounded-2xl border border-purple-100">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-800 mb-4 flex items-center">
-              <SafeIcon icon={FiShield} className="mr-2" /> Quick Test Accounts
-            </h3>
-            <div className="space-y-3">
-              <button 
-                onClick={() => bypassLogin('bangtanmom@bangtanmom.com')} 
-                className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-purple-200 hover:border-purple-400 hover:shadow-sm transition-all text-left"
-              >
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white mr-3">
-                    <SafeIcon icon={FiShield} className="text-xs" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-900">Admin Account</div>
-                    <div className="text-[10px] text-gray-500">Full Control</div>
-                  </div>
-                </div>
-                <SafeIcon icon={FiArrowRight} className="text-purple-400" />
-              </button>
-
-              <button 
-                onClick={() => bypassLogin('author@test.com')} 
-                className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-purple-200 hover:border-purple-400 hover:shadow-sm transition-all text-left"
-              >
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white mr-3">
-                    <SafeIcon icon={FiEdit3} className="text-xs" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-900">Author Account</div>
-                    <div className="text-[10px] text-gray-500">Manage Stories</div>
-                  </div>
-                </div>
-                <SafeIcon icon={FiArrowRight} className="text-purple-400" />
-              </button>
-
-              <button 
-                onClick={() => bypassLogin('subscriber@test.com')} 
-                className="w-full flex items-center justify-between p-3 bg-white rounded-xl border border-purple-200 hover:border-purple-400 hover:shadow-sm transition-all text-left"
-              >
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center text-white mr-3">
-                    <SafeIcon icon={FiUser} className="text-xs" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-900">Subscriber Account</div>
-                    <div className="text-[10px] text-gray-500">Community Access</div>
-                  </div>
-                </div>
-                <SafeIcon icon={FiArrowRight} className="text-purple-400" />
-              </button>
-            </div>
           </div>
         </div>
       </div>

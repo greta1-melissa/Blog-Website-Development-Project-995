@@ -23,8 +23,8 @@ const UserManagement = () => {
       
       let userData = Array.isArray(json.data) ? json.data : [];
       
-      // MOCK FALLBACK DATA (Including the 2 requested accounts)
-      if (userData.length < 3) {
+      // FALLBACK TO ADMIN IF NO USERS FOUND
+      if (userData.length === 0) {
         userData = [
           {
             id: 'admin-1',
@@ -35,26 +35,6 @@ const UserManagement = () => {
             status: 'active',
             joinDate: '2024-01-01',
             lastLogin: new Date().toISOString()
-          },
-          {
-            id: 'mock-author-123',
-            name: 'Chloe Park',
-            email: 'author@test.com',
-            username: 'chloepark',
-            role: 'author',
-            status: 'active',
-            joinDate: '2024-03-10',
-            lastLogin: '2024-12-01'
-          },
-          {
-            id: 'mock-subscriber-456',
-            name: 'Min-ji Kim',
-            email: 'subscriber@test.com',
-            username: 'minjikim',
-            role: 'subscriber',
-            status: 'active',
-            joinDate: '2024-03-12',
-            lastLogin: '2024-12-02'
           }
         ];
       }
