@@ -7,6 +7,70 @@
 
 const NCB_URL = '/api/ncb';
 
+/**
+ * Field allowlists for data integrity
+ */
+export const NCB_ALLOWLISTS = {
+  posts: [
+    'title', 'slug', 'content', 'excerpt', 'tags', 'category', 'status', 
+    'created_at', 'updated_at', 'published_at', 'author', 'date',
+    'image', 'image_url', 'featured_image_url',
+    'seo_title', 'seo_description', 'seo_keywords', 'og_image_url', 'canonical_url', 'noindex'
+  ],
+  product_recommendations: [
+    'title', 'slug', 'subcategory', 'rating', 'excerpt', 'content', 
+    'image', 'image_url', 'status', 'created_at', 'updated_at', 
+    'published_at', 'author', 'date', 'short_blurb', 'review', 'my_two_cents', 'tags'
+  ],
+  kdrama_recommendations: [
+    'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
+    'image_url', 'image', 'is_featured_on_home', 'display_order', 
+    'status', 'created_at', 'updated_at', 'published_at', 'author', 'date'
+  ]
+};
+
+/**
+ * Sanitizes payload based on type and allowlist.
+ * Adds defaults and timestamps.
+ */
+export function sanitizeNcbPayload(type, data) {
+  const allowlist = NCB_ALLOWLISTS[type];
+  if (!allowlist) return data;
+
+  const sanitized = {};
+  const now = new Date().toISOString();
+  const today = now.split('T')[0];
+
+  // 1. Apply Defaults & Timestamps
+  const status = (data.status || 'draft').toString().toLowerCase().trim();
+  sanitized.status = status;
+  sanitized.updated_at = now;
+  
+  if (!data.id) { // New record
+    sanitized.created_at = data.created_at || now;
+    sanitized.author = data.author || 'BangtanMom';
+    sanitized.date = data.date || today;
+  }
+
+  if (status === 'published' && !data.published_at) {
+    sanitized.published_at = now;
+  }
+
+  // 2. Map Allowlist Fields
+  allowlist.forEach(field => {
+    if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
+      // Specialized handling for booleans
+      if (field === 'noindex' || field === 'is_featured_on_home') {
+        sanitized[field] = data[field] === true || data[field] === 'true' || data[field] === 1 || data[field] === '1';
+      } else {
+        sanitized[field] = data[field];
+      }
+    }
+  });
+
+  return sanitized;
+}
+
 function buildHeaders() {
   return {
     'Content-Type': 'application/json'
@@ -17,9 +81,6 @@ function normalizeTableName(table) {
   return String(table).trim().toLowerCase();
 }
 
-/**
- * Build the URL for the proxy.
- */
 function buildProxyUrl(path, extraParams = {}) {
   const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
   
@@ -29,7 +90,6 @@ function buildProxyUrl(path, extraParams = {}) {
     }
   });
 
-  // Cache Busting
   url.searchParams.set('_t', Date.now());
   return url.toString();
 }
@@ -41,23 +101,28 @@ function normalizeItem(item) {
 }
 
 function normalizeArray(data) {
-  // Robust check: NoCodeBackend sometimes returns the array directly, 
-  // sometimes wrapped in a .data property.
   const source = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
   return source.map(normalizeItem);
 }
 
 async function handleResponse(res, context) {
   if (!res.ok) {
-    const errorBody = await res.text().catch(() => 'Could not read error body.');
-    throw new Error(`${context} Failed (${res.status}): ${errorBody.substring(0, 100)}`);
+    let errorDetail = '';
+    try {
+      const errorJson = await res.json();
+      errorDetail = JSON.stringify(errorJson);
+    } catch (e) {
+      errorDetail = await res.text().catch(() => 'Unknown error');
+    }
+    
+    const errorMsg = `[NCB Error] ${context} (${res.status}): ${errorDetail}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
   
   const contentType = res.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    const json = await res.json().catch(() => ({}));
-    // If the top level is the array, return it directly for normalizeArray to handle
-    return json;
+    return await res.json().catch(() => ({}));
   }
   return { status: 'success' };
 }
@@ -74,7 +139,7 @@ export async function ncbReadAll(table, queryParams = {}) {
     const json = await handleResponse(res, `readAll:${cleanTable}`);
     return normalizeArray(json);
   } catch (error) {
-    console.error(`NCB: Error readAll:${cleanTable}`, error);
+    console.error(`NCB Read Failed: ${cleanTable}`, error);
     return [];
   }
 }
@@ -93,7 +158,6 @@ export async function ncbCreate(table, payload) {
     const data = json?.data || json;
     return normalizeItem(Array.isArray(data) ? data[0] : data);
   } catch (error) {
-    console.error(`NCB: Error create:${cleanTable}`, error);
     throw error;
   }
 }
@@ -126,7 +190,6 @@ export async function ncbDelete(table, id) {
     await handleResponse(res, `delete:${cleanTable}:${id}`);
     return true;
   } catch (error) {
-    console.error(`NCB: Error delete:${cleanTable}`, error);
     return false;
   }
 }
@@ -135,17 +198,23 @@ export async function ncbGet(table, queryParams) {
   return ncbReadAll(table, queryParams);
 }
 
+/**
+ * Diagnostic function for NcbDebug page
+ */
 export async function getNcbStatus() {
   try {
-    const posts = await ncbReadAll('posts', { limit: 1 });
+    // Try to read one post to verify connection
+    const res = await ncbReadAll('posts', { limit: 1 });
     return {
-      canReadPosts: Array.isArray(posts),
-      message: 'Proxy connection successful.'
+      success: true,
+      canReadPosts: true,
+      message: 'NCB Connection successful. Successfully read from posts table via proxy.'
     };
-  } catch (e) {
+  } catch (error) {
     return {
+      success: false,
       canReadPosts: false,
-      message: `Connection failed: ${e.message}`
+      message: `NCB Connection failed: ${error.message}`
     };
   }
 }
