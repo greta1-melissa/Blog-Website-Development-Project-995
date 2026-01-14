@@ -134,7 +134,7 @@ export const BlogProvider = ({ children }) => {
 
     return {
       ...item,
-      id: item.id,
+      id: item.id || item._id,
       title: item.title || 'Untitled',
       status: rawStatus,
       category: item.category || (type === 'post' ? 'General' : 'Product'),
@@ -187,7 +187,7 @@ export const BlogProvider = ({ children }) => {
   const addPost = async (data) => {
     const res = await ncbCreate(TABLES.POSTS, data);
     await fetchData();
-    return res.id;
+    return res; // Return full response object
   };
   const updatePost = async (id, data) => {
     await ncbUpdate(TABLES.POSTS, id, data);
@@ -201,7 +201,7 @@ export const BlogProvider = ({ children }) => {
   const addProduct = async (data) => {
     const res = await ncbCreate(TABLES.PRODUCTS, data);
     await fetchData();
-    return res.id;
+    return res;
   };
   const updateProduct = async (id, data) => {
     await ncbUpdate(TABLES.PRODUCTS, id, data);
