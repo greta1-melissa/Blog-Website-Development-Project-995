@@ -13,7 +13,7 @@ import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -23,19 +23,28 @@ const CreatePost = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showSeo, setShowSeo] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     category: '',
     image: '',
-    status: 'published'
+    status: 'published',
+    // SEO Fields
+    seo_title: '',
+    seo_description: '',
+    seo_keywords: '',
+    og_image_url: '',
+    canonical_url: '',
+    noindex: false
   });
 
   const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Career'];
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let finalValue = value;
+    const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
 
     // Normalize Dropbox links
     if (name === 'image' && typeof finalValue === 'string') {
@@ -107,7 +116,6 @@ const CreatePost = () => {
       if (targetId) {
         navigate(`/post/${targetId}`);
       } else {
-        // Fallback to blogs if ID is missing but save succeeded
         navigate('/blogs');
       }
     } catch (error) {
@@ -127,7 +135,7 @@ const CreatePost = () => {
         </div>
 
         {errorMessage && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start animate-shake">
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start">
             <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-3 mt-1 flex-shrink-0" />
             <div className="text-red-800">
               <p className="font-bold text-sm">Action Required</p>
@@ -151,7 +159,7 @@ const CreatePost = () => {
                   required 
                 />
               </div>
-              <div className="mb-0">
+              <div className="mb-8">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Story Content *</label>
                 <div className="rounded-xl overflow-hidden border border-gray-200">
                   <ReactQuill 
@@ -161,6 +169,84 @@ const CreatePost = () => {
                     className="bg-white min-h-[400px]" 
                   />
                 </div>
+              </div>
+
+              {/* SEO Section */}
+              <div className="border-t border-gray-100 pt-6">
+                <button 
+                  type="button"
+                  onClick={() => setShowSeo(!showSeo)}
+                  className="flex items-center justify-between w-full py-2 text-left group"
+                >
+                  <div className="flex items-center space-x-2">
+                    <SafeIcon icon={FiSearch} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
+                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">Search Engine Optimization (SEO)</span>
+                  </div>
+                  <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
+                </button>
+                
+                {showSeo && (
+                  <div className="mt-6 space-y-6 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Title</label>
+                      <input 
+                        type="text" 
+                        name="seo_title" 
+                        value={formData.seo_title} 
+                        onChange={handleChange} 
+                        placeholder="Meta title (defaults to post title)"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Description</label>
+                      <textarea 
+                        name="seo_description" 
+                        value={formData.seo_description} 
+                        onChange={handleChange} 
+                        rows="3"
+                        placeholder="Meta description for search results"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Keywords</label>
+                      <input 
+                        type="text" 
+                        name="seo_keywords" 
+                        value={formData.seo_keywords} 
+                        onChange={handleChange} 
+                        placeholder="k-pop, bts, lifestyle (comma separated)"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Canonical URL</label>
+                        <input 
+                          type="url" 
+                          name="canonical_url" 
+                          value={formData.canonical_url} 
+                          onChange={handleChange} 
+                          placeholder="https://example.com/original-post"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" 
+                        />
+                      </div>
+                      <div className="flex items-center pt-6">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            name="noindex" 
+                            checked={formData.noindex} 
+                            onChange={handleChange} 
+                            className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" 
+                          />
+                          <span className="text-sm font-medium text-gray-700">Hide from search engines (noindex)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -180,7 +266,18 @@ const CreatePost = () => {
                     <><SafeIcon icon={FiSave} className="mr-2" /> Publish Story</>
                   )}
                 </button>
-                <p className="text-[10px] text-center text-gray-400">By publishing, your story will be visible to the community.</p>
+                <div className="pt-2">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status</label>
+                  <select 
+                    name="status" 
+                    value={formData.status} 
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-bold"
+                  >
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -217,7 +314,7 @@ const CreatePost = () => {
                   <input type="file" id="file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
                   <label htmlFor="file-upload" className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-purple-200 rounded-xl cursor-pointer transition-all font-bold text-sm text-purple-600 hover:bg-purple-50 hover:border-purple-300">
                     {isUploading ? (
-                      <span className="animate-pulse">Uploading to Cloud...</span>
+                      <span className="animate-pulse">Uploading...</span>
                     ) : uploadStatus.includes('Complete') ? (
                       <><SafeIcon icon={FiCheck} className="mr-2" /> Uploaded!</>
                     ) : (
@@ -229,7 +326,6 @@ const CreatePost = () => {
                 {formData.image && (
                   <div className="relative rounded-xl overflow-hidden aspect-video w-full border border-gray-100 bg-gray-50 shadow-inner">
                     <SafeImage src={formData.image} alt="Preview" fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                   </div>
                 )}
               </div>

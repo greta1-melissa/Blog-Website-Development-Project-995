@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
 import { kdramas as initialSeedData } from '../data/kdramaData';
 import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
@@ -23,7 +23,7 @@ export const KdramaProvider = ({ children }) => {
    * Normalizes incoming database data.
    * Defensive against non-string slugs and boolean variations.
    */
-  const normalizeData = (data) => {
+  const normalizeData = useCallback((data) => {
     if (!Array.isArray(data)) return [];
     
     return data.map((item, index) => {
@@ -50,17 +50,17 @@ export const KdramaProvider = ({ children }) => {
         display_order: parseInt(item.display_order) || (index + 1)
       };
     });
-  };
+  }, []);
 
-  const fetchKdramas = async () => {
+  const fetchKdramas = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/ncb/read/${TABLE_NAME}`);
-      const json = await res.json();
+      // Use ncbReadAll for consistency and proxy handling
+      const res = await ncbReadAll(TABLE_NAME);
       
       let currentData = [];
-      if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
-        currentData = normalizeData(json.data);
+      if (Array.isArray(res) && res.length > 0) {
+        currentData = normalizeData(res);
       } else {
         currentData = normalizeData(initialSeedData);
       }
@@ -74,17 +74,20 @@ export const KdramaProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [normalizeData]);
 
   useEffect(() => {
     fetchKdramas();
-  }, []);
+  }, [fetchKdramas]);
 
   const addKdrama = async (dramaData) => {
     try {
-      const saved = await ncbCreate(TABLE_NAME, dramaData);
+      const saved = await ncbCreate(TABLE_NAME, {
+        ...dramaData,
+        created_at: new Date().toISOString()
+      });
       await fetchKdramas();
-      return saved.id;
+      return saved;
     } catch (err) {
       console.error("Failed to add drama", err);
       throw err;
@@ -123,16 +126,12 @@ export const KdramaProvider = ({ children }) => {
   };
 
   /**
-   * Filter logic: 
-   * 1. Filter only is_featured_on_home
-   * 2. Sort by display_order
-   * 3. Take first 8
+   * Filter logic for featured section
    */
   const featuredKdramas = useMemo(() => {
     const featured = kdramas.filter(d => d.is_featured_on_home === true);
-    // If no dramas are featured, fallback to newest ones so section isn't empty
     const source = featured.length > 0 ? featured : kdramas;
-    return source
+    return [...source]
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
       .slice(0, 8);
   }, [kdramas]);

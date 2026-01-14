@@ -8,22 +8,59 @@ import SafeImage from '../common/SafeImage';
 import { formatDate } from '../utils/dateUtils';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart, FiShare2, FiCheck } = FiIcons;
+const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart } = FiIcons;
 
 const BlogPost = () => {
   const { id } = useParams();
   const { getPost } = useBlog();
-  const [isFollowing, setIsFollowing] = useState(false);
   const post = getPost(id);
 
   useEffect(() => {
     if (post) {
-      document.title = post.seoTitle || post.title + " | Bangtan Mom";
-      const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) {
-        metaDescription.setAttribute('content', post.metaDescription || post.content.substring(0, 150));
+      // 1. Set Page Title
+      const title = post.seo_title || post.title;
+      document.title = `${title} | Bangtan Mom`;
+
+      // 2. Helper to manage meta tags
+      const setMeta = (name, content, attr = 'name') => {
+        if (!content) return;
+        let el = document.querySelector(`meta[${attr}="${name}"]`);
+        if (!el) {
+          el = document.createElement('meta');
+          el.setAttribute(attr, name);
+          document.head.appendChild(el);
+        }
+        el.setAttribute('content', content);
+      };
+
+      // 3. Set Standard Meta
+      setMeta('description', post.seo_description || post.excerpt || post.content.replace(/<[^>]*>/g, '').substring(0, 160));
+      setMeta('keywords', post.seo_keywords);
+      
+      // 4. Set Open Graph
+      setMeta('og:title', title, 'property');
+      setMeta('og:description', post.seo_description || post.excerpt, 'property');
+      setMeta('og:image', post.og_image_url || post.image, 'property');
+      setMeta('og:url', window.location.href, 'property');
+      setMeta('og:type', 'article', 'property');
+
+      // 5. Set Robots
+      if (post.noindex) {
+        setMeta('robots', 'noindex, nofollow');
+      } else {
+        setMeta('robots', 'index, follow');
       }
+
+      // 6. Handle Canonical Link
+      let canonical = document.querySelector('link[rel="canonical"]');
+      if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.setAttribute('rel', 'canonical');
+        document.head.appendChild(canonical);
+      }
+      canonical.setAttribute('href', post.canonical_url || window.location.href);
     }
+    
     return () => {
       document.title = "Bangtan Mom - BTS, K-Pop, Family & Lifestyle";
     };

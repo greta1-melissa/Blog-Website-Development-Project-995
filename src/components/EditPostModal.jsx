@@ -10,10 +10,12 @@ import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const { posts } = useBlog();
+  const [showSeo, setShowSeo] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -21,7 +23,14 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     category: '',
     excerpt: '',
     image: '',
-    status: 'published'
+    status: 'published',
+    // SEO Fields
+    seo_title: '',
+    seo_description: '',
+    seo_keywords: '',
+    og_image_url: '',
+    canonical_url: '',
+    noindex: false
   });
 
   const [isUploading, setIsUploading] = useState(false);
@@ -38,28 +47,24 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         category: post.category || '',
         excerpt: post.excerpt || '',
         image: post.image || post.image_url || post.featured_image_url || '',
-        status: post.status || 'published'
+        status: post.status || 'published',
+        // SEO Fields
+        seo_title: post.seo_title || '',
+        seo_description: post.seo_description || '',
+        seo_keywords: post.seo_keywords || '',
+        og_image_url: post.og_image_url || '',
+        canonical_url: post.canonical_url || '',
+        noindex: post.noindex === true || post.noindex === 'true'
       });
       setUploadStatus('');
       setErrorMessage('');
-    } else {
-      setFormData({
-        title: '',
-        slug: '',
-        content: '',
-        category: categories[0] || '',
-        excerpt: '',
-        image: '',
-        status: 'published'
-      });
     }
-  }, [post, isOpen, categories]);
+  }, [post, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let finalValue = value;
+    const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : value;
 
-    // Normalize Dropbox links if pasting into the image field
     if (name === 'image' && typeof finalValue === 'string') {
       finalValue = normalizeDropboxSharedUrl(finalValue);
     }
@@ -101,13 +106,17 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     setErrorMessage('');
     try {
       const finalSlug = formData.slug.trim() || ensureUniqueSlug(formData.title, posts, post?.id);
+      
+      // Map 'image' back to correct backend field names for compatibility
       const submissionData = {
         ...formData,
         slug: finalSlug,
+        image: formData.image,
         image_url: formData.image,
         featured_image_url: formData.image,
         date: post?.date || new Date().toISOString()
       };
+      
       await onSave(post?.id, submissionData);
       onClose();
     } catch (error) {
@@ -130,6 +139,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
               <SafeIcon icon={FiX} />
             </button>
           </div>
+          
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             {errorMessage && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
@@ -137,6 +147,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 {errorMessage}
               </div>
             )}
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div>
@@ -153,7 +164,44 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
                   </div>
                 </div>
+
+                {/* SEO Section */}
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <button 
+                    type="button"
+                    onClick={() => setShowSeo(!showSeo)}
+                    className="flex items-center justify-between w-full text-left group"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <SafeIcon icon={FiSearch} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
+                      <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
+                    </div>
+                    <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
+                  </button>
+                  
+                  {showSeo && (
+                    <div className="mt-6 space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">SEO Title</label>
+                        <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="Custom meta title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">SEO Description</label>
+                        <textarea name="seo_description" value={formData.seo_description} onChange={handleChange} rows="2" placeholder="Custom meta description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">SEO Keywords</label>
+                        <input type="text" name="seo_keywords" value={formData.seo_keywords} onChange={handleChange} placeholder="comma, separated, keywords" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      </div>
+                      <div className="flex items-center space-x-2 pt-2">
+                        <input type="checkbox" name="noindex" checked={formData.noindex} onChange={handleChange} id="noindex-check" className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
+                        <label htmlFor="noindex-check" className="text-xs font-medium text-gray-600 cursor-pointer">Hide from search engines (noindex)</label>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+              
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
                   <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2">Publishing Info</h3>
@@ -171,11 +219,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Custom Slug (Optional)</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Custom Slug</label>
                     <input type="text" name="slug" value={formData.slug} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" placeholder="e.g. my-awesome-post" />
-                    <p className="text-[10px] text-gray-400 mt-1">Leave blank to auto-generate from title.</p>
                   </div>
                 </div>
+                
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
                   <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2">Featured Image</h3>
                   <div className="space-y-3">
@@ -184,9 +232,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                       <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
                     </div>
                     <div className="relative">
-                      <input type="file" id="post-file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
-                      <label htmlFor="post-file-upload" className="flex items-center justify-center w-full px-4 py-2 border border-dashed border-purple-200 text-purple-600 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors text-sm font-medium bg-white">
-                        {isUploading ? <span className="animate-pulse">Uploading...</span> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload from Computer</>}
+                      <input type="file" id="post-file-upload-edit" onChange={handleFileUpload} className="hidden" accept="image/*" />
+                      <label htmlFor="post-file-upload-edit" className="flex items-center justify-center w-full px-4 py-2 border border-dashed border-purple-200 text-purple-600 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors text-sm font-medium bg-white">
+                        {isUploading ? <span className="animate-pulse">Uploading...</span> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Change Image</>}
                       </label>
                     </div>
                     {formData.image && (
@@ -199,6 +247,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
               </div>
             </div>
           </form>
+          
           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-white rounded-xl transition-colors border border-gray-200">
               Cancel
