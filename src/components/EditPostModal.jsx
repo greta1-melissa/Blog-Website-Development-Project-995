@@ -105,6 +105,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Title *</label>
                   <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-lg font-bold" required />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Short Excerpt (Summary)</label>
+                  <textarea 
+                    name="excerpt" 
+                    value={formData.excerpt} 
+                    onChange={handleChange} 
+                    rows="3" 
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed" 
+                    placeholder="A brief summary of your story for the blog cards..."
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Content *</label>
                   <div className="rounded-xl overflow-hidden border border-gray-200">

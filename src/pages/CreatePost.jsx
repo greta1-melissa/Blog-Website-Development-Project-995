@@ -30,6 +30,7 @@ const CreatePost = () => {
     title: '',
     content: '',
     category: '',
+    excerpt: '',
     image: '',
     status: 'published',
     seo_title: '',
@@ -135,6 +136,19 @@ const CreatePost = () => {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Post Title *</label>
                 <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" required />
               </div>
+
+              <div className="mb-6">
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Short Excerpt (Summary)</label>
+                <textarea 
+                  name="excerpt" 
+                  value={formData.excerpt} 
+                  onChange={handleChange} 
+                  rows="3" 
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed" 
+                  placeholder="A brief summary of your story for the blog cards..."
+                />
+              </div>
+
               <div className="mb-8">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Story Content *</label>
                 <div className="rounded-xl overflow-hidden border border-gray-200">
