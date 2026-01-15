@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
@@ -7,6 +9,7 @@ import { KDRAMA_PLACEHOLDER } from '../config/assets';
 import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useKdrama } from '../contexts/KdramaContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
+import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
@@ -274,26 +277,30 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
             <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">My 2 Cents (Personal Opinion) *</label>
-                <textarea 
-                  name="my_two_cents" 
-                  value={formData.my_two_cents} 
-                  onChange={handleChange} 
-                  rows="3" 
-                  className="w-full px-4 py-2.5 border border-purple-100 bg-purple-50/30 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm italic" 
-                  required 
-                  placeholder="What did you personally think of it?" 
-                />
+                <div className="rounded-xl overflow-hidden border border-purple-100">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.my_two_cents} 
+                    onChange={(val) => setFormData(p => ({ ...p, my_two_cents: val }))} 
+                    modules={quillModules}
+                    formats={quillFormats}
+                    className="bg-purple-50/10 min-h-[150px] italic" 
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Full Review / Synopsis</label>
-                <textarea 
-                  name="synopsis_long" 
-                  value={formData.synopsis_long} 
-                  onChange={handleChange} 
-                  rows="6" 
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed" 
-                />
+                <div className="rounded-xl overflow-hidden border border-gray-200">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.synopsis_long} 
+                    onChange={(val) => setFormData(p => ({ ...p, synopsis_long: val }))} 
+                    modules={quillModules}
+                    formats={quillFormats}
+                    className={editorStyles} 
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl border border-gray-100">

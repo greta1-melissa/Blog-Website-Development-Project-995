@@ -9,6 +9,7 @@ import { BLOG_PLACEHOLDER } from '../config/assets';
 import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
+import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
@@ -107,7 +108,14 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Content *</label>
                   <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
+                    <ReactQuill 
+                      theme="snow" 
+                      value={formData.content} 
+                      onChange={(val) => setFormData(p => ({ ...p, content: val }))} 
+                      modules={quillModules}
+                      formats={quillFormats}
+                      className={editorStyles} 
+                    />
                   </div>
                 </div>
 

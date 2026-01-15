@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
@@ -12,6 +12,7 @@ import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { generateSlug } from '../utils/slugUtils';
+import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
 const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
@@ -137,7 +138,14 @@ const CreatePost = () => {
               <div className="mb-8">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Story Content *</label>
                 <div className="rounded-xl overflow-hidden border border-gray-200">
-                  <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.content} 
+                    onChange={(val) => setFormData(p => ({ ...p, content: val }))} 
+                    modules={quillModules}
+                    formats={quillFormats}
+                    className={editorStyles} 
+                  />
                 </div>
               </div>
 

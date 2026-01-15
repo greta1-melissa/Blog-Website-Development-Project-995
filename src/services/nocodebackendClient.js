@@ -32,6 +32,26 @@ export const NCB_ALLOWLISTS = {
 };
 
 /**
+ * Strips unwanted HTML attributes and tags to keep storage clean.
+ * Focuses on removing inline styles and junk from external sources.
+ */
+function cleanHtmlContent(html) {
+  if (!html || typeof html !== 'string') return html;
+  
+  // Basic sanitization: remove style attributes and specific tags
+  return html
+    .replace(/ style="[^"]*"/gi, '') // Remove all inline styles
+    .replace(/ class="[^"]*"/gi, '') // Remove all classes
+    .replace(/<span[^>]*>/gi, '')    // Remove spans but keep content
+    .replace(/<\/span>/gi, '')
+    .replace(/<div[^>]*>/gi, '<p>')  // Convert divs to paragraphs
+    .replace(/<\/div>/gi, '</p>')
+    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '<br/>') // Clean empty paragraphs
+    .replace(/(&nbsp;)+/g, ' ')      // Replace multiple non-breaking spaces
+    .trim();
+}
+
+/**
  * Sanitizes payload based on type and allowlist.
  * Adds defaults and timestamps.
  */
@@ -60,15 +80,21 @@ export function sanitizeNcbPayload(type, data) {
 
   // 2. Map Allowlist Fields
   allowlist.forEach(field => {
-    if (data[field] !== undefined && data[field] !== null && data[field] !== '') {
+    let value = data[field];
+    
+    if (value !== undefined && value !== null && value !== '') {
+      // Clean HTML for content fields
+      if (['content', 'synopsis_long', 'my_two_cents', 'review'].includes(field)) {
+        value = cleanHtmlContent(value);
+      }
+
       // Specialized handling for booleans
       if (field === 'noindex' || field === 'is_featured_on_home') {
-        sanitized[field] = data[field] === true || data[field] === 'true' || data[field] === 1 || data[field] === '1';
+        sanitized[field] = value === true || value === 'true' || value === 1 || value === '1';
       } else {
-        sanitized[field] = data[field];
+        sanitized[field] = value;
       }
     } else if (field === 'noindex' || field === 'is_featured_on_home') {
-      // Ensure booleans are always false if missing/empty
       sanitized[field] = false;
     }
   });
@@ -208,7 +234,6 @@ export async function ncbGet(table, queryParams) {
  */
 export async function getNcbStatus() {
   try {
-    // Try to read one post to verify connection
     const res = await ncbReadAll('posts', { limit: 1 });
     return {
       success: true,
