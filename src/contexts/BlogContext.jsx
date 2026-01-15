@@ -51,14 +51,15 @@ export const BlogProvider = ({ children }) => {
       id: item.id || item._id,
       title: item.title || 'Untitled',
       status: rawStatus,
-      category: item.category || (type === 'post' ? 'General' : 'Product'),
+      category: item.category || (type === 'post' ? 'General' : 'Product Recommendations'),
       excerpt: item.excerpt || item.summary || item.short_blurb || '',
       content: item.content || item.detailed_review || '',
       image: cleanImage,
       date: item.date || item.created_at || new Date().toISOString(),
+      // SEO Fields
       seo_title: item.seo_title || item.title || '',
-      seo_description: item.seo_description || item.excerpt || '',
-      seo_keywords: item.seo_keywords || '',
+      meta_description: item.meta_description || item.seo_description || item.excerpt || '',
+      focus_keyword: item.focus_keyword || item.seo_keywords || '',
       og_image_url: item.og_image_url || cleanImage,
       canonical_url: item.canonical_url || '',
       noindex: item.noindex === true || item.noindex === 'true' || item.noindex === 1
@@ -102,39 +103,69 @@ export const BlogProvider = ({ children }) => {
   [posts]);
 
   const addPost = async (data) => {
-    const payload = sanitizeNcbPayload('posts', data);
-    const res = await ncbCreate(TABLES.POSTS, payload);
-    await fetchData();
-    return res;
+    try {
+      const payload = sanitizeNcbPayload('posts', data);
+      const res = await ncbCreate(TABLES.POSTS, payload);
+      await fetchData();
+      return res;
+    } catch (err) {
+      console.error('Add Post Failed:', err);
+      throw err;
+    }
   };
 
   const updatePost = async (id, data) => {
-    const payload = sanitizeNcbPayload('posts', data);
-    await ncbUpdate(TABLES.POSTS, id, payload);
-    await fetchData();
+    try {
+      const payload = sanitizeNcbPayload('posts', data);
+      await ncbUpdate(TABLES.POSTS, id, payload);
+      await fetchData();
+    } catch (err) {
+      console.error('Update Post Failed:', err);
+      throw err;
+    }
   };
 
   const deletePost = async (id) => {
-    await ncbDelete(TABLES.POSTS, id);
-    setPosts(prev => prev.filter(p => String(p.id) !== String(id)));
+    try {
+      await ncbDelete(TABLES.POSTS, id);
+      await fetchData();
+    } catch (err) {
+      console.error('Delete Post Failed:', err);
+      throw err;
+    }
   };
 
   const addProduct = async (data) => {
-    const payload = sanitizeNcbPayload('product_recommendations', data);
-    const res = await ncbCreate(TABLES.PRODUCTS, payload);
-    await fetchData();
-    return res;
+    try {
+      const payload = sanitizeNcbPayload('product_recommendations', data);
+      const res = await ncbCreate(TABLES.PRODUCTS, payload);
+      await fetchData();
+      return res;
+    } catch (err) {
+      console.error('Add Product Failed:', err);
+      throw err;
+    }
   };
 
   const updateProduct = async (id, data) => {
-    const payload = sanitizeNcbPayload('product_recommendations', data);
-    await ncbUpdate(TABLES.PRODUCTS, id, payload);
-    await fetchData();
+    try {
+      const payload = sanitizeNcbPayload('product_recommendations', data);
+      await ncbUpdate(TABLES.PRODUCTS, id, payload);
+      await fetchData();
+    } catch (err) {
+      console.error('Update Product Failed:', err);
+      throw err;
+    }
   };
 
   const deleteProduct = async (id) => {
-    await ncbDelete(TABLES.PRODUCTS, id);
-    setProducts(prev => prev.filter(p => String(p.id) !== String(id)));
+    try {
+      await ncbDelete(TABLES.PRODUCTS, id);
+      await fetchData();
+    } catch (err) {
+      console.error('Delete Product Failed:', err);
+      throw err;
+    }
   };
 
   return (

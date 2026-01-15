@@ -6,7 +6,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { formatDate } from '../utils/dateUtils';
-import { BLOG_PLACEHOLDER } from '../config/assets';
+import { BLOG_PLACEHOLDER, PLACEHOLDER_IMAGE } from '../config/assets';
 
 const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart } = FiIcons;
 
@@ -34,12 +34,12 @@ const BlogPost = () => {
       };
 
       // 3. Set Standard Meta
-      setMeta('description', post.seo_description || post.excerpt || post.content.replace(/<[^>]*>/g, '').substring(0, 160));
-      setMeta('keywords', post.seo_keywords);
+      setMeta('description', post.meta_description || post.seo_description || post.excerpt || post.content.replace(/<[^>]*>/g, '').substring(0, 160));
+      setMeta('keywords', post.focus_keyword || post.seo_keywords);
       
       // 4. Set Open Graph
       setMeta('og:title', title, 'property');
-      setMeta('og:description', post.seo_description || post.excerpt, 'property');
+      setMeta('og:description', post.meta_description || post.seo_description || post.excerpt, 'property');
       setMeta('og:image', post.og_image_url || post.image, 'property');
       setMeta('og:url', window.location.href, 'property');
       setMeta('og:type', 'article', 'property');
@@ -86,6 +86,8 @@ const BlogPost = () => {
     .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
     .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '') : post.content;
 
+  const fallbackImage = (post.category === 'Product Recommendations') ? PLACEHOLDER_IMAGE : BLOG_PLACEHOLDER;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
       <motion.article 
@@ -102,7 +104,7 @@ const BlogPost = () => {
           <SafeImage 
             src={post.image || post.image_url} 
             alt={post.title} 
-            fallback={BLOG_PLACEHOLDER}
+            fallback={fallbackImage}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />

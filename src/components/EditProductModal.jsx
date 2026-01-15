@@ -7,23 +7,30 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
-import { useBlog } from '../contexts/BlogContext'; // Added useBlog
+import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
-import { ensureUniqueSlug } from '../utils/slugUtils'; // Added slug utils
+import { ensureUniqueSlug } from '../utils/slugUtils';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiStar, FiAlertTriangle, FiShoppingBag, FiAlignLeft } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiStar, FiAlertTriangle, FiShoppingBag, FiAlignLeft, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
   const { user } = useAuth();
-  const { posts } = useBlog(); // Need posts to check for duplicate slugs
+  const { posts } = useBlog();
+  const [showSeo, setShowSeo] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     subcategory: 'General',
     rating: 5,
     content: '',
-    excerpt: '', // Added field
+    excerpt: '',
     image: '',
-    status: 'published'
+    status: 'published',
+    seo_title: '',
+    meta_description: '',
+    focus_keyword: '',
+    og_image_url: '',
+    canonical_url: '',
+    noindex: false
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,9 +43,15 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
         subcategory: product.subcategory || 'General',
         rating: product.rating || 5,
         content: product.content || '',
-        excerpt: product.excerpt || '', // Populate excerpt
+        excerpt: product.excerpt || '',
         image: product.image || product.image_url || '',
-        status: product.status || 'published'
+        status: product.status || 'published',
+        seo_title: product.seo_title || '',
+        meta_description: product.meta_description || product.seo_description || '',
+        focus_keyword: product.focus_keyword || product.seo_keywords || '',
+        og_image_url: product.og_image_url || '',
+        canonical_url: product.canonical_url || '',
+        noindex: product.noindex === true || product.noindex === 'true'
       });
       setErrorMessage('');
     } else {
@@ -47,16 +60,22 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
         subcategory: 'General',
         rating: 5,
         content: '',
-        excerpt: '', // Clear excerpt
+        excerpt: '',
         image: '',
-        status: 'published'
+        status: 'published',
+        seo_title: '',
+        meta_description: '',
+        focus_keyword: '',
+        og_image_url: '',
+        canonical_url: '',
+        noindex: false
       });
     }
   }, [product, isOpen]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    let finalValue = name === 'rating' ? parseInt(value) : value;
+    const { name, value, type, checked } = e.target;
+    let finalValue = type === 'checkbox' ? checked : (name === 'rating' ? parseInt(value) : value);
 
     if (name === 'image' && typeof finalValue === 'string') {
       finalValue = normalizeDropboxSharedUrl(finalValue);
@@ -96,13 +115,12 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
     setErrorMessage('');
 
     try {
-      // FIX: Generate unique slug to prevent creation errors
       const currentSlug = product?.slug || '';
       const finalSlug = currentSlug || ensureUniqueSlug(formData.title, posts, product?.id);
 
       await onSave(product?.id, {
         ...formData,
-        slug: finalSlug, // Include generated slug
+        slug: finalSlug,
         author: user?.name || 'BangtanMom',
         date: product?.date || new Date().toISOString()
       });
@@ -195,6 +213,14 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
               </div>
 
               <div className="space-y-5">
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4">
+                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest leading-none">Status</h3>
+                  <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm">
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Product Image</label>
                   <div className="space-y-3">
@@ -228,7 +254,32 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
               </div>
             </div>
 
-            {/* NEW: Short Description Field */}
+            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+              <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full text-left">
+                <div className="flex items-center space-x-2">
+                  <SafeIcon icon={FiSearch} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
+                </div>
+                <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
+              </button>
+              {showSeo && (
+                <div className="mt-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="SEO Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                    <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} placeholder="Focus Keyword" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                  </div>
+                  <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" placeholder="Meta Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                  <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
+                    <input type="checkbox" id="noindex_toggle_product" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                    <label htmlFor="noindex_toggle_product" className="text-xs font-medium text-gray-700 cursor-pointer flex items-center">
+                      <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
+                      Index this page?
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">
                 <SafeIcon icon={FiAlignLeft} className="inline mr-1 mb-0.5" /> 
@@ -240,7 +291,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
                 onChange={handleChange}
                 rows="3"
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed"
-                placeholder="A brief summary shown on the card (max 150 chars recommended)..."
+                placeholder="A brief summary shown on the card..."
               />
             </div>
 

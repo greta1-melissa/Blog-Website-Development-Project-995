@@ -8,10 +8,11 @@ import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useKdrama } from '../contexts/KdramaContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
   const { kdramas } = useKdrama();
+  const [showSeo, setShowSeo] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -20,7 +21,14 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     synopsis_long: '',
     my_two_cents: '',
     image_url: '',
-    is_featured_on_home: false
+    status: 'published',
+    is_featured_on_home: false,
+    seo_title: '',
+    meta_description: '',
+    focus_keyword: '',
+    og_image_url: '',
+    canonical_url: '',
+    noindex: false
   });
 
   const [isUploading, setIsUploading] = useState(false);
@@ -31,14 +39,20 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     if (drama) {
       setFormData({
         title: drama.title || '',
-        // Coerce slug safely to string and trim
         slug: String(drama.slug ?? '').trim(),
         tags: Array.isArray(drama.tags) ? drama.tags.join(',') : String(drama.tags || ''),
         synopsis_short: drama.synopsis_short || '',
         synopsis_long: drama.synopsis_long || '',
         my_two_cents: drama.my_two_cents || '',
         image_url: drama.image_url || drama.image || '',
-        is_featured_on_home: drama.is_featured_on_home === true || drama.is_featured_on_home === 1
+        status: drama.status || 'published',
+        is_featured_on_home: drama.is_featured_on_home === true || drama.is_featured_on_home === 1,
+        seo_title: drama.seo_title || '',
+        meta_description: drama.meta_description || '',
+        focus_keyword: drama.focus_keyword || '',
+        og_image_url: drama.og_image_url || '',
+        canonical_url: drama.canonical_url || '',
+        noindex: drama.noindex === true || drama.noindex === 'true'
       });
       setErrorMessage('');
     } else {
@@ -50,7 +64,14 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
         synopsis_long: '',
         my_two_cents: '',
         image_url: '',
-        is_featured_on_home: false
+        status: 'published',
+        is_featured_on_home: false,
+        seo_title: '',
+        meta_description: '',
+        focus_keyword: '',
+        og_image_url: '',
+        canonical_url: '',
+        noindex: false
       });
     }
   }, [drama, isOpen]);
@@ -96,7 +117,6 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
     setErrorMessage('');
 
     try {
-      // Coerce slug safely to string and trim
       const rawSlug = String(formData.slug ?? '').trim();
       const finalSlug = rawSlug || ensureUniqueSlug(formData.title, kdramas, drama?.id);
 
@@ -163,17 +183,25 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Custom Slug (Optional)</label>
-                  <input 
-                    type="text" 
-                    name="slug" 
-                    value={formData.slug} 
-                    onChange={handleChange} 
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-mono" 
-                    placeholder="e.g. my-favorite-drama"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">Leave blank to auto-generate from title.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Status</label>
+                    <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm">
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-wider">Custom Slug</label>
+                    <input 
+                      type="text" 
+                      name="slug" 
+                      value={formData.slug} 
+                      onChange={handleChange} 
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-mono" 
+                      placeholder="drama-slug"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -215,6 +243,32 @@ const EditKdramaModal = ({ isOpen, onClose, drama, onSave }) => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+              <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full text-left">
+                <div className="flex items-center space-x-2">
+                  <SafeIcon icon={FiSearch} className="text-gray-400" />
+                  <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
+                </div>
+                <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
+              </button>
+              {showSeo && (
+                <div className="mt-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="SEO Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                    <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} placeholder="Focus Keyword" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                  </div>
+                  <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" placeholder="Meta Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                  <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
+                    <input type="checkbox" id="noindex_toggle_kdrama" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                    <label htmlFor="noindex_toggle_kdrama" className="text-xs font-medium text-gray-700 cursor-pointer flex items-center">
+                      <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
+                      Index this page?
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-6">

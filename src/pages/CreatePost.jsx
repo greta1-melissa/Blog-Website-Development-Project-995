@@ -13,7 +13,7 @@ import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -32,8 +32,8 @@ const CreatePost = () => {
     image: '',
     status: 'published',
     seo_title: '',
-    seo_description: '',
-    seo_keywords: '',
+    meta_description: '',
+    focus_keyword: '',
     og_image_url: '',
     canonical_url: '',
     noindex: false
@@ -152,13 +152,26 @@ const CreatePost = () => {
                 
                 {showSeo && (
                   <div className="mt-6 space-y-6 bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Title</label>
-                      <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Title</label>
+                        <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Post Title" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Focus Keyword</label>
+                        <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="e.g. BTS lifestyle" />
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Description</label>
-                      <textarea name="seo_description" value={formData.seo_description} onChange={handleChange} rows="3" className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Description</label>
+                      <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="3" className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Excerpt or first 160 chars" />
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
+                      <input type="checkbox" id="noindex_toggle" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                      <label htmlFor="noindex_toggle" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center">
+                        <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
+                        Index this page? (Recommended: ON)
+                      </label>
                     </div>
                   </div>
                 )}

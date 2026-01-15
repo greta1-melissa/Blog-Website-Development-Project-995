@@ -15,17 +15,19 @@ export const NCB_ALLOWLISTS = {
     'title', 'slug', 'content', 'excerpt', 'tags', 'category', 'status', 
     'created_at', 'updated_at', 'published_at', 'author', 'date',
     'image', 'image_url', 'featured_image_url',
-    'seo_title', 'seo_description', 'seo_keywords', 'og_image_url', 'canonical_url', 'noindex'
+    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
   ],
   product_recommendations: [
     'title', 'slug', 'subcategory', 'rating', 'excerpt', 'content', 
     'image', 'image_url', 'status', 'created_at', 'updated_at', 
-    'published_at', 'author', 'date', 'short_blurb', 'review', 'my_two_cents', 'tags'
+    'published_at', 'author', 'date', 'short_blurb', 'review', 'my_two_cents', 'tags',
+    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
   ],
   kdrama_recommendations: [
     'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
     'image_url', 'image', 'is_featured_on_home', 'display_order', 
-    'status', 'created_at', 'updated_at', 'published_at', 'author', 'date'
+    'status', 'created_at', 'updated_at', 'published_at', 'author', 'date',
+    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
   ]
 };
 
@@ -65,6 +67,9 @@ export function sanitizeNcbPayload(type, data) {
       } else {
         sanitized[field] = data[field];
       }
+    } else if (field === 'noindex' || field === 'is_featured_on_home') {
+      // Ensure booleans are always false if missing/empty
+      sanitized[field] = false;
     }
   });
 
@@ -190,7 +195,7 @@ export async function ncbDelete(table, id) {
     await handleResponse(res, `delete:${cleanTable}:${id}`);
     return true;
   } catch (error) {
-    return false;
+    throw error;
   }
 }
 

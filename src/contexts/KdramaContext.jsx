@@ -33,6 +33,7 @@ export const KdramaProvider = ({ children }) => {
         ...item,
         id: item.id || item._id,
         title: item.title || 'Untitled',
+        status: (item.status || 'published').toString().toLowerCase().trim(),
         slug: String(item.slug || item.id || `drama-${index}`).trim(),
         tags: Array.isArray(item.tags) ? item.tags : (item.tags ? String(item.tags).split(',').map(t => t.trim()) : []),
         synopsis_short: item.synopsis_short || item.synopsis || '',
@@ -40,7 +41,14 @@ export const KdramaProvider = ({ children }) => {
         my_two_cents: item.my_two_cents || '',
         image_url: cleanImage,
         is_featured_on_home: isFeatured,
-        display_order: parseInt(item.display_order) || (index + 1)
+        display_order: parseInt(item.display_order) || (index + 1),
+        // SEO Fields
+        seo_title: item.seo_title || item.title || '',
+        meta_description: item.meta_description || item.synopsis_short || '',
+        focus_keyword: item.focus_keyword || '',
+        og_image_url: item.og_image_url || cleanImage,
+        canonical_url: item.canonical_url || '',
+        noindex: item.noindex === true || item.noindex === 'true' || item.noindex === 1
       };
     });
   }, []);
@@ -54,6 +62,7 @@ export const KdramaProvider = ({ children }) => {
       currentData.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
       setKdramas(currentData);
     } catch (error) {
+      console.error('Fetch K-Dramas Failed:', error);
       setKdramas(normalizeData(initialSeedData));
     } finally {
       setIsLoading(false);
@@ -65,21 +74,36 @@ export const KdramaProvider = ({ children }) => {
   }, [fetchKdramas]);
 
   const addKdrama = async (dramaData) => {
-    const payload = sanitizeNcbPayload('kdrama_recommendations', dramaData);
-    const saved = await ncbCreate(TABLE_NAME, payload);
-    await fetchKdramas();
-    return saved;
+    try {
+      const payload = sanitizeNcbPayload('kdrama_recommendations', dramaData);
+      const saved = await ncbCreate(TABLE_NAME, payload);
+      await fetchKdramas();
+      return saved;
+    } catch (err) {
+      console.error('Add K-Drama Failed:', err);
+      throw err;
+    }
   };
 
   const updateKdrama = async (id, updates) => {
-    const payload = sanitizeNcbPayload('kdrama_recommendations', updates);
-    await ncbUpdate(TABLE_NAME, id, payload);
-    await fetchKdramas();
+    try {
+      const payload = sanitizeNcbPayload('kdrama_recommendations', updates);
+      await ncbUpdate(TABLE_NAME, id, payload);
+      await fetchKdramas();
+    } catch (err) {
+      console.error('Update K-Drama Failed:', err);
+      throw err;
+    }
   };
 
   const deleteKdrama = async (id) => {
-    await ncbDelete(TABLE_NAME, id);
-    setKdramas(prev => prev.filter(d => String(d.id) !== String(id)));
+    try {
+      await ncbDelete(TABLE_NAME, id);
+      await fetchKdramas();
+    } catch (err) {
+      console.error('Delete K-Drama Failed:', err);
+      throw err;
+    }
   };
 
   const getKdramaBySlug = (slug) => {
@@ -88,14 +112,22 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const featuredKdramas = useMemo(() => {
-    const featured = kdramas.filter(d => d.is_featured_on_home === true);
-    const source = featured.length > 0 ? featured : kdramas;
+    const featured = kdramas.filter(d => d.is_featured_on_home === true && d.status === 'published');
+    const source = featured.length > 0 ? featured : kdramas.filter(d => d.status === 'published');
     return [...source].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).slice(0, 8);
   }, [kdramas]);
 
   return (
     <KdramaContext.Provider value={{
-      kdramas, featuredKdramas, isLoading, addKdrama, updateKdrama, deleteKdrama, getKdramaBySlug, fetchKdramas
+      kdramas, 
+      publishedKdramas: kdramas.filter(d => d.status === 'published'),
+      featuredKdramas, 
+      isLoading, 
+      addKdrama, 
+      updateKdrama, 
+      deleteKdrama, 
+      getKdramaBySlug, 
+      fetchKdramas
     }}>
       {children}
     </KdramaContext.Provider>

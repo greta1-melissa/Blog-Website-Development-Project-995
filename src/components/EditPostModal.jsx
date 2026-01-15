@@ -10,12 +10,12 @@ import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const { posts } = useBlog();
   const [showSeo, setShowSeo] = useState(false);
-  const [formData, setFormData] = useState({ title: '', slug: '', content: '', category: '', excerpt: '', image: '', status: 'published', seo_title: '', seo_description: '', seo_keywords: '', og_image_url: '', canonical_url: '', noindex: false });
+  const [formData, setFormData] = useState({ title: '', slug: '', content: '', category: '', excerpt: '', image: '', status: 'published', seo_title: '', meta_description: '', focus_keyword: '', og_image_url: '', canonical_url: '', noindex: false });
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -31,8 +31,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         image: post.image || post.image_url || post.featured_image_url || '',
         status: post.status || 'published',
         seo_title: post.seo_title || '',
-        seo_description: post.seo_description || '',
-        seo_keywords: post.seo_keywords || '',
+        meta_description: post.meta_description || post.seo_description || '',
+        focus_keyword: post.focus_keyword || post.seo_keywords || '',
         og_image_url: post.og_image_url || '',
         canonical_url: post.canonical_url || '',
         noindex: post.noindex === true || post.noindex === 'true'
@@ -114,15 +114,25 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                   <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full text-left">
                     <div className="flex items-center space-x-2">
-                      <SafeIcon icon={FiSearch} className="text-gray-400" />
+                      <SafeIcon icon={FiSearch} className="text-xs font-bold text-gray-700 uppercase tracking-wide" />
                       <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
                     </div>
                     <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
                   </button>
                   {showSeo && (
                     <div className="mt-6 space-y-4">
-                      <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="SEO Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
-                      <textarea name="seo_description" value={formData.seo_description} onChange={handleChange} rows="2" placeholder="SEO Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="SEO Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                        <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} placeholder="Focus Keyword" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      </div>
+                      <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" placeholder="Meta Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                      <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
+                        <input type="checkbox" id="noindex_toggle_edit" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
+                        <label htmlFor="noindex_toggle_edit" className="text-xs font-medium text-gray-700 cursor-pointer flex items-center">
+                          <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
+                          Index this page?
+                        </label>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -130,7 +140,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
               
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2">Publishing Info</h3>
+                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest">Publishing Info</h3>
                   <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm">
                     <option value="published">Published</option>
                     <option value="draft">Draft</option>
@@ -141,7 +151,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                 </div>
                 
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2">Featured Image</h3>
+                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest">Featured Image</h3>
                   <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
                   <div className="relative">
                     <input type="file" id="post-file-upload-edit" onChange={handleFileUpload} className="hidden" accept="image/*" />
