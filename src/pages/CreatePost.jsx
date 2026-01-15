@@ -15,7 +15,7 @@ import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { generateSlug, ensureUniqueSlug } from '../utils/slugUtils';
 import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiTag, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -23,7 +23,6 @@ const CreatePost = () => {
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showSeo, setShowSeo] = useState(false);
   
@@ -31,6 +30,7 @@ const CreatePost = () => {
     title: '',
     content: '',
     category: '',
+    tags: '',
     excerpt: '',
     image: '',
     status: 'published',
@@ -57,7 +57,6 @@ const CreatePost = () => {
     const file = e.target.files[0];
     if (!file) return;
     setIsUploading(true);
-    setUploadStatus('Uploading...');
     setErrorMessage('');
     try {
       const data = new FormData();
@@ -69,13 +68,11 @@ const CreatePost = () => {
       const result = await response.json();
       if (response.ok && result.success && result.proxyUrl) {
         setFormData(prev => ({ ...prev, image: result.proxyUrl }));
-        setUploadStatus('Upload Complete!');
         toast.success('Image uploaded successfully');
       } else {
         throw new Error(result.message || "Upload failed");
       }
     } catch (error) {
-      setUploadStatus('Upload Failed');
       setErrorMessage(`Upload failed: ${error.message}`);
       toast.error('Image upload failed');
     } finally {
@@ -105,19 +102,20 @@ const CreatePost = () => {
       const postData = {
         ...formData,
         slug: finalSlug,
-        author: user?.name || 'BangtanMom',
-        created_at: new Date().toISOString()
+        author: user?.name || 'BangtanMom'
       };
 
       const createdPost = await addPost(postData);
       toast.success(formData.status === 'published' ? 'Story published successfully!' : 'Draft saved successfully!');
       
-      // Navigate to the newly created post or blog list
       const targetId = createdPost?.id || createdPost;
       setTimeout(() => navigate(targetId ? `/post/${targetId}` : '/blogs'), 1500);
     } catch (error) {
-      setErrorMessage(error.message);
-      toast.error(`Save failed: ${error.message}`);
+      // Detailed error reporting
+      const detail = error.upstreamBody ? `\nStatus: ${error.status}\nNCB Error: ${error.upstreamBody}` : '';
+      const fullError = `${error.message}${detail}`;
+      setErrorMessage(fullError);
+      toast.error(`Save failed: ${error.upstreamBody || error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -133,11 +131,11 @@ const CreatePost = () => {
         </div>
 
         {errorMessage && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start">
-            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-3 mt-1 flex-shrink-0" />
-            <div className="text-red-800 text-xs overflow-hidden">
-              <p className="font-bold mb-1">Error Details</p>
-              <p className="opacity-90 whitespace-pre-wrap">{errorMessage}</p>
+          <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-2xl flex items-start">
+            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-4 mt-1 flex-shrink-0 text-xl" />
+            <div className="text-red-800 text-sm overflow-hidden flex-1">
+              <p className="font-black uppercase tracking-widest text-[10px] mb-2 opacity-60">Database Error Details</p>
+              <pre className="whitespace-pre-wrap font-mono text-xs bg-red-100/50 p-3 rounded-lg border border-red-200/50">{errorMessage}</pre>
             </div>
           </div>
         )}
@@ -237,6 +235,22 @@ const CreatePost = () => {
                 <option value="">Select Category</option>
                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Tags</h3>
+              <div className="relative">
+                <SafeIcon icon={FiTag} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="text" 
+                  name="tags" 
+                  value={formData.tags} 
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 text-sm font-medium" 
+                  placeholder="Comma separated tags..." 
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 font-medium italic">e.g. BTS, Health, Lifestyle</p>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

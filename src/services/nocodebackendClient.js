@@ -8,9 +8,10 @@ const API_BASE = '/api/ncb';
 // Field allowlists for sanitization
 const ALLOWED_FIELDS = {
   posts: [
-    'title', 'slug', 'content', 'excerpt', 'category', 'image', 'image_url', 
-    'author', 'status', 'created_at', 'seo_title', 'meta_description', 
-    'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
+    'title', 'slug', 'content', 'excerpt', 'category', 'tags', 'image', 'image_url', 
+    'author', 'status', 'created_at', 'updated_at', 'published_at', 
+    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 
+    'canonical_url', 'noindex'
   ],
   product_recommendations: [
     'name', 'slug', 'category', 'subcategory', 'price', 'rating', 'image_url', 
@@ -32,19 +33,13 @@ export const cleanHtmlContent = (html) => {
   if (!html || typeof html !== 'string') return html;
   
   return html
-    // Remove style attributes
     .replace(/ style="[^"]*"/gi, '')
-    // Remove class attributes
     .replace(/ class="[^"]*"/gi, '')
-    // Convert divs to p tags (often happens on paste)
     .replace(/<div/gi, '<p')
     .replace(/<\/div>/gi, '</p>')
-    // Strip spans but keep content
     .replace(/<span[^>]*>/gi, '')
     .replace(/<\/span>/gi, '')
-    // Remove empty paragraphs
     .replace(/<p><\/p>/gi, '')
-    // Clean up multiple spaces
     .replace(/&nbsp;/g, ' ')
     .trim();
 };
@@ -66,6 +61,11 @@ export const sanitizeNcbPayload = (table, data) => {
         value = cleanHtmlContent(value);
       }
       
+      // Remove empty strings for SEO fields to keep payload clean
+      if (['seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url'].includes(field)) {
+        if (typeof value === 'string' && !value.trim()) return;
+      }
+      
       sanitized[field] = value;
     }
   });
@@ -76,15 +76,25 @@ export const sanitizeNcbPayload = (table, data) => {
     if (sanitized.image && !sanitized.image_url) {
       sanitized.image_url = sanitized.image;
     }
-    // Remove 'image' if 'image_url' exists to avoid column conflicts
+    // Remove 'image' column if 'image_url' exists to avoid schema errors if 'image' column is missing
     if (sanitized.image_url) {
       delete sanitized.image;
     }
+    
+    // Ensure tags is a string for NCB if provided as array
+    if (Array.isArray(sanitized.tags)) {
+      sanitized.tags = sanitized.tags.join(', ');
+    }
   }
 
-  // Ensure created_at for new records
-  if (!sanitized.created_at) {
+  // Set timestamps
+  if (!sanitized.created_at && !data.id) {
     sanitized.created_at = new Date().toISOString();
+  }
+  sanitized.updated_at = new Date().toISOString();
+
+  if (sanitized.status === 'published' && !sanitized.published_at) {
+    sanitized.published_at = new Date().toISOString();
   }
 
   return sanitized;
@@ -111,8 +121,13 @@ export const ncbCreate = async (table, data) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to create record in ${table}`);
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(`Failed to create record in ${table}`);
+      error.status = response.status;
+      error.upstreamBody = errorData.message || errorData.error || response.statusText;
+      error.table = table;
+      error.action = 'create';
+      throw error;
     }
     
     return await response.json();
@@ -132,8 +147,13 @@ export const ncbUpdate = async (table, id, data) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to update record in ${table}`);
+      const errorData = await response.json().catch(() => ({}));
+      const error = new Error(`Failed to update record in ${table}`);
+      error.status = response.status;
+      error.upstreamBody = errorData.message || errorData.error || response.statusText;
+      error.table = table;
+      error.action = 'update';
+      throw error;
     }
     
     return await response.json();

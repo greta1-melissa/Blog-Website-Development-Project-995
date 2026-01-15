@@ -11,12 +11,27 @@ import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
+const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff, FiTag } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const { posts } = useBlog();
   const [showSeo, setShowSeo] = useState(false);
-  const [formData, setFormData] = useState({ title: '', slug: '', content: '', category: '', excerpt: '', image: '', status: 'published', seo_title: '', meta_description: '', focus_keyword: '', og_image_url: '', canonical_url: '', noindex: false });
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    slug: '', 
+    content: '', 
+    category: '', 
+    tags: '',
+    excerpt: '', 
+    image: '', 
+    status: 'published', 
+    seo_title: '', 
+    meta_description: '', 
+    focus_keyword: '', 
+    og_image_url: '', 
+    canonical_url: '', 
+    noindex: false 
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -28,12 +43,13 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         slug: post.slug || '',
         content: post.content || '',
         category: post.category || '',
+        tags: post.tags || '',
         excerpt: post.excerpt || '',
-        image: post.image || post.image_url || post.featured_image_url || '',
+        image: post.image_url || post.image || '',
         status: post.status || 'published',
         seo_title: post.seo_title || '',
-        meta_description: post.meta_description || post.seo_description || '',
-        focus_keyword: post.focus_keyword || post.seo_keywords || '',
+        meta_description: post.meta_description || '',
+        focus_keyword: post.focus_keyword || '',
         og_image_url: post.og_image_url || '',
         canonical_url: post.canonical_url || '',
         noindex: post.noindex === true || post.noindex === 'true'
@@ -76,7 +92,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       const submissionData = { ...formData, slug: finalSlug };
       await onSave(post?.id, submissionData);
       onClose();
-    } catch (error) { setErrorMessage(error.message); } finally { setIsSaving(false); }
+    } catch (error) { 
+      // Detailed error reporting
+      const detail = error.upstreamBody ? `\nStatus: ${error.status}\nNCB Error: ${error.upstreamBody}` : '';
+      setErrorMessage(`${error.message}${detail}`);
+    } finally { setIsSaving(false); }
   };
 
   if (!isOpen) return null;
@@ -93,9 +113,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             {errorMessage && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-xs overflow-hidden">
-                <SafeIcon icon={FiAlertTriangle} className="mr-2 flex-shrink-0" />
-                <span className="whitespace-pre-wrap">{errorMessage}</span>
+              <div className="mb-6 p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start">
+                <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-4 mt-1 flex-shrink-0 text-xl" />
+                <div className="text-red-800 text-sm overflow-hidden flex-1">
+                  <p className="font-black uppercase tracking-widest text-[10px] mb-2 opacity-60">Database Error Details</p>
+                  <pre className="whitespace-pre-wrap font-mono text-xs bg-red-100/50 p-3 rounded-lg border border-red-200/50">{errorMessage}</pre>
+                </div>
               </div>
             )}
             
@@ -149,7 +172,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                       <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" placeholder="Meta Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
                       <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
                         <input type="checkbox" id="noindex_toggle_edit" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                        <label htmlFor="noindex_toggle_edit" className="text-xs font-medium text-gray-700 cursor-pointer flex items-center">
+                        <label htmlFor="noindex_toggle_edit" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center">
                           <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
                           Index this page?
                         </label>
@@ -169,6 +192,21 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" required>
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
+                </div>
+
+                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest">Tags</h3>
+                  <div className="relative">
+                    <SafeIcon icon={FiTag} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      type="text" 
+                      name="tags" 
+                      value={formData.tags} 
+                      onChange={handleChange} 
+                      className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg outline-none bg-white text-sm" 
+                      placeholder="Comma separated..." 
+                    />
+                  </div>
                 </div>
                 
                 <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
