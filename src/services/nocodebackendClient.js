@@ -1,250 +1,189 @@
 /**
- * NoCodeBackend (NCB) Client
- * 
- * FRONTEND: Strictly calls the Cloudflare Pages Proxy (/api/ncb/*).
- * The proxy handles Instance ID and API Key injection server-side.
+ * NoCodeBackend Client Service
+ * Handles all interactions with the /api/ncb proxy
  */
 
-const NCB_URL = '/api/ncb';
+const API_BASE = '/api/ncb';
 
-/**
- * Field allowlists for data integrity
- */
-export const NCB_ALLOWLISTS = {
+// Field allowlists for sanitization
+const ALLOWED_FIELDS = {
   posts: [
-    'title', 'slug', 'content', 'excerpt', 'tags', 'category', 'status', 
-    'created_at', 'updated_at', 'published_at', 'author', 'date',
-    'image', 'image_url', 'featured_image_url',
-    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
+    'title', 'slug', 'content', 'excerpt', 'category', 'image', 'image_url', 
+    'author', 'status', 'created_at', 'seo_title', 'meta_description', 
+    'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
   ],
   product_recommendations: [
-    'title', 'slug', 'subcategory', 'rating', 'excerpt', 'content', 
-    'image', 'image_url', 'status', 'created_at', 'updated_at', 
-    'published_at', 'author', 'date', 'short_blurb', 'review', 'my_two_cents', 'tags',
-    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
+    'name', 'slug', 'category', 'subcategory', 'price', 'rating', 'image_url', 
+    'affiliate_link', 'review', 'is_featured', 'created_at', 'seo_title', 
+    'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
   ],
-  kdrama_recommendations: [
-    'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
-    'image_url', 'image', 'is_featured_on_home', 'display_order', 
-    'status', 'created_at', 'updated_at', 'published_at', 'author', 'date',
-    'seo_title', 'meta_description', 'focus_keyword', 'og_image_url', 'canonical_url', 'noindex'
+  kdramas: [
+    'title', 'slug', 'rating', 'genre', 'status', 'image_url', 'synopsis_short', 
+    'synopsis_long', 'my_two_cents', 'watch_where', 'is_featured_on_home', 
+    'created_at', 'seo_title', 'meta_description', 'focus_keyword', 
+    'og_image_url', 'canonical_url', 'noindex'
   ]
 };
 
 /**
- * Strips unwanted HTML attributes and tags to keep storage clean.
- * Focuses on removing inline styles and junk from external sources.
+ * Strips unnecessary HTML tags and attributes to keep content clean
  */
-function cleanHtmlContent(html) {
+export const cleanHtmlContent = (html) => {
   if (!html || typeof html !== 'string') return html;
   
-  // Basic sanitization: remove style attributes and specific tags
   return html
-    .replace(/ style="[^"]*"/gi, '') // Remove all inline styles
-    .replace(/ class="[^"]*"/gi, '') // Remove all classes
-    .replace(/<span[^>]*>/gi, '')    // Remove spans but keep content
-    .replace(/<\/span>/gi, '')
-    .replace(/<div[^>]*>/gi, '<p>')  // Convert divs to paragraphs
+    // Remove style attributes
+    .replace(/ style="[^"]*"/gi, '')
+    // Remove class attributes
+    .replace(/ class="[^"]*"/gi, '')
+    // Convert divs to p tags (often happens on paste)
+    .replace(/<div/gi, '<p')
     .replace(/<\/div>/gi, '</p>')
-    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '<br/>') // Clean empty paragraphs
-    .replace(/(&nbsp;)+/g, ' ')      // Replace multiple non-breaking spaces
+    // Strip spans but keep content
+    .replace(/<span[^>]*>/gi, '')
+    .replace(/<\/span>/gi, '')
+    // Remove empty paragraphs
+    .replace(/<p><\/p>/gi, '')
+    // Clean up multiple spaces
+    .replace(/&nbsp;/g, ' ')
     .trim();
-}
+};
 
 /**
- * Sanitizes payload based on type and allowlist.
- * Adds defaults and timestamps.
+ * Prepares and sanitizes payload for NCB
  */
-export function sanitizeNcbPayload(type, data) {
-  const allowlist = NCB_ALLOWLISTS[type];
-  if (!allowlist) return data;
-
+export const sanitizeNcbPayload = (table, data) => {
+  const allowed = ALLOWED_FIELDS[table] || [];
   const sanitized = {};
-  const now = new Date().toISOString();
-  const today = now.split('T')[0];
 
-  // 1. Apply Defaults & Timestamps
-  const status = (data.status || 'draft').toString().toLowerCase().trim();
-  sanitized.status = status;
-  sanitized.updated_at = now;
-  
-  if (!data.id) { // New record
-    sanitized.created_at = data.created_at || now;
-    sanitized.author = data.author || 'BangtanMom';
-    sanitized.date = data.date || today;
-  }
-
-  if (status === 'published' && !data.published_at) {
-    sanitized.published_at = now;
-  }
-
-  // 2. Map Allowlist Fields
-  allowlist.forEach(field => {
-    let value = data[field];
-    
-    if (value !== undefined && value !== null && value !== '') {
+  // Copy allowed fields
+  allowed.forEach(field => {
+    if (data[field] !== undefined) {
+      let value = data[field];
+      
       // Clean HTML for content fields
-      if (['content', 'synopsis_long', 'my_two_cents', 'review'].includes(field)) {
+      if (['content', 'review', 'synopsis_long', 'my_two_cents'].includes(field)) {
         value = cleanHtmlContent(value);
       }
-
-      // Specialized handling for booleans
-      if (field === 'noindex' || field === 'is_featured_on_home') {
-        sanitized[field] = value === true || value === 'true' || value === 1 || value === '1';
-      } else {
-        sanitized[field] = value;
-      }
-    } else if (field === 'noindex' || field === 'is_featured_on_home') {
-      sanitized[field] = false;
+      
+      sanitized[field] = value;
     }
   });
+
+  // CRITICAL: Standardize blog image field for Posts
+  if (table === 'posts') {
+    // If 'image' is provided but 'image_url' isn't, map it
+    if (sanitized.image && !sanitized.image_url) {
+      sanitized.image_url = sanitized.image;
+    }
+    // Remove 'image' if 'image_url' exists to avoid column conflicts
+    if (sanitized.image_url) {
+      delete sanitized.image;
+    }
+  }
+
+  // Ensure created_at for new records
+  if (!sanitized.created_at) {
+    sanitized.created_at = new Date().toISOString();
+  }
 
   return sanitized;
-}
+};
 
-function buildHeaders() {
-  return {
-    'Content-Type': 'application/json'
-  };
-}
+export const ncbReadAll = async (table) => {
+  try {
+    const response = await fetch(`${API_BASE}/read/${table}`);
+    if (!response.ok) throw new Error(`Failed to fetch ${table}`);
+    return await response.json();
+  } catch (error) {
+    console.error(`NCB Read Error (${table}):`, error);
+    throw error;
+  }
+};
 
-function normalizeTableName(table) {
-  return String(table).trim().toLowerCase();
-}
-
-function buildProxyUrl(path, extraParams = {}) {
-  const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
-  
-  Object.entries(extraParams).forEach(([key, value]) => {
-    if (key.toLowerCase() !== 'instance' && value !== undefined && value !== null && value !== '') {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  url.searchParams.set('_t', Date.now());
-  return url.toString();
-}
-
-function normalizeItem(item) {
-  if (!item || typeof item !== 'object') return item;
-  const id = item.id || item._id || item.ID || item.Id;
-  return { ...item, id: id };
-}
-
-function normalizeArray(data) {
-  const source = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
-  return source.map(normalizeItem);
-}
-
-async function handleResponse(res, context) {
-  if (!res.ok) {
-    let errorDetail = '';
-    try {
-      const errorJson = await res.json();
-      errorDetail = JSON.stringify(errorJson);
-    } catch (e) {
-      errorDetail = await res.text().catch(() => 'Unknown error');
+export const ncbCreate = async (table, data) => {
+  try {
+    const payload = sanitizeNcbPayload(table, data);
+    const response = await fetch(`${API_BASE}/${table}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to create record in ${table}`);
     }
     
-    const errorMsg = `[NCB Error] ${context} (${res.status}): ${errorDetail}`;
-    console.error(errorMsg);
-    throw new Error(errorMsg);
-  }
-  
-  const contentType = res.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    return await res.json().catch(() => ({}));
-  }
-  return { status: 'success' };
-}
-
-export async function ncbReadAll(table, queryParams = {}) {
-  const cleanTable = normalizeTableName(table);
-  const url = buildProxyUrl(`/read/${cleanTable}`, queryParams);
-  
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: buildHeaders()
-    });
-    const json = await handleResponse(res, `readAll:${cleanTable}`);
-    return normalizeArray(json);
+    return await response.json();
   } catch (error) {
-    console.error(`NCB Read Failed: ${cleanTable}`, error);
-    return [];
-  }
-}
-
-export async function ncbCreate(table, payload) {
-  const cleanTable = normalizeTableName(table);
-  const url = buildProxyUrl(`/create/${cleanTable}`);
-  
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify(payload),
-    });
-    const json = await handleResponse(res, `create:${cleanTable}`);
-    const data = json?.data || json;
-    return normalizeItem(Array.isArray(data) ? data[0] : data);
-  } catch (error) {
+    console.error(`NCB Create Error (${table}):`, error);
     throw error;
   }
-}
+};
 
-export async function ncbUpdate(table, id, payload) {
-  const cleanTable = normalizeTableName(table);
-  const url = buildProxyUrl(`/update/${cleanTable}/${id}`);
-  
+export const ncbUpdate = async (table, id, data) => {
   try {
-    const res = await fetch(url, {
+    const payload = sanitizeNcbPayload(table, data);
+    const response = await fetch(`${API_BASE}/${table}/${id}`, {
       method: 'PUT',
-      headers: buildHeaders(),
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    return await handleResponse(res, `update:${cleanTable}:${id}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to update record in ${table}`);
+    }
+    
+    return await response.json();
   } catch (error) {
+    console.error(`NCB Update Error (${table}):`, error);
     throw error;
   }
-}
+};
 
-export async function ncbDelete(table, id) {
-  const cleanTable = normalizeTableName(table);
-  const url = buildProxyUrl(`/delete/${cleanTable}/${id}`);
-  
+export const ncbDelete = async (table, id) => {
   try {
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers: buildHeaders()
+    const response = await fetch(`${API_BASE}/${table}/${id}`, {
+      method: 'DELETE'
     });
-    await handleResponse(res, `delete:${cleanTable}:${id}`);
+    if (!response.ok) throw new Error(`Failed to delete record from ${table}`);
     return true;
   } catch (error) {
+    console.error(`NCB Delete Error (${table}):`, error);
     throw error;
   }
-}
-
-export async function ncbGet(table, queryParams) {
-  return ncbReadAll(table, queryParams);
-}
+};
 
 /**
- * Diagnostic function for NcbDebug page
+ * Diagnostic helper to check NCB proxy connectivity
  */
-export async function getNcbStatus() {
+export const getNcbStatus = async () => {
   try {
-    const res = await ncbReadAll('posts', { limit: 1 });
-    return {
-      success: true,
-      canReadPosts: true,
-      message: 'NCB Connection successful. Successfully read from posts table via proxy.'
-    };
+    const response = await fetch(`${API_BASE}/read/posts`);
+    if (response.ok) {
+      return { 
+        canReadPosts: true, 
+        message: 'Successfully connected to NCB proxy and read posts table.' 
+      };
+    } else {
+      let errorMessage = 'Unknown error';
+      try {
+        const error = await response.json();
+        errorMessage = error.message || response.statusText;
+      } catch (e) {
+        errorMessage = response.statusText;
+      }
+      return { 
+        canReadPosts: false, 
+        message: `Proxy connected but NCB returned an error: ${errorMessage}` 
+      };
+    }
   } catch (error) {
-    return {
-      success: false,
-      canReadPosts: false,
-      message: `NCB Connection failed: ${error.message}`
+    return { 
+      canReadPosts: false, 
+      message: `Failed to connect to proxy: ${error.message}` 
     };
   }
-}
+};

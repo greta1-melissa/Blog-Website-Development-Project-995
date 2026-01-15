@@ -12,14 +12,14 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
-import { generateSlug } from '../utils/slugUtils';
+import { generateSlug, ensureUniqueSlug } from '../utils/slugUtils';
 import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
 const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { addPost } = useBlog();
+  const { addPost, posts } = useBlog();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -98,15 +98,21 @@ const CreatePost = () => {
     setIsSaving(true);
     
     try {
+      // GUARANTEE UNIQUE SLUG
+      const baseSlug = generateSlug(formData.title);
+      const finalSlug = ensureUniqueSlug(baseSlug, posts);
+
       const postData = {
         ...formData,
-        slug: generateSlug(formData.title),
+        slug: finalSlug,
         author: user?.name || 'BangtanMom',
         created_at: new Date().toISOString()
       };
 
       const createdPost = await addPost(postData);
       toast.success(formData.status === 'published' ? 'Story published successfully!' : 'Draft saved successfully!');
+      
+      // Navigate to the newly created post or blog list
       const targetId = createdPost?.id || createdPost;
       setTimeout(() => navigate(targetId ? `/post/${targetId}` : '/blogs'), 1500);
     } catch (error) {

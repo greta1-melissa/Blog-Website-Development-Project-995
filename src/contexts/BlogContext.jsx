@@ -1,181 +1,149 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete, sanitizeNcbPayload } from '../services/nocodebackendClient';
-import { getImageSrc } from '../utils/media.js';
-import { BLOG_PLACEHOLDER, PLACEHOLDER_IMAGE } from '../config/assets';
+import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
+import { normalizeImageUrl } from '../utils/media.js';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const BlogContext = createContext();
-
-export const useBlog = () => {
-  const context = useContext(BlogContext);
-  if (!context) {
-    throw new Error('useBlog must be used within a BlogProvider');
-  }
-  return context;
-};
-
-const SEED_PRODUCTS = [
-  {
-    id: 'p1',
-    title: 'Laneige Lip Sleeping Mask',
-    subcategory: 'Skincare',
-    rating: 5,
-    excerpt: 'The ultimate overnight treatment for soft, supple lips.',
-    content: 'Enriched with vitamin C and antioxidants.',
-    image: 'https://images.unsplash.com/photo-1591130901020-ef93581c8fb9?w=800&q=80',
-    date: '2024-01-20',
-    status: 'published'
-  }
-];
 
 export const BlogProvider = ({ children }) => {
   const [posts, setPosts] = useState([]);
   const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const TABLES = {
-    POSTS: 'posts',
-    PRODUCTS: 'product_recommendations'
-  };
-
-  const normalizeItem = useCallback((item, type = 'post') => {
-    if (!item) return null;
-    
-    const rawImage = item.image || item.image_url || item.featured_image_url || '';
-    const fallback = type === 'post' ? BLOG_PLACEHOLDER : PLACEHOLDER_IMAGE;
-    const cleanImage = getImageSrc(rawImage, fallback);
-    const rawStatus = (item.status || 'published').toString().toLowerCase().trim();
-
-    return {
-      ...item,
-      id: item.id || item._id,
-      title: item.title || 'Untitled',
-      status: rawStatus,
-      category: item.category || (type === 'post' ? 'General' : 'Product Recommendations'),
-      excerpt: item.excerpt || item.summary || item.short_blurb || '',
-      content: item.content || item.detailed_review || '',
-      image: cleanImage,
-      date: item.date || item.created_at || new Date().toISOString(),
-      // SEO Fields
-      seo_title: item.seo_title || item.title || '',
-      meta_description: item.meta_description || item.seo_description || item.excerpt || '',
-      focus_keyword: item.focus_keyword || item.seo_keywords || '',
-      og_image_url: item.og_image_url || cleanImage,
-      canonical_url: item.canonical_url || '',
-      noindex: item.noindex === true || item.noindex === 'true' || item.noindex === 1
-    };
-  }, []);
-
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
     try {
-      const postsRes = await ncbReadAll(TABLES.POSTS);
-      const normalizedPosts = (Array.isArray(postsRes) ? postsRes : [])
-        .map(p => normalizeItem(p, 'post'))
-        .filter(Boolean);
+      const [postsData, productsData] = await Promise.all([
+        ncbReadAll('posts'),
+        ncbReadAll('product_recommendations')
+      ]);
+      
+      // Normalize posts
+      const normalizedPosts = (postsData || []).map(post => ({
+        ...post,
+        // Ensure image_url is consistently used for rendering
+        image: post.image_url || post.image || BLOG_PLACEHOLDER,
+        created_at: post.created_at || new Date().toISOString()
+      })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      const productsRes = await ncbReadAll(TABLES.PRODUCTS);
-      let normalizedProducts = (Array.isArray(productsRes) ? productsRes : [])
-        .map(p => normalizeItem(p, 'product'))
-        .filter(Boolean);
+      // Normalize products
+      const normalizedProducts = (productsData || []).map(product => ({
+        ...product,
+        image_url: product.image_url || BLOG_PLACEHOLDER,
+        created_at: product.created_at || new Date().toISOString()
+      }));
 
-      if (normalizedProducts.length === 0) {
-        normalizedProducts = SEED_PRODUCTS.map(p => normalizeItem(p, 'product'));
-      }
-
-      setPosts(normalizedPosts.sort((a,b) => new Date(b.date) - new Date(a.date)));
-      setProducts(normalizedProducts.sort((a,b) => new Date(b.date) - new Date(a.date)));
+      setPosts(normalizedPosts);
+      setProducts(normalizedProducts);
     } catch (err) {
-      console.error('BlogContext: Fetch failed', err);
-      setError("Sync issue.");
+      console.error('Fetch error:', err);
+      setError(err.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [normalizeItem, TABLES.POSTS, TABLES.PRODUCTS]);
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  // Derived state for public views
   const publishedPosts = useMemo(() => 
-    posts.filter(p => p.status === 'published'), 
+    posts.filter(post => post.status === 'published'), 
   [posts]);
 
-  const addPost = async (data) => {
+  const categories = useMemo(() => 
+    [...new Set(publishedPosts.map(post => post.category).filter(Boolean))], 
+  [publishedPosts]);
+
+  // BLOG POST METHODS
+  const addPost = async (postData) => {
     try {
-      const payload = sanitizeNcbPayload('posts', data);
-      const res = await ncbCreate(TABLES.POSTS, payload);
-      await fetchData();
-      return res;
+      const result = await ncbCreate('posts', postData);
+      await fetchData(); // Refresh local state
+      return result;
     } catch (err) {
-      console.error('Add Post Failed:', err);
+      console.error('Add Post Error:', err);
       throw err;
     }
   };
 
-  const updatePost = async (id, data) => {
+  const updatePost = async (id, postData) => {
     try {
-      const payload = sanitizeNcbPayload('posts', data);
-      await ncbUpdate(TABLES.POSTS, id, payload);
-      await fetchData();
+      const result = await ncbUpdate('posts', id, postData);
+      await fetchData(); // Refresh local state
+      return result;
     } catch (err) {
-      console.error('Update Post Failed:', err);
+      console.error('Update Post Error:', err);
       throw err;
     }
   };
 
   const deletePost = async (id) => {
     try {
-      await ncbDelete(TABLES.POSTS, id);
-      await fetchData();
+      await ncbDelete('posts', id);
+      await fetchData(); // Refresh local state
     } catch (err) {
-      console.error('Delete Post Failed:', err);
+      console.error('Delete Post Error:', err);
       throw err;
     }
   };
 
-  const addProduct = async (data) => {
+  // PRODUCT RECOMMENDATION METHODS
+  const addProduct = async (productData) => {
     try {
-      const payload = sanitizeNcbPayload('product_recommendations', data);
-      const res = await ncbCreate(TABLES.PRODUCTS, payload);
+      const result = await ncbCreate('product_recommendations', productData);
       await fetchData();
-      return res;
+      return result;
     } catch (err) {
-      console.error('Add Product Failed:', err);
       throw err;
     }
   };
 
-  const updateProduct = async (id, data) => {
+  const updateProduct = async (id, productData) => {
     try {
-      const payload = sanitizeNcbPayload('product_recommendations', data);
-      await ncbUpdate(TABLES.PRODUCTS, id, payload);
+      const result = await ncbUpdate('product_recommendations', id, productData);
       await fetchData();
+      return result;
     } catch (err) {
-      console.error('Update Product Failed:', err);
       throw err;
     }
   };
 
   const deleteProduct = async (id) => {
     try {
-      await ncbDelete(TABLES.PRODUCTS, id);
+      await ncbDelete('product_recommendations', id);
       await fetchData();
     } catch (err) {
-      console.error('Delete Product Failed:', err);
       throw err;
     }
   };
 
-  return (
-    <BlogContext.Provider value={{
-      posts, publishedPosts, products, isLoading, error,
-      addPost, updatePost, deletePost, addProduct, updateProduct, deleteProduct,
-      fetchData, categories: ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Career'],
-      getPost: (id) => posts.find(p => String(p.id) === String(id)) || products.find(p => String(p.id) === String(id))
-    }}>
-      {children}
-    </BlogContext.Provider>
-  );
+  const value = {
+    posts,
+    publishedPosts, // Exposed for Home and AllBlogs
+    categories,     // Exposed for Filter
+    products,
+    loading,
+    isLoading: loading, // Alias for Home.jsx
+    error,
+    addPost,
+    updatePost,
+    deletePost,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    refreshData: fetchData,
+    fetchData, // Alias for Home.jsx
+  };
+
+  return <BlogContext.Provider value={value}>{children}</BlogContext.Provider>;
+};
+
+export const useBlog = () => {
+  const context = useContext(BlogContext);
+  if (!context) throw new Error('useBlog must be used within a BlogProvider');
+  return context;
 };
