@@ -12,7 +12,6 @@ import GlobalErrorBanner from './components/GlobalErrorBanner';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import BlogPost from './pages/BlogPost';
-import AllBlogs from './pages/AllBlogs';
 import CreatePost from './pages/CreatePost';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -55,7 +54,6 @@ function App() {
                       <Route path="/admin-login" element={<AdminLogin />} />
                       <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/" element={<Home />} />
-                      <Route path="/blog" element={<AllBlogs />} />
                       <Route path="/post/:id" element={<BlogPost />} />
                       <Route path="/create" element={<CreatePost />} />
                       <Route path="/about" element={<About />} />

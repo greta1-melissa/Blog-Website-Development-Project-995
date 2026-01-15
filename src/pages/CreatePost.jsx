@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import toast, { Toaster } from 'react-hot-toast';
 import { useBlog } from '../contexts/BlogContext';
 import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -12,17 +11,17 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
-import { generateSlug, ensureUniqueSlug } from '../utils/slugUtils';
-import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
+import { generateSlug } from '../utils/slugUtils';
 
-const { FiSave, FiImage, FiUploadCloud, FiTag, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
+const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { addPost, posts } = useBlog();
+  const { addPost } = useBlog();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showSeo, setShowSeo] = useState(false);
   
@@ -30,8 +29,6 @@ const CreatePost = () => {
     title: '',
     content: '',
     category: '',
-    tags: '',
-    excerpt: '',
     image: '',
     status: 'published',
     seo_title: '',
@@ -57,6 +54,7 @@ const CreatePost = () => {
     const file = e.target.files[0];
     if (!file) return;
     setIsUploading(true);
+    setUploadStatus('Uploading...');
     setErrorMessage('');
     try {
       const data = new FormData();
@@ -68,13 +66,13 @@ const CreatePost = () => {
       const result = await response.json();
       if (response.ok && result.success && result.proxyUrl) {
         setFormData(prev => ({ ...prev, image: result.proxyUrl }));
-        toast.success('Image uploaded successfully');
+        setUploadStatus('Upload Complete!');
       } else {
         throw new Error(result.message || "Upload failed");
       }
     } catch (error) {
+      setUploadStatus('Upload Failed');
       setErrorMessage(`Upload failed: ${error.message}`);
-      toast.error('Image upload failed');
     } finally {
       setIsUploading(false);
       e.target.value = null;
@@ -87,7 +85,6 @@ const CreatePost = () => {
     
     if (!formData.title.trim() || !formData.content.trim() || !formData.category) {
       setErrorMessage('Please fill in Title, Content, and Category');
-      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -95,27 +92,18 @@ const CreatePost = () => {
     setIsSaving(true);
     
     try {
-      // GUARANTEE UNIQUE SLUG
-      const baseSlug = generateSlug(formData.title);
-      const finalSlug = ensureUniqueSlug(baseSlug, posts);
-
       const postData = {
         ...formData,
-        slug: finalSlug,
-        author: user?.name || 'BangtanMom'
+        slug: generateSlug(formData.title),
+        author: user?.name || 'BangtanMom',
+        created_at: new Date().toISOString()
       };
 
       const createdPost = await addPost(postData);
-      toast.success(formData.status === 'published' ? 'Story published successfully!' : 'Draft saved successfully!');
-      
       const targetId = createdPost?.id || createdPost;
-      setTimeout(() => navigate(targetId ? `/post/${targetId}` : '/blogs'), 1500);
+      navigate(targetId ? `/post/${targetId}` : '/blogs');
     } catch (error) {
-      // Detailed error reporting
-      const detail = error.upstreamBody ? `\nStatus: ${error.status}\nNCB Error: ${error.upstreamBody}` : '';
-      const fullError = `${error.message}${detail}`;
-      setErrorMessage(fullError);
-      toast.error(`Save failed: ${error.upstreamBody || error.message}`);
+      setErrorMessage(error.message);
     } finally {
       setIsSaving(false);
     }
@@ -123,7 +111,6 @@ const CreatePost = () => {
 
   return (
     <ProtectedRoute requiredRole="author">
-      <Toaster position="top-right" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 font-serif">Share Your Story</h1>
@@ -131,11 +118,11 @@ const CreatePost = () => {
         </div>
 
         {errorMessage && (
-          <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-2xl flex items-start">
-            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-4 mt-1 flex-shrink-0 text-xl" />
-            <div className="text-red-800 text-sm overflow-hidden flex-1">
-              <p className="font-black uppercase tracking-widest text-[10px] mb-2 opacity-60">Database Error Details</p>
-              <pre className="whitespace-pre-wrap font-mono text-xs bg-red-100/50 p-3 rounded-lg border border-red-200/50">{errorMessage}</pre>
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start">
+            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-3 mt-1 flex-shrink-0" />
+            <div className="text-red-800 text-xs overflow-hidden">
+              <p className="font-bold mb-1">Error Details</p>
+              <p className="opacity-90 whitespace-pre-wrap">{errorMessage}</p>
             </div>
           </div>
         )}
@@ -147,30 +134,10 @@ const CreatePost = () => {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Post Title *</label>
                 <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" required />
               </div>
-
-              <div className="mb-6">
-                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Short Excerpt (Summary)</label>
-                <textarea 
-                  name="excerpt" 
-                  value={formData.excerpt} 
-                  onChange={handleChange} 
-                  rows="3" 
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed" 
-                  placeholder="A brief summary of your story for the blog cards..."
-                />
-              </div>
-
               <div className="mb-8">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Story Content *</label>
                 <div className="rounded-xl overflow-hidden border border-gray-200">
-                  <ReactQuill 
-                    theme="snow" 
-                    value={formData.content} 
-                    onChange={(val) => setFormData(p => ({ ...p, content: val }))} 
-                    modules={quillModules}
-                    formats={quillFormats}
-                    className={editorStyles} 
-                  />
+                  <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
                 </div>
               </div>
 
@@ -235,22 +202,6 @@ const CreatePost = () => {
                 <option value="">Select Category</option>
                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Tags</h3>
-              <div className="relative">
-                <SafeIcon icon={FiTag} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  name="tags" 
-                  value={formData.tags} 
-                  onChange={handleChange} 
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 text-sm font-medium" 
-                  placeholder="Comma separated tags..." 
-                />
-              </div>
-              <p className="text-[10px] text-gray-400 mt-2 font-medium italic">e.g. BTS, Health, Lifestyle</p>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

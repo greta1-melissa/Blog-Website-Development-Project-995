@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBlog } from '../contexts/BlogContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { ensureUniqueSlug } from '../utils/slugUtils';
-import { quillModules, quillFormats, editorStyles } from '../utils/editorConfig';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiStar, FiAlertTriangle, FiShoppingBag, FiAlignLeft, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
@@ -303,9 +302,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
                   theme="snow"
                   value={formData.content}
                   onChange={(val) => setFormData(p => ({ ...p, content: val }))}
-                  modules={quillModules}
-                  formats={quillFormats}
-                  className={editorStyles}
+                  className="bg-white min-h-[300px]"
                 />
               </div>
             </div>
