@@ -18,10 +18,12 @@ const BlogPostManagement = () => {
   const [editingPost, setEditingPost] = useState(null);
 
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => 
-      post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      post.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return posts.filter(post => {
+      const title = (post.title || '').toLowerCase();
+      const category = (post.category || '').toLowerCase();
+      const search = searchTerm.toLowerCase();
+      return title.includes(search) || category.includes(search);
+    });
   }, [posts, searchTerm]);
 
   const handleSave = async (id, data) => {
@@ -34,7 +36,7 @@ const BlogPostManagement = () => {
         toast.success('Post published successfully!');
       }
     } catch (error) {
-      toast.error(`Operation failed: ${error.message}`);
+      toast.error(`Operation failed: ${error.upstreamBody || error.message}`);
     }
   };
 
@@ -101,8 +103,8 @@ const BlogPostManagement = () => {
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${post.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>{post.status}</span>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
-                    <button onClick={() => { setEditingPost(post); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600"><SafeIcon icon={FiEdit3} /></button>
-                    <button onClick={() => handleDelete(post.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
+                    <button onClick={() => { setEditingPost(post); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600 transition-colors"><SafeIcon icon={FiEdit3} /></button>
+                    <button onClick={() => handleDelete(post.id)} className="text-gray-400 hover:text-red-500 transition-colors"><SafeIcon icon={FiTrash2} /></button>
                   </td>
                 </tr>
               ))

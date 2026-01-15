@@ -114,7 +114,8 @@ export const ncbReadAll = async (table) => {
 export const ncbCreate = async (table, data) => {
   try {
     const payload = sanitizeNcbPayload(table, data);
-    const response = await fetch(`${API_BASE}/${table}`, {
+    // Correct NCB endpoint for create
+    const response = await fetch(`${API_BASE}/create/${table}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -140,7 +141,8 @@ export const ncbCreate = async (table, data) => {
 export const ncbUpdate = async (table, id, data) => {
   try {
     const payload = sanitizeNcbPayload(table, data);
-    const response = await fetch(`${API_BASE}/${table}/${id}`, {
+    // Correct NCB endpoint for update
+    const response = await fetch(`${API_BASE}/update/${table}/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -165,7 +167,8 @@ export const ncbUpdate = async (table, id, data) => {
 
 export const ncbDelete = async (table, id) => {
   try {
-    const response = await fetch(`${API_BASE}/${table}/${id}`, {
+    // Correct NCB endpoint for delete
+    const response = await fetch(`${API_BASE}/delete/${table}/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) throw new Error(`Failed to delete record from ${table}`);

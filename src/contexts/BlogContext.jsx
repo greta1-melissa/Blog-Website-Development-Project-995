@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
-import { normalizeImageUrl } from '../utils/media.js';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const BlogContext = createContext();
@@ -11,26 +10,46 @@ export const BlogProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helper to extract array from NCB response
+  const extractArray = (res) => {
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    if (res && Array.isArray(res.results)) return res.results;
+    return [];
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [postsData, productsData] = await Promise.all([
+      const [postsRes, productsRes] = await Promise.all([
         ncbReadAll('posts'),
         ncbReadAll('product_recommendations')
       ]);
       
+      const postsData = extractArray(postsRes);
+      const productsData = extractArray(productsRes);
+      
       // Normalize posts
-      const normalizedPosts = (postsData || []).map(post => ({
-        ...post,
-        // Ensure image_url is consistently used for rendering
-        image: post.image_url || post.image || BLOG_PLACEHOLDER,
-        created_at: post.created_at || new Date().toISOString()
-      })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const normalizedPosts = postsData.map(post => {
+        // Ensure status is lowercase and trimmed
+        const status = (post.status || 'published').toString().toLowerCase().trim();
+        
+        return {
+          ...post,
+          title: post.title || 'Untitled Post',
+          category: post.category || 'General',
+          status: status,
+          // Ensure image_url is consistently used for rendering
+          image: post.image_url || post.image || BLOG_PLACEHOLDER,
+          created_at: post.created_at || new Date().toISOString()
+        };
+      }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       // Normalize products
-      const normalizedProducts = (productsData || []).map(product => ({
+      const normalizedProducts = productsData.map(product => ({
         ...product,
+        name: product.name || 'Untitled Product',
         image_url: product.image_url || BLOG_PLACEHOLDER,
         created_at: product.created_at || new Date().toISOString()
       }));
@@ -54,9 +73,12 @@ export const BlogProvider = ({ children }) => {
     posts.filter(post => post.status === 'published'), 
   [posts]);
 
-  const categories = useMemo(() => 
-    [...new Set(publishedPosts.map(post => post.category).filter(Boolean))], 
-  [publishedPosts]);
+  // Derive categories from ALL posts for Admin use
+  const categories = useMemo(() => {
+    const detected = [...new Set(posts.map(post => post.category).filter(Boolean))];
+    const defaults = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Career', 'General'];
+    return detected.length > 0 ? detected : defaults;
+  }, [posts]);
 
   // BLOG POST METHODS
   const addPost = async (postData) => {
@@ -123,11 +145,11 @@ export const BlogProvider = ({ children }) => {
 
   const value = {
     posts,
-    publishedPosts, // Exposed for Home and AllBlogs
-    categories,     // Exposed for Filter
+    publishedPosts, 
+    categories,     
     products,
     loading,
-    isLoading: loading, // Alias for Home.jsx
+    isLoading: loading, 
     error,
     addPost,
     updatePost,
@@ -136,7 +158,7 @@ export const BlogProvider = ({ children }) => {
     updateProduct,
     deleteProduct,
     refreshData: fetchData,
-    fetchData, // Alias for Home.jsx
+    fetchData, 
   };
 
   return <BlogContext.Provider value={value}>{children}</BlogContext.Provider>;
