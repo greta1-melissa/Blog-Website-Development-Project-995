@@ -32,17 +32,19 @@ export const BlogProvider = ({ children }) => {
       
       // Normalize posts
       const normalizedPosts = postsData.map(post => {
-        // Ensure status is lowercase and trimmed
         const status = (post.status || 'published').toString().toLowerCase().trim();
         
         return {
           ...post,
           title: post.title || 'Untitled Post',
           category: post.category || 'General',
+          author: post.author || 'Melissa',
           status: status,
           // Ensure image_url is consistently used for rendering
           image: post.image_url || post.image || BLOG_PLACEHOLDER,
-          created_at: post.created_at || new Date().toISOString()
+          created_at: post.created_at || new Date().toISOString(),
+          // Alias date for BlogPost component compatibility
+          date: post.created_at || post.published_at || new Date().toISOString()
         };
       }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -73,6 +75,11 @@ export const BlogProvider = ({ children }) => {
     posts.filter(post => post.status === 'published'), 
   [posts]);
 
+  // Helper to get a single post by ID or Slug
+  const getPost = useCallback((idOrSlug) => {
+    return posts.find(p => p.id === idOrSlug || p.slug === idOrSlug);
+  }, [posts]);
+
   // Derive categories from ALL posts for Admin use
   const categories = useMemo(() => {
     const detected = [...new Set(posts.map(post => post.category).filter(Boolean))];
@@ -84,7 +91,7 @@ export const BlogProvider = ({ children }) => {
   const addPost = async (postData) => {
     try {
       const result = await ncbCreate('posts', postData);
-      await fetchData(); // Refresh local state
+      await fetchData(); 
       return result;
     } catch (err) {
       console.error('Add Post Error:', err);
@@ -95,7 +102,7 @@ export const BlogProvider = ({ children }) => {
   const updatePost = async (id, postData) => {
     try {
       const result = await ncbUpdate('posts', id, postData);
-      await fetchData(); // Refresh local state
+      await fetchData();
       return result;
     } catch (err) {
       console.error('Update Post Error:', err);
@@ -106,7 +113,7 @@ export const BlogProvider = ({ children }) => {
   const deletePost = async (id) => {
     try {
       await ncbDelete('posts', id);
-      await fetchData(); // Refresh local state
+      await fetchData();
     } catch (err) {
       console.error('Delete Post Error:', err);
       throw err;
@@ -151,6 +158,7 @@ export const BlogProvider = ({ children }) => {
     loading,
     isLoading: loading, 
     error,
+    getPost,
     addPost,
     updatePost,
     deletePost,
