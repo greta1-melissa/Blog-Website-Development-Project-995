@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useBlog } from '../contexts/BlogContext';
 import EditProductModal from './EditProductModal';
 import * as FiIcons from 'react-icons/fi';
@@ -15,7 +16,6 @@ const ProductManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [successMsg, setSuccessMsg] = useState('');
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -24,33 +24,34 @@ const ProductManagement = () => {
     );
   }, [products, searchTerm]);
 
-  const showToast = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 3000);
-  };
-
   const handleSave = async (id, data) => {
     try {
       if (id && !String(id).startsWith('p')) { // Check if it's a real DB ID (seeds start with 'p')
         await updateProduct(id, data);
-        showToast('Product updated successfully!');
+        toast.success('Updated successfully!');
       } else {
         await addProduct(data);
-        showToast('Product recommendation added!');
+        toast.success('Published successfully!');
       }
     } catch (err) {
+      toast.error(`Save failed: ${err.message}`);
       throw err;
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Delete this product?')) {
+      try {
+        await deleteProduct(id);
+        toast.success('Deleted successfully!');
+      } catch (err) {
+        toast.error(`Delete failed: ${err.message}`);
+      }
     }
   };
 
   return (
     <div className="space-y-6">
-      {successMsg && (
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="fixed top-24 right-8 z-[60] bg-purple-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center">
-          <SafeIcon icon={FiCheckCircle} className="mr-2" /> {successMsg}
-        </motion.div>
-      )}
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Product Recommendations</h2>
@@ -105,7 +106,7 @@ const ProductManagement = () => {
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
                     <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600"><SafeIcon icon={FiEdit3} /></button>
-                    <button onClick={() => deleteProduct(product.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
+                    <button onClick={() => handleDelete(product.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
                   </td>
                 </tr>
               ))

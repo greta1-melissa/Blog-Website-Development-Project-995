@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import toast, { Toaster } from 'react-hot-toast';
 import { useBlog } from '../contexts/BlogContext';
 import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -69,12 +70,14 @@ const CreatePost = () => {
       if (response.ok && result.success && result.proxyUrl) {
         setFormData(prev => ({ ...prev, image: result.proxyUrl }));
         setUploadStatus('Upload Complete!');
+        toast.success('Image uploaded successfully');
       } else {
         throw new Error(result.message || "Upload failed");
       }
     } catch (error) {
       setUploadStatus('Upload Failed');
       setErrorMessage(`Upload failed: ${error.message}`);
+      toast.error('Image upload failed');
     } finally {
       setIsUploading(false);
       e.target.value = null;
@@ -87,6 +90,7 @@ const CreatePost = () => {
     
     if (!formData.title.trim() || !formData.content.trim() || !formData.category) {
       setErrorMessage('Please fill in Title, Content, and Category');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -102,10 +106,12 @@ const CreatePost = () => {
       };
 
       const createdPost = await addPost(postData);
+      toast.success(formData.status === 'published' ? 'Story published successfully!' : 'Draft saved successfully!');
       const targetId = createdPost?.id || createdPost;
-      navigate(targetId ? `/post/${targetId}` : '/blogs');
+      setTimeout(() => navigate(targetId ? `/post/${targetId}` : '/blogs'), 1500);
     } catch (error) {
       setErrorMessage(error.message);
+      toast.error(`Save failed: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -113,6 +119,7 @@ const CreatePost = () => {
 
   return (
     <ProtectedRoute requiredRole="author">
+      <Toaster position="top-right" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4 font-serif">Share Your Story</h1>

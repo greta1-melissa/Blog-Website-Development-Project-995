@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useKdrama } from '../contexts/KdramaContext';
 import EditKdramaModal from './EditKdramaModal';
 import * as FiIcons from 'react-icons/fi';
@@ -14,7 +15,6 @@ const KdramaManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDrama, setEditingDrama] = useState(null);
-  const [successMsg, setSuccessMsg] = useState('');
 
   const filteredDramas = useMemo(() => {
     return kdramas.filter(drama => 
@@ -22,11 +22,6 @@ const KdramaManagement = () => {
       (drama.tags && Array.isArray(drama.tags) && drama.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
     );
   }, [kdramas, searchTerm]);
-
-  const showToast = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 3000);
-  };
 
   const handleAdd = () => {
     setEditingDrama(null);
@@ -42,9 +37,9 @@ const KdramaManagement = () => {
     if (window.confirm('Delete this recommendation?')) {
       try {
         await deleteKdrama(id);
-        showToast('Drama removed!');
+        toast.success('Deleted successfully');
       } catch (error) {
-        alert('Delete failed');
+        toast.error(`Delete failed: ${error.message}`);
       }
     }
   };
@@ -52,9 +47,9 @@ const KdramaManagement = () => {
   const handleToggleFeatured = async (drama) => {
     try {
       await updateKdrama(drama.id, { is_featured_on_home: drama.is_featured_on_home ? 0 : 1 });
-      showToast('Visibility updated!');
+      toast.success('Visibility updated!');
     } catch (error) {
-      console.error('Failed to update featured status', error);
+      toast.error('Failed to update featured status');
     }
   };
 
@@ -62,24 +57,19 @@ const KdramaManagement = () => {
     try {
       if (id && !String(id).startsWith('temp-')) {
         await updateKdrama(id, data);
-        showToast('Drama updated!');
+        toast.success('Updated successfully!');
       } else {
         await addKdrama(data);
-        showToast('Drama added!');
+        toast.success('Added successfully!');
       }
     } catch (err) {
+      toast.error(`Save failed: ${err.message}`);
       throw err;
     }
   };
 
   return (
     <div className="space-y-6">
-      {successMsg && (
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="fixed top-24 right-8 z-[60] bg-purple-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center">
-          <SafeIcon icon={FiCheckCircle} className="mr-2" /> {successMsg}
-        </motion.div>
-      )}
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">K-Drama Recommendations</h2>

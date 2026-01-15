@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useBlog } from '../contexts/BlogContext';
 import EditPostModal from './EditPostModal';
 import * as FiIcons from 'react-icons/fi';
@@ -15,7 +16,6 @@ const BlogPostManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
-  const [successMsg, setSuccessMsg] = useState('');
 
   const filteredPosts = useMemo(() => {
     return posts.filter(post => 
@@ -24,29 +24,33 @@ const BlogPostManagement = () => {
     );
   }, [posts, searchTerm]);
 
-  const showToast = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 3000);
+  const handleSave = async (id, data) => {
+    try {
+      if (id) {
+        await updatePost(id, data);
+        toast.success('Post updated successfully!');
+      } else {
+        await addPost(data);
+        toast.success('Post published successfully!');
+      }
+    } catch (error) {
+      toast.error(`Operation failed: ${error.message}`);
+    }
   };
 
-  const handleSave = async (id, data) => {
-    if (id) {
-      await updatePost(id, data);
-      showToast('Post updated successfully!');
-    } else {
-      await addPost(data);
-      showToast('Post published successfully!');
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this story?')) {
+      try {
+        await deletePost(id);
+        toast.success('Post deleted successfully!');
+      } catch (error) {
+        toast.error(`Delete failed: ${error.message}`);
+      }
     }
   };
 
   return (
     <div className="space-y-6">
-      {successMsg && (
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="fixed top-24 right-8 z-[60] bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center">
-          <SafeIcon icon={FiCheckCircle} className="mr-2" /> {successMsg}
-        </motion.div>
-      )}
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Blog Stories</h2>
@@ -98,7 +102,7 @@ const BlogPostManagement = () => {
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
                     <button onClick={() => { setEditingPost(post); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600"><SafeIcon icon={FiEdit3} /></button>
-                    <button onClick={() => deletePost(post.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
+                    <button onClick={() => handleDelete(post.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
                   </td>
                 </tr>
               ))
