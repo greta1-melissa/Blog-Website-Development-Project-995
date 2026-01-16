@@ -51,11 +51,11 @@ const Footer = () => {
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Product Picks</Link></li>
               <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Get in Touch</Link></li>
               
-              {/* ADMIN ACCESS POINT */}
+              {/* ADMIN ACCESS POINT - Updated for better visibility */}
               <li className="pt-6 mt-6 border-t border-gray-100">
                 <Link 
                   to="/admin-login" 
-                  className="flex items-center text-sm text-gray-400 hover:text-purple-600 transition-all group font-bold uppercase tracking-widest"
+                  className="flex items-center text-sm text-purple-600 hover:text-purple-800 transition-all group font-bold uppercase tracking-widest"
                 >
                   <SafeIcon icon={FiLock} className="mr-2 transform group-hover:scale-110 transition-transform" />
                   <span>Admin Access</span>
