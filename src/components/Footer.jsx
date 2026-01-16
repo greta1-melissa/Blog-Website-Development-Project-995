@@ -41,7 +41,7 @@ const Footer = () => {
           </div>
 
           {/* Column 2: Quick Links */}
-          <div>
+          <div id="footer-explore">
             <h3 className="text-xl font-bold text-gray-900 mb-8 font-serif">Explore</h3>
             <ul className="space-y-4 text-base text-gray-600 font-medium">
               <li><Link to="/" className="hover:text-purple-600 transition-colors">Home</Link></li>
@@ -51,11 +51,11 @@ const Footer = () => {
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Product Picks</Link></li>
               <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Get in Touch</Link></li>
               
-              {/* ADMIN ACCESS POINT - Updated for better visibility */}
+              {/* ADMIN ACCESS - Reinforced Visibility */}
               <li className="pt-6 mt-6 border-t border-gray-100">
                 <Link 
                   to="/admin-login" 
-                  className="flex items-center text-sm text-purple-600 hover:text-purple-800 transition-all group font-bold uppercase tracking-widest"
+                  className="flex items-center text-sm text-purple-600 hover:text-purple-800 transition-all group font-bold uppercase tracking-widest bg-purple-50 py-2 px-3 rounded-lg inline-flex"
                 >
                   <SafeIcon icon={FiLock} className="mr-2 transform group-hover:scale-110 transition-transform" />
                   <span>Admin Access</span>
