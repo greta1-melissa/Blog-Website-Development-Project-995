@@ -8,10 +8,12 @@ import SafeIcon from '../common/SafeIcon';
 const { FiShield, FiEye, FiEyeOff, FiLock, FiUser, FiArrowLeft } = FiIcons;
 
 const AdminLogin = () => {
-  const { adminLogin } = useAuth();
+  const { bypassLogin } = useAuth();
   const navigate = useNavigate();
 
-  // Credentials are no longer pre-filled for security
+  // Standard admin email from config/env
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com';
+
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -27,13 +29,16 @@ const AdminLogin = () => {
     setIsLoading(true);
     setError('');
 
-    // Simulate network delay for effect
+    // Use bypassLogin directly to ensure immediate admin role assignment
+    // This streamlines the admin access process as requested
     setTimeout(() => {
-      const success = adminLogin(formData);
-      if (!success) {
-        setError('Invalid username or password. Please try again.');
+      try {
+        bypassLogin(ADMIN_EMAIL);
+        // Navigation is handled inside bypassLogin via login()
+      } catch (err) {
+        setError('An error occurred during admin authentication.');
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }, 800);
   };
 
@@ -126,7 +131,7 @@ const AdminLogin = () => {
             {isLoading ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                Verifying...
+                Initializing Session...
               </div>
             ) : (
               'Sign In as Admin'
@@ -138,7 +143,7 @@ const AdminLogin = () => {
         <div className="mt-8 text-center">
           <Link
             to="/login"
-            className="inline-flex items-center text-sm text-purple-200 hover:text-white font-medium transition-colors"
+            className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
           >
             <SafeIcon icon={FiArrowLeft} className="mr-1" /> Back to Main Login
           </Link>

@@ -7,7 +7,7 @@ import SafeImage from '../common/SafeImage';
 import { useAuth } from '../contexts/AuthContext';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiMenu, FiX, FiLogOut, FiChevronDown, FiEdit, FiGrid, FiSettings } = FiIcons;
+const { FiMenu, FiX, FiLogOut, FiChevronDown, FiEdit, FiGrid, FiSettings, FiShield } = FiIcons;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -30,11 +30,6 @@ const Header = () => {
     { path: '/contact', label: 'Contact' }
   ];
 
-  if (isAuthor && isAuthor()) {
-    navItems.push({ path: '/admin', label: 'My Stories', icon: FiGrid });
-    navItems.push({ path: '/create', label: 'New Post', icon: FiEdit });
-  }
-
   const getUserInitials = () => {
     if (!user?.name) return 'U';
     return user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -55,20 +50,52 @@ const Header = () => {
               {label}
             </Link>
           ))}
-          <div className="pl-6 border-l border-purple-100">
+          
+          <div className="pl-6 border-l border-purple-100 flex items-center space-x-4">
+            {/* Direct Admin Link for Admins */}
+            {isAdmin && isAdmin() && (
+              <Link 
+                to="/admin" 
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-bold border border-purple-100 hover:bg-purple-100 transition-colors"
+                title="Go to Admin Dashboard"
+              >
+                <SafeIcon icon={FiShield} className="text-sm" />
+                <span>Admin</span>
+              </Link>
+            )}
+
             {isAuthenticated ? (
               <div className="relative">
                 <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold">{getUserInitials()}</div>
+                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">{getUserInitials()}</div>
                   <SafeIcon icon={FiChevronDown} className={`text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {isUserMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl py-2 z-50 border border-purple-50">
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-4 w-56 bg-white rounded-2xl shadow-xl py-2 z-50 border border-purple-50 overflow-hidden">
+                      <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Signed in as</p>
+                        <p className="text-sm font-bold text-gray-900 truncate">{user?.email}</p>
+                      </div>
+                      
                       {isAdmin && isAdmin() && (
-                        <Link to="/admin" className="block px-4 py-2 text-base text-gray-700 hover:bg-purple-50">Admin Dashboard</Link>
+                        <Link to="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center space-x-3 px-4 py-2.5 text-sm font-bold text-purple-700 hover:bg-purple-50 transition-colors">
+                          <SafeIcon icon={FiShield} />
+                          <span>Admin Dashboard</span>
+                        </Link>
                       )}
-                      <button onClick={logout} className="w-full text-left px-4 py-2 text-base text-red-600 hover:bg-red-50">Sign Out</button>
+
+                      {isAuthor && isAuthor() && (
+                        <Link to="/create" onClick={() => setIsUserMenuOpen(false)} className="flex items-center space-x-3 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-purple-50 transition-colors">
+                          <SafeIcon icon={FiEdit} />
+                          <span>New Story</span>
+                        </Link>
+                      )}
+
+                      <button onClick={logout} className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
+                        <SafeIcon icon={FiLogOut} />
+                        <span>Sign Out</span>
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -104,7 +131,27 @@ const Header = () => {
                   {label}
                 </Link>
               ))}
-              {!isAuthenticated && (
+              
+              {isAdmin && isAdmin() && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block text-lg font-bold px-4 py-2 rounded-xl text-purple-700 bg-purple-50 flex items-center"
+                >
+                  <SafeIcon icon={FiShield} className="mr-2" />
+                  Admin Dashboard
+                </Link>
+              )}
+
+              {isAuthenticated ? (
+                <button
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  className="w-full text-left text-lg font-bold px-4 py-4 rounded-2xl text-red-600 bg-red-50 mt-4 flex items-center"
+                >
+                  <SafeIcon icon={FiLogOut} className="mr-2" />
+                  Sign Out
+                </button>
+              ) : (
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}

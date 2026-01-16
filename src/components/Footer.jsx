@@ -5,7 +5,7 @@ import SafeImage from '../common/SafeImage';
 import { Link } from 'react-router-dom';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
+const { FiHeart, FiInstagram, FiTwitter, FiYoutube, FiLock } = FiIcons;
 
 const Footer = () => {
   return (
@@ -50,6 +50,12 @@ const Footer = () => {
               <li><Link to="/kdrama-recommendations" className="hover:text-purple-600 transition-colors">K-Drama Reviews</Link></li>
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Product Picks</Link></li>
               <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Get in Touch</Link></li>
+              <li className="pt-4 mt-4 border-t border-gray-100">
+                <Link to="/admin-login" className="flex items-center text-xs text-gray-400 hover:text-purple-600 transition-colors uppercase tracking-widest font-bold">
+                  <SafeIcon icon={FiLock} className="mr-2" />
+                  Admin Access
+                </Link>
+              </li>
             </ul>
           </div>
 
