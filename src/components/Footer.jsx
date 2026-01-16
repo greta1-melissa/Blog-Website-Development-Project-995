@@ -12,7 +12,7 @@ const Footer = () => {
     <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16 mb-16">
-          {/* Column 1: Brand, Bio, Socials, and Safe Space Promise */}
+          {/* Column 1: Brand & Socials */}
           <div className="flex flex-col">
             <Link to="/" className="flex items-center space-x-3 mb-8">
               <SafeImage src={logo} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
@@ -34,7 +34,7 @@ const Footer = () => {
             </div>
             
             <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100/50">
-              <p className="text-sm text-purple-800 leading-relaxed font-semibold">
+              <p className="text-sm text-purple-800 leading-relaxed font-semibold text-center">
                 This is a safe space for moms, ARMY, and anyone who needs a gentle corner of the internet. 💜
               </p>
             </div>
@@ -50,10 +50,15 @@ const Footer = () => {
               <li><Link to="/kdrama-recommendations" className="hover:text-purple-600 transition-colors">K-Drama Reviews</Link></li>
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Product Picks</Link></li>
               <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Get in Touch</Link></li>
-              <li className="pt-4 mt-4 border-t border-gray-100">
-                <Link to="/admin-login" className="flex items-center text-xs text-gray-400 hover:text-purple-600 transition-colors uppercase tracking-widest font-bold">
-                  <SafeIcon icon={FiLock} className="mr-2" />
-                  Admin Access
+              
+              {/* ADMIN ACCESS POINT */}
+              <li className="pt-6 mt-6 border-t border-gray-100">
+                <Link 
+                  to="/admin-login" 
+                  className="flex items-center text-sm text-gray-400 hover:text-purple-600 transition-all group font-bold uppercase tracking-widest"
+                >
+                  <SafeIcon icon={FiLock} className="mr-2 transform group-hover:scale-110 transition-transform" />
+                  <span>Admin Access</span>
                 </Link>
               </li>
             </ul>
