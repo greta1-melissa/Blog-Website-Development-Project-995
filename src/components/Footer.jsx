@@ -5,7 +5,7 @@ import SafeImage from '../common/SafeImage';
 import { Link } from 'react-router-dom';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
+const { FiHeart, FiInstagram, FiTwitter, FiYoutube, FiLock } = FiIcons;
 
 const Footer = () => {
   return (
@@ -41,7 +41,7 @@ const Footer = () => {
           </div>
 
           {/* Column 2: Quick Links */}
-          <div>
+          <div id="footer-explore">
             <h3 className="text-xl font-bold text-gray-900 mb-8 font-serif">Explore</h3>
             <ul className="space-y-4 text-base text-gray-600 font-medium">
               <li><Link to="/" className="hover:text-purple-600 transition-colors">Home</Link></li>
@@ -50,6 +50,19 @@ const Footer = () => {
               <li><Link to="/kdrama-recommendations" className="hover:text-purple-600 transition-colors">K-Drama Reviews</Link></li>
               <li><Link to="/products" className="hover:text-purple-600 transition-colors">Product Picks</Link></li>
               <li><Link to="/contact" className="hover:text-purple-600 transition-colors">Get in Touch</Link></li>
+              
+              {/* RESTORED ADMIN LOGIN BUTTON */}
+              <li className="pt-6 mt-6 border-t border-gray-100">
+                <Link 
+                  to="/admin-login" 
+                  className="flex items-center text-xs font-bold uppercase tracking-widest text-purple-700 hover:text-purple-900 transition-all group"
+                >
+                  <span className="p-2 bg-purple-50 rounded-lg mr-3 group-hover:bg-purple-100 transition-colors">
+                    <SafeIcon icon={FiLock} className="text-base" />
+                  </span>
+                  Admin Access
+                </Link>
+              </li>
             </ul>
           </div>
 
