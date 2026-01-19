@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete, sanitizeNcbPayload } from '../services/nocodebackendClient';
-import { kdramas as initialSeedData } from '../data/kdramaData';
 import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
 
@@ -24,16 +23,22 @@ export const KdramaProvider = ({ children }) => {
     return data.map((item, index) => {
       const rawImage = item.image_url || item.image || '';
       const cleanImage = getImageSrc(rawImage, KDRAMA_PLACEHOLDER);
+      
       const isFeatured = item.is_featured_on_home === true || 
                         item.is_featured_on_home === 1 || 
                         item.is_featured_on_home === '1' || 
                         item.is_featured_on_home === 'true';
 
+      // Robust status handling
+      const rawStatus = (item.status || 'published').toString().toLowerCase().trim();
+      const isPublished = rawStatus === 'published' || rawStatus === '1' || rawStatus === 'true';
+      const cleanStatus = isPublished ? 'published' : 'draft';
+
       return {
         ...item,
         id: item.id || item._id,
         title: item.title || 'Untitled',
-        status: (item.status || 'published').toString().toLowerCase().trim(),
+        status: cleanStatus,
         slug: String(item.slug || item.id || `drama-${index}`).trim(),
         tags: Array.isArray(item.tags) ? item.tags : (item.tags ? String(item.tags).split(',').map(t => t.trim()) : []),
         synopsis_short: item.synopsis_short || item.synopsis || '',
@@ -57,13 +62,13 @@ export const KdramaProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const res = await ncbReadAll(TABLE_NAME);
-      let currentData = normalizeData(res);
-      if (currentData.length === 0) currentData = normalizeData(initialSeedData);
-      currentData.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-      setKdramas(currentData);
+      const currentData = normalizeData(res);
+      // Sort and set data from NCB
+      const sorted = [...currentData].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+      setKdramas(sorted);
     } catch (error) {
       console.error('Fetch K-Dramas Failed:', error);
-      setKdramas(normalizeData(initialSeedData));
+      setKdramas([]);
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +117,9 @@ export const KdramaProvider = ({ children }) => {
   };
 
   const featuredKdramas = useMemo(() => {
+    // Show published dramas that are marked as featured
     const featured = kdramas.filter(d => d.is_featured_on_home === true && d.status === 'published');
+    // If none are specifically featured, show the latest published ones
     const source = featured.length > 0 ? featured : kdramas.filter(d => d.status === 'published');
     return [...source].sort((a, b) => (a.display_order || 0) - (b.display_order || 0)).slice(0, 8);
   }, [kdramas]);

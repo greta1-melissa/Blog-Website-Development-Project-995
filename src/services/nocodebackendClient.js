@@ -101,12 +101,25 @@ function buildProxyUrl(path, extraParams = {}) {
 
 function normalizeItem(item) {
   if (!item || typeof item !== 'object') return item;
-  const id = item.id || item._id || item.ID || item.Id;
+  const id = item.id || item._id || item.ID || item.Id || item.pk;
   return { ...item, id: id };
 }
 
-function normalizeArray(data) {
-  const source = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+/**
+ * Smarter normalization for NCB arrays.
+ * NCB may return the array directly, or wrapped in a key.
+ */
+function normalizeArray(data, tableName) {
+  if (Array.isArray(data)) return data.map(normalizeItem);
+  
+  // Check common NCB wrappers
+  const source = 
+    (tableName && Array.isArray(data?.[tableName])) ? data[tableName] :
+    (Array.isArray(data?.data)) ? data.data :
+    (Array.isArray(data?.records)) ? data.records :
+    (data?.data && Array.isArray(data.data.records)) ? data.data.records :
+    [];
+    
   return source.map(normalizeItem);
 }
 
@@ -142,7 +155,7 @@ export async function ncbReadAll(table, queryParams = {}) {
       headers: buildHeaders()
     });
     const json = await handleResponse(res, `readAll:${cleanTable}`);
-    return normalizeArray(json);
+    return normalizeArray(json, cleanTable);
   } catch (error) {
     console.error(`NCB Read Failed: ${cleanTable}`, error);
     return [];

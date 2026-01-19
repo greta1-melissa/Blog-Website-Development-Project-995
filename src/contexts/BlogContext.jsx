@@ -13,20 +13,6 @@ export const useBlog = () => {
   return context;
 };
 
-const SEED_PRODUCTS = [
-  {
-    id: 'p1',
-    title: 'Laneige Lip Sleeping Mask',
-    subcategory: 'Skincare',
-    rating: 5,
-    excerpt: 'The ultimate overnight treatment for soft, supple lips.',
-    content: 'Enriched with vitamin C and antioxidants.',
-    image: 'https://images.unsplash.com/photo-1591130901020-ef93581c8fb9?w=800&q=80',
-    date: '2024-01-20',
-    status: 'published'
-  }
-];
-
 export const BlogProvider = ({ children }) => {
   const [posts, setPosts] = useState([]);
   const [products, setProducts] = useState([]);
@@ -44,13 +30,17 @@ export const BlogProvider = ({ children }) => {
     const rawImage = item.image || item.image_url || item.featured_image_url || '';
     const fallback = type === 'post' ? BLOG_PLACEHOLDER : PLACEHOLDER_IMAGE;
     const cleanImage = getImageSrc(rawImage, fallback);
+    
+    // Robust status handling: Treat missing, '1', or 'true' as published
     const rawStatus = (item.status || 'published').toString().toLowerCase().trim();
+    const isPublished = rawStatus === 'published' || rawStatus === '1' || rawStatus === 'true';
+    const cleanStatus = isPublished ? 'published' : 'draft';
 
     return {
       ...item,
       id: item.id || item._id,
       title: item.title || 'Untitled',
-      status: rawStatus,
+      status: cleanStatus,
       category: item.category || (type === 'post' ? 'General' : 'Product Recommendations'),
       excerpt: item.excerpt || item.summary || item.short_blurb || '',
       content: item.content || item.detailed_review || '',
@@ -76,13 +66,9 @@ export const BlogProvider = ({ children }) => {
         .filter(Boolean);
 
       const productsRes = await ncbReadAll(TABLES.PRODUCTS);
-      let normalizedProducts = (Array.isArray(productsRes) ? productsRes : [])
+      const normalizedProducts = (Array.isArray(productsRes) ? productsRes : [])
         .map(p => normalizeItem(p, 'product'))
         .filter(Boolean);
-
-      if (normalizedProducts.length === 0) {
-        normalizedProducts = SEED_PRODUCTS.map(p => normalizeItem(p, 'product'));
-      }
 
       setPosts(normalizedPosts.sort((a,b) => new Date(b.date) - new Date(a.date)));
       setProducts(normalizedProducts.sort((a,b) => new Date(b.date) - new Date(a.date)));
