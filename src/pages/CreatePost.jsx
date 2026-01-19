@@ -83,8 +83,8 @@ const CreatePost = () => {
     e.preventDefault();
     if (isSaving) return;
     
-    if (!formData.title.trim() || !formData.content.trim() || !formData.category) {
-      setErrorMessage('Please fill in Title, Content, and Category');
+    if (!formData.title.trim() || !formData.content.trim()) {
+      setErrorMessage('Please fill in Title and Content');
       return;
     }
 
@@ -92,10 +92,22 @@ const CreatePost = () => {
     setIsSaving(true);
     
     try {
+      // Apply publishing and author logic
+      const author = user?.name || 'Admin';
+      const category = formData.category || 'General';
+      const status = formData.status || 'published';
+      
+      let date = null;
+      if (status === 'published') {
+        date = new Date().toISOString().split('T')[0];
+      }
+
       const postData = {
         ...formData,
+        category,
+        author,
+        date,
         slug: generateSlug(formData.title),
-        author: user?.name || 'BangtanMom',
         created_at: new Date().toISOString()
       };
 

@@ -12,15 +12,12 @@ export const useAuth = () => {
   return context;
 };
 
-/**
- * ADMIN CREDENTIALS
- * Restored to the requested bangtanmom / admin123
- */
+// Admin credentials
 const ADMIN_CREDENTIALS = {
-  username: 'bangtanmom',
-  password: 'admin123',
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmom',
+  password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   role: 'admin',
-  email: 'bangtanmom@bangtanmom.com'
+  email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
 };
 
 export const AuthProvider = ({ children }) => {
@@ -96,6 +93,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Helper for admin bypass (keeping for admin login convenience)
   const bypassLogin = (email) => {
     if (email === ADMIN_CREDENTIALS.email) {
       login({
@@ -107,10 +105,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  /**
-   * ADMIN LOGIN HANDLER
-   * Specifically validates the provided username and password
-   */
   const adminLogin = (credentials) => {
     const { username, password } = credentials;
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {

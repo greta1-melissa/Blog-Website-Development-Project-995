@@ -8,12 +8,14 @@ import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { ensureUniqueSlug } from '../utils/slugUtils';
 import { useBlog } from '../contexts/BlogContext';
+import { useAuth } from '../contexts/AuthContext';
 import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const { posts } = useBlog();
+  const { user } = useAuth();
   const [showSeo, setShowSeo] = useState(false);
   const [formData, setFormData] = useState({ title: '', slug: '', content: '', category: '', excerpt: '', image: '', status: 'published', seo_title: '', meta_description: '', focus_keyword: '', og_image_url: '', canonical_url: '', noindex: false });
   const [isUploading, setIsUploading] = useState(false);
@@ -71,8 +73,30 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     setIsSaving(true);
     setErrorMessage('');
     try {
+      // Apply publishing and author logic
+      const author = user?.name || post?.author || 'Admin';
+      const category = formData.category || 'General';
+      const status = formData.status || 'published';
+      
+      let date = post?.date || null;
+      if (status === 'published') {
+        // Only set date if it wasn't already set or if it was explicitly a draft before
+        if (!date || post?.status === 'draft') {
+          date = new Date().toISOString().split('T')[0];
+        }
+      } else if (status === 'draft') {
+        date = null;
+      }
+
       const finalSlug = formData.slug.trim() || ensureUniqueSlug(formData.title, posts, post?.id);
-      const submissionData = { ...formData, slug: finalSlug };
+      const submissionData = { 
+        ...formData, 
+        author,
+        category,
+        date,
+        slug: finalSlug 
+      };
+      
       await onSave(post?.id, submissionData);
       onClose();
     } catch (error) { setErrorMessage(error.message); } finally { setIsSaving(false); }
