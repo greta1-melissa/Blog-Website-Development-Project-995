@@ -98,6 +98,15 @@ export async function onRequest(context) {
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
+    // ✅ IMPORTANT: NCB may return 204 No Content (especially on DELETE).
+// Cloudflare Workers/Pages Functions cannot return a body for these statuses.
+if ([101, 204, 205, 304].includes(response.status)) {
+  return new Response(null, {
+    status: response.status,
+    headers: newHeaders
+  });
+}
+
     if (!response.ok) {
       const errorText = await response.text();
       return new Response(JSON.stringify({

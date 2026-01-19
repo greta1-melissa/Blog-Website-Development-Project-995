@@ -12,9 +12,9 @@ export const useAuth = () => {
   return context;
 };
 
-// Admin credentials - Updated to bangtanmon as requested
+// Admin credentials
 const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmon',
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmom',
   password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   role: 'admin',
   email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
@@ -93,6 +93,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Helper for admin bypass (keeping for admin login convenience)
   const bypassLogin = (email) => {
     if (email === ADMIN_CREDENTIALS.email) {
       login({
@@ -120,9 +121,18 @@ export const AuthProvider = ({ children }) => {
     navigate('/login');
   };
 
+  const hasPermission = (requiredRole) => {
+    if (!user) return false;
+    const roleHierarchy = { 'subscriber': 1, 'author': 2, 'admin': 3 };
+    const userLevel = roleHierarchy[user.role] || 0;
+    const requiredLevel = roleHierarchy[requiredRole] || 0;
+    return userLevel >= requiredLevel;
+  };
+
   const isAdmin = () => user?.role === 'admin';
   const isAuthor = () => user?.role === 'author' || user?.role === 'admin';
-  
+  const isSubscriber = () => !!user;
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -132,8 +142,10 @@ export const AuthProvider = ({ children }) => {
       adminLogin,
       bypassLogin,
       logout,
+      hasPermission,
       isAdmin,
-      isAuthor
+      isAuthor,
+      isSubscriber
     }}>
       {children}
     </AuthContext.Provider>
