@@ -1,11 +1,11 @@
 /**
  * NoCodeBackend (NCB) Client
  * 
- * FRONTEND: Strictly calls the Cloudflare Pages Proxy (/api/ncb/*).
- * The proxy handles Instance ID and API Key injection server-side.
+ * FRONTEND: Strictly calls the Cloudflare Pages Proxy.
+ * Fixed to always use the apex domain to ensure data loads on www subdomain.
  */
 
-const NCB_URL = '/api/ncb';
+const NCB_URL = 'https://bangtanmom.com/api/ncb';
 
 /**
  * Field allowlists for data integrity
@@ -87,7 +87,8 @@ function normalizeTableName(table) {
 }
 
 function buildProxyUrl(path, extraParams = {}) {
-  const url = new URL(`${window.location.origin}${NCB_URL}${path}`);
+  // Use the absolute NCB_URL to prevent issues on subdomains like www
+  const url = new URL(`${NCB_URL}${path}`);
   
   Object.entries(extraParams).forEach(([key, value]) => {
     if (key.toLowerCase() !== 'instance' && value !== undefined && value !== null && value !== '') {
@@ -107,12 +108,10 @@ function normalizeItem(item) {
 
 /**
  * Smarter normalization for NCB arrays.
- * NCB may return the array directly, or wrapped in a key.
  */
 function normalizeArray(data, tableName) {
   if (Array.isArray(data)) return data.map(normalizeItem);
   
-  // Check common NCB wrappers
   const source = 
     (tableName && Array.isArray(data?.[tableName])) ? data[tableName] :
     (Array.isArray(data?.data)) ? data.data :
@@ -221,12 +220,11 @@ export async function ncbGet(table, queryParams) {
  */
 export async function getNcbStatus() {
   try {
-    // Try to read one post to verify connection
     const res = await ncbReadAll('posts', { limit: 1 });
     return {
       success: true,
       canReadPosts: true,
-      message: 'NCB Connection successful. Successfully read from posts table via proxy.'
+      message: 'NCB Connection successful via absolute apex domain.'
     };
   } catch (error) {
     return {
