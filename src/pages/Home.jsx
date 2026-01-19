@@ -162,7 +162,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* K-DRAMA WATCHLIST */}
+      {/* K-DRAMA WATCHLIST - RESTORED SECTION */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center mb-10">
           <span className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-4 block font-sans">The Watchlist</span>
