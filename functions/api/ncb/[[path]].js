@@ -23,60 +23,69 @@ export async function onRequest(context) {
 
   try {
     // 2. Resolve Target URL
-    const ncbBase = env.NCB_URL || 'https://api.nocodebackend.com';
+    const ncbBase = env.NCB_URL || "https://api.nocodebackend.com";
     const pathSegments = params.path || [];
-    const pathStr = pathSegments.join('/');
-    
+    const pathStr = pathSegments.join("/");
+
     // Construct the destination URL
     const targetUrl = new URL(`${ncbBase}/${pathStr}`);
 
     // Copy all query parameters from the original request
+    // ✅ IMPORTANT: Ignore "_t" cache-buster param (prevents NCB SQL where clause error)
     const reqUrl = new URL(request.url);
     reqUrl.searchParams.forEach((val, key) => {
-      targetUrl.searchParams.append(key, val);
+      if (key === "_t") return; // ✅ prevent: Unknown column '_t' in where clause
+      targetUrl.searchParams.set(key, val); // ✅ avoid duplicates
     });
 
     // 3. ENFORCE INSTANCE PARAMETER (Server Side Injection)
     // Priority: VITE_NCB_INSTANCE > VITE_NCB_INSTANCE_ID > NCB_INSTANCE
-    const instance = 
-      env.VITE_NCB_INSTANCE || 
-      env.VITE_NCB_INSTANCE_ID || 
+    const instance =
+      env.VITE_NCB_INSTANCE ||
+      env.VITE_NCB_INSTANCE_ID ||
       env.NCB_INSTANCE;
 
     if (!instance) {
       console.error("[NCB Proxy] Missing NCB Instance in environment variables.");
-      return new Response(JSON.stringify({ 
-        error: "Missing NCB Instance",
-        details: "Server configuration error: Instance ID not found in environment."
-      }), { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+      return new Response(
+        JSON.stringify({
+          error: "Missing NCB Instance",
+          details:
+            "Server configuration error: Instance ID not found in environment.",
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
         }
-      });
+      );
     }
 
     // Force override/injection of the Instance parameter
-    targetUrl.searchParams.set('Instance', instance);
+    targetUrl.searchParams.set("Instance", instance);
 
     // 4. Prepare Headers & AUTH RESOLUTION
     const headers = new Headers(request.headers);
     const ncbApiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
-    
+
     if (!ncbApiKey) {
-      return new Response(JSON.stringify({ error: "Missing NCB API key" }), { 
+      return new Response(JSON.stringify({ error: "Missing NCB API key" }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
       });
     }
 
-    headers.set('Authorization', `Bearer ${ncbApiKey}`);
-    headers.delete('Host');
+    headers.set("Authorization", `Bearer ${ncbApiKey}`);
+    headers.delete("Host");
 
     // 5. Body Buffering
     let rawBody = null;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
+    if (request.method !== "GET" && request.method !== "HEAD") {
       try {
         rawBody = await request.text();
       } catch (e) {
@@ -89,7 +98,7 @@ export async function onRequest(context) {
       method: request.method,
       headers: headers,
       body: rawBody,
-      redirect: 'follow'
+      redirect: "follow",
     });
 
     const response = await fetch(proxyReq);
@@ -99,29 +108,32 @@ export async function onRequest(context) {
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
     // ✅ IMPORTANT: NCB may return 204 No Content (especially on DELETE).
-// Cloudflare Workers/Pages Functions cannot return a body for these statuses.
-if ([101, 204, 205, 304].includes(response.status)) {
-  return new Response(null, {
-    status: response.status,
-    headers: newHeaders
-  });
-}
+    // Cloudflare Workers/Pages Functions cannot return a body for these statuses.
+    if ([101, 204, 205, 304].includes(response.status)) {
+      return new Response(null, {
+        status: response.status,
+        headers: newHeaders,
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      return new Response(JSON.stringify({
-        upstreamStatus: response.status,
-        upstreamStatusText: response.statusText,
-        upstreamBody: errorText,
-        path: targetUrl.pathname,
-        instance: instance
-      }), { 
-        status: response.status, 
-        headers: {
-          ...Object.fromEntries(newHeaders),
-          "Content-Type": "application/json"
+      return new Response(
+        JSON.stringify({
+          upstreamStatus: response.status,
+          upstreamStatusText: response.statusText,
+          upstreamBody: errorText,
+          path: targetUrl.pathname,
+          instance: instance,
+        }),
+        {
+          status: response.status,
+          headers: {
+            ...Object.fromEntries(newHeaders),
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
     }
 
     // Buffer JSON bodies for reliable client-side parsing
@@ -130,26 +142,28 @@ if ([101, 204, 205, 304].includes(response.status)) {
       const jsonText = await response.text();
       return new Response(jsonText, {
         status: response.status,
-        headers: newHeaders
+        headers: newHeaders,
       });
     }
 
     return new Response(response.body, {
       status: response.status,
-      headers: newHeaders
+      headers: newHeaders,
     });
-
   } catch (err) {
     console.error("Proxy Internal Error:", err);
-    return new Response(JSON.stringify({
-      status: 'error',
-      message: `Proxy Internal Error: ${err.message}`
-    }), { 
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+    return new Response(
+      JSON.stringify({
+        status: "error",
+        message: `Proxy Internal Error: ${err.message}`,
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
       }
-    });
+    );
   }
 }
