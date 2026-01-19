@@ -127,7 +127,7 @@ const Home = () => {
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-16 px-4">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 mb-2 block">The Journal</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 mb-2 block font-sans">The Journal</span>
               <h2 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 tracking-tight">Latest Stories</h2>
             </div>
             <Link to="/blog" className="text-purple-700 font-bold flex items-center gap-2 font-sans group">
@@ -162,7 +162,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* K-DRAMA WATCHLIST - RESTORED SECTION */}
+      {/* K-DRAMA WATCHLIST - MUST-WATCH DRAMAS */}
       <section className="py-28 bg-gray-950 text-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center mb-10">
           <span className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-4 block font-sans">The Watchlist</span>
@@ -220,7 +220,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* JOIN COMMUNITY SECTION (LAST) */}
+      {/* JOIN COMMUNITY SECTION */}
       <section className="py-24 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <motion.div 
@@ -240,7 +240,7 @@ const Home = () => {
               </p>
               {isAuthenticated ? (
                 <Link to="/forums" className="inline-flex items-center px-12 py-5 bg-white text-purple-900 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-purple-100 transition-all shadow-xl group">
-                  JOIN FREE TODAY <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  GO TO FORUMS <SafeIcon icon={FiChevronRight} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
               ) : (
                 <Link to="/login" className="inline-flex items-center px-12 py-5 bg-white text-purple-900 rounded-full font-black text-sm uppercase tracking-[0.2em] hover:bg-purple-100 transition-all shadow-xl group">
