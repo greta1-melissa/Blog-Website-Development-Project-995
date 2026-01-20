@@ -11,6 +11,7 @@ import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { generateSlug } from '../utils/slugUtils';
+import { normalizeNcbDate } from '../services/nocodebackendClient';
 
 const { FiSave, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiImage } = FiIcons;
 
@@ -72,11 +73,18 @@ const CreatePost = () => {
       return;
     }
 
+    // DATE VALIDATION
+    const finalDate = normalizeNcbDate(formData.date);
+    if (!finalDate) {
+      setErrorMessage('Invalid Publish Date provided.');
+      return;
+    }
+
     setErrorMessage('');
     setIsSaving(true);
     
     try {
-      // PREPARE PAYLOAD (PART 3 & 4)
+      // PREPARE PAYLOAD
       const postData = {
         ...formData,
         slug: formData.slug || generateSlug(formData.title),
@@ -84,8 +92,8 @@ const CreatePost = () => {
         og_image: formData.og_image || formData.image,
         author: formData.author || 'Admin (BangtanMom)',
         status: formData.status || 'Draft',
-        // Strict date format rule
-        date: formData.date || new Date().toISOString().split('T')[0]
+        // Use normalized date
+        date: finalDate
       };
 
       const createdPost = await addPost(postData);

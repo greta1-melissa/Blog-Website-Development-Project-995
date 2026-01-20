@@ -8,6 +8,7 @@ import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
 import { generateSlug } from '../utils/slugUtils';
+import { normalizeNcbDate } from '../services/nocodebackendClient';
 
 const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiImage } = FiIcons;
 
@@ -65,7 +66,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
     e.preventDefault();
     if (isSaving) return;
 
-    // VALIDATION (PART 5)
+    // VALIDATION
     if (!formData.title.trim()) {
       setErrorMessage('Post Title is required.');
       return;
@@ -79,11 +80,18 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
       return;
     }
 
+    // DATE VALIDATION
+    const finalDate = normalizeNcbDate(formData.date);
+    if (!finalDate) {
+      setErrorMessage('Invalid Publish Date provided.');
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage('');
 
     try {
-      // PREPARE PAYLOAD (PART 3 & 5)
+      // PREPARE PAYLOAD
       const submissionData = {
         ...formData,
         slug: formData.slug || generateSlug(formData.title),
@@ -92,8 +100,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         author: formData.author || 'Admin (BangtanMom)',
         status: formData.status || 'Draft',
         category: formData.category || 'General',
-        // DATE FORMAT RULE (PART 4)
-        date: formData.date || new Date().toISOString().split('T')[0]
+        // Use normalized date
+        date: finalDate
       };
 
       await onSave(post?.id, submissionData);
@@ -137,7 +145,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                   </div>
                 </div>
 
-                {/* SEO Settings Collapsible (PART 9) */}
                 <div className="border border-purple-100 rounded-xl bg-purple-50/30 overflow-hidden">
                   <button type="button" onClick={() => setShowSeo(!showSeo)} className="w-full px-6 py-4 flex items-center justify-between font-bold text-purple-900 hover:bg-purple-100/50 transition-colors">
                     <div className="flex items-center space-x-2">

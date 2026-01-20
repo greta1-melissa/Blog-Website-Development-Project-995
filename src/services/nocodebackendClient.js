@@ -51,6 +51,40 @@ export const NCB_ALLOWLISTS = {
 };
 
 /**
+ * Normalizes a date string specifically to YYYY-MM-DD for NCB DATE columns.
+ * Supports: DD/MM/YYYY, ISO, and standard Date strings.
+ */
+export function normalizeNcbDate(dateValue) {
+  if (!dateValue) return new Date().toISOString().split('T')[0];
+
+  const trimmed = String(dateValue).trim();
+
+  // 1. If it's already YYYY-MM-DD (e.g. 2026-01-20)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // 2. If it's DD/MM/YYYY (e.g. 20/01/2026)
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    const [day, month, year] = trimmed.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  // 3. Fallback to standard JS Date parsing
+  try {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  } catch (e) {
+    console.warn('Date normalization failed for:', dateValue);
+  }
+
+  // 4. Ultimate fallback: Today
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
  * Helper to strip HTML and get plain text
  */
 const getPlainText = (html) => {
@@ -75,11 +109,7 @@ export function sanitizeNcbPayload(type, data) {
     
     // 2. Enforce strict Date Format (YYYY-MM-DD)
     // This prevents 500 errors on DATE type columns
-    const rawDate = data.date || new Date();
-    const d = new Date(rawDate);
-    sanitized.date = isNaN(d.getTime()) 
-      ? new Date().toISOString().split('T')[0] 
-      : d.toISOString().split('T')[0];
+    sanitized.date = normalizeNcbDate(data.date);
 
     // 3. Timestamps
     sanitized.updated_at = now;
