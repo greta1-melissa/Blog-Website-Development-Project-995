@@ -31,9 +31,19 @@ export const NCB_ALLOWLISTS = {
     'updated_at'
   ],
   product_recommendations: [
-    'title', 'slug', 'subcategory', 'rating', 'excerpt', 'content', 
-    'image', 'image_url', 'status', 'created_at', 'updated_at', 
-    'published_at', 'author', 'date', 'short_blurb', 'review', 'my_two_cents', 'tags'
+    'title', 
+    'slug', 
+    'subcategory', 
+    'rating', 
+    'excerpt', 
+    'content', 
+    'image', 
+    'status', 
+    'short_blurb', 
+    'review', 
+    'affiliate_url',
+    'created_at', 
+    'updated_at'
   ],
   kdrama_recommendations: [
     'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
@@ -63,21 +73,16 @@ export function sanitizeNcbPayload(type, data) {
   
   // 1. Core Logic for Posts
   if (type === 'posts') {
-    // Status Logic
     sanitized.status = data.status || 'Draft';
-    
-    // Date Logic: Force YYYY-MM-DD
     const rawDate = data.date || new Date();
     const d = new Date(rawDate);
     sanitized.date = isNaN(d.getTime()) 
       ? new Date().toISOString().split('T')[0] 
       : d.toISOString().split('T')[0];
 
-    // Timestamps
     sanitized.updated_at = now;
     if (!data.id) sanitized.created_at = now;
 
-    // Default SEO Mapping
     sanitized.meta_title = data.meta_title || data.title;
     sanitized.og_image = data.og_image || data.image;
     
@@ -86,12 +91,25 @@ export function sanitizeNcbPayload(type, data) {
       sanitized.meta_description = plain.substring(0, 160);
     }
 
-    // Default Author
     sanitized.author = data.author || 'Admin (BangtanMom)';
     sanitized.category = data.category || 'General';
   }
 
-  // 2. Map Allowlist Fields
+  // 2. Logic for Products
+  if (type === 'product_recommendations') {
+    sanitized.status = data.status || 'Published';
+    sanitized.updated_at = now;
+    if (!data.id) sanitized.created_at = now;
+    sanitized.subcategory = data.subcategory || 'General';
+    sanitized.rating = data.rating || 5;
+    
+    // SEO fallbacks
+    if (!data.slug && data.title) {
+      sanitized.slug = data.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+    }
+  }
+
+  // 3. Map Allowlist Fields
   allowlist.forEach(field => {
     if (data[field] !== undefined && sanitized[field] === undefined) {
       sanitized[field] = data[field];
@@ -123,16 +141,16 @@ function normalizeItem(item) {
   if (!item || typeof item !== 'object') return item;
   const id = item.id || item._id || item.ID || item.Id;
   
-  // Ensure status is readable for frontend
   if (item.status) {
-    item.status = item.status === 'Published' || item.status === 'published' ? 'Published' : 'Draft';
+    const s = String(item.status).toLowerCase();
+    item.status = s === 'published' ? 'Published' : 'Draft';
   }
   
   return { ...item, id: id };
 }
 
 function normalizeArray(data) {
-  const source = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+  const source = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : (data?.records && Array.isArray(data.records) ? data.records : []));
   return source.map(normalizeItem);
 }
 
@@ -156,9 +174,6 @@ async function handleResponse(res, context) {
   return { status: 'success' };
 }
 
-/**
- * Debug function to check NCB connectivity via proxy
- */
 export async function getNcbStatus() {
   try {
     const posts = await ncbReadAll('posts', { limit: 1 });
@@ -185,8 +200,8 @@ export async function ncbReadAll(table, queryParams = {}) {
     const json = await handleResponse(res, `readAll:${table}`);
     return normalizeArray(json);
   } catch (error) {
-    console.error(`NCB Read Failed: ${table}`, error);
-    return [];
+    console.warn(`NCB Table ${table} might be missing or empty.`, error);
+    return []; // Return empty array to prevent UI crash
   }
 }
 

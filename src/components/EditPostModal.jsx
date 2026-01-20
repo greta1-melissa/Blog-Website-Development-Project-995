@@ -11,7 +11,7 @@ import { generateSlug } from '../utils/slugUtils';
 
 const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiUploadCloud } = FiIcons;
 
-const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
+const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const { user } = useAuth();
   const [showSeo, setShowSeo] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,6 +21,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Use local categories if none provided to prevent crash
+  const safeCategories = Array.isArray(categories) ? categories : ['Life', 'BTS', 'Parenting', 'Self-Care', 'K-Drama', 'General'];
+
   useEffect(() => {
     if (post) {
       setFormData({
@@ -29,7 +32,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
         category: post.category || 'General',
         author: post.author || 'Admin (BangtanMom)',
         image: post.image || '',
-        status: post.status || 'Draft',
+        status: post.status === 'Published' || post.status === 'published' ? 'Published' : 'Draft',
         slug: post.slug || '',
         meta_title: post.meta_title || '',
         meta_description: post.meta_description || '',
@@ -68,7 +71,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     setIsSaving(true);
     setErrorMessage('');
     try {
-      // Auto-fill SEO if empty
       const submissionData = {
         ...formData,
         slug: formData.slug || generateSlug(formData.title),
@@ -92,7 +94,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
         <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
             <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'Create New Story'}</h2>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><SafeIcon icon={FiX} /></button>
           </div>
@@ -117,7 +119,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   </div>
                 </div>
 
-                {/* SEO COLLAPSIBLE SECTION */}
                 <div className="border border-purple-100 rounded-xl bg-purple-50/30 overflow-hidden">
                   <button type="button" onClick={() => setShowSeo(!showSeo)} className="w-full px-6 py-4 flex items-center justify-between font-bold text-purple-900">
                     <div className="flex items-center space-x-2">
@@ -176,7 +177,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category</label>
                     <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium">
-                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      {(safeCategories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                   </div>
                 </div>
@@ -185,7 +186,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Featured Image</label>
                   <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-2" />
                   {formData.image && (
-                    <div className="aspect-video rounded-lg overflow-hidden border border-gray-200">
+                    <div className="aspect-video rounded-lg overflow-hidden border border-gray-200 bg-white">
                       <SafeImage src={formData.image} alt="Preview" fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
                     </div>
                   )}

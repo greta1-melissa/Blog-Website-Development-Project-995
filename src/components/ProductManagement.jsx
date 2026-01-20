@@ -6,20 +6,19 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { PLACEHOLDER_IMAGE } from '../config/assets';
-import { formatDate } from '../utils/dateUtils';
 
-const { FiPlus, FiSearch, FiStar, FiEdit3, FiTrash2, FiExternalLink, FiCheckCircle, FiShoppingBag } = FiIcons;
+const { FiPlus, FiSearch, FiStar, FiEdit3, FiTrash2, FiCheckCircle } = FiIcons;
 
 const ProductManagement = () => {
-  const { products, addProduct, updateProduct, deleteProduct, isLoading } = useBlog();
+  const { products = [], addProduct, updateProduct, deleteProduct, isLoading } = useBlog();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => 
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return (products || []).filter(p => 
+      (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
       (p.subcategory || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [products, searchTerm]);
@@ -31,7 +30,7 @@ const ProductManagement = () => {
 
   const handleSave = async (id, data) => {
     try {
-      if (id && !String(id).startsWith('p')) { // Check if it's a real DB ID (seeds start with 'p')
+      if (id) {
         await updateProduct(id, data);
         showToast('Product updated successfully!');
       } else {
@@ -39,6 +38,7 @@ const ProductManagement = () => {
         showToast('Product recommendation added!');
       }
     } catch (err) {
+      console.error("Product save error:", err);
       throw err;
     }
   };
@@ -82,7 +82,12 @@ const ProductManagement = () => {
             {isLoading ? (
               <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">Loading products...</td></tr>
             ) : filteredProducts.length === 0 ? (
-              <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">No products found.</td></tr>
+              <tr>
+                <td colSpan="4" className="px-6 py-12 text-center">
+                  <p className="text-gray-400 italic">No products found.</p>
+                  <p className="text-xs text-gray-400 mt-2">(Note: The product_recommendations table may be missing or empty.)</p>
+                </td>
+              </tr>
             ) : (
               filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
@@ -104,8 +109,8 @@ const ProductManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right space-x-3">
-                    <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600"><SafeIcon icon={FiEdit3} /></button>
-                    <button onClick={() => deleteProduct(product.id)} className="text-gray-400 hover:text-red-500"><SafeIcon icon={FiTrash2} /></button>
+                    <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="text-gray-400 hover:text-purple-600 font-bold text-sm">Edit</button>
+                    <button onClick={() => deleteProduct(product.id)} className="text-gray-400 hover:text-red-500 font-bold text-sm">Delete</button>
                   </td>
                 </tr>
               ))
