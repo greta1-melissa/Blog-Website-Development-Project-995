@@ -73,10 +73,11 @@ const CreatePost = () => {
       return;
     }
 
-    // DATE VALIDATION
+    // DATE VALIDATION & NORMALIZATION
+    // Handles empty (today), Date objects, DD/MM/YYYY
     const finalDate = normalizeNcbDate(formData.date);
     if (!finalDate) {
-      setErrorMessage('Invalid Publish Date provided.');
+      setErrorMessage('Publish date is invalid. Please reselect a valid date.');
       return;
     }
 
@@ -92,7 +93,7 @@ const CreatePost = () => {
         og_image: formData.og_image || formData.image,
         author: formData.author || 'Admin (BangtanMom)',
         status: formData.status || 'Draft',
-        // Use normalized date
+        // Use normalized date (YYYY-MM-DD)
         date: finalDate
       };
 

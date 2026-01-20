@@ -55,22 +55,38 @@ export const NCB_ALLOWLISTS = {
  * Supports: DD/MM/YYYY, ISO, and standard Date strings.
  */
 export function normalizeNcbDate(dateValue) {
-  if (!dateValue) return new Date().toISOString().split('T')[0];
+  // Default behavior: If no date is selected, auto-fill today in YYYY-MM-DD format.
+  if (!dateValue || dateValue === '') {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  // Case A: Picker returns a Date object
+  if (dateValue instanceof Date) {
+    if (isNaN(dateValue.getTime())) return null;
+    return dateValue.toISOString().slice(0, 10);
+  }
 
   const trimmed = String(dateValue).trim();
+  if (!trimmed) return new Date().toISOString().split('T')[0];
 
   // 1. If it's already YYYY-MM-DD (e.g. 2026-01-20)
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
 
-  // 2. If it's DD/MM/YYYY (e.g. 20/01/2026)
+  // Case B: Picker returns a string like "DD/MM/YYYY" (e.g. 20/01/2026)
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
     const [day, month, year] = trimmed.split('/');
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 
-  // 3. Fallback to standard JS Date parsing
+  // Handle DD-MM-YYYY variation
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    const [day, month, year] = trimmed.split('-');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  // Fallback to standard JS Date parsing
   try {
     const d = new Date(trimmed);
     if (!isNaN(d.getTime())) {
@@ -80,8 +96,8 @@ export function normalizeNcbDate(dateValue) {
     console.warn('Date normalization failed for:', dateValue);
   }
 
-  // 4. Ultimate fallback: Today
-  return new Date().toISOString().split('T')[0];
+  // If date cannot be converted, return null (component will handle validation)
+  return null;
 }
 
 /**
@@ -109,7 +125,8 @@ export function sanitizeNcbPayload(type, data) {
     
     // 2. Enforce strict Date Format (YYYY-MM-DD)
     // This prevents 500 errors on DATE type columns
-    sanitized.date = normalizeNcbDate(data.date);
+    const normalized = normalizeNcbDate(data.date);
+    sanitized.date = normalized || new Date().toISOString().split('T')[0];
 
     // 3. Timestamps
     sanitized.updated_at = now;

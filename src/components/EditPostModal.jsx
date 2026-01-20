@@ -80,10 +80,11 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
       return;
     }
 
-    // DATE VALIDATION
+    // DATE VALIDATION & NORMALIZATION
+    // Handles empty (today), Date objects, DD/MM/YYYY
     const finalDate = normalizeNcbDate(formData.date);
     if (!finalDate) {
-      setErrorMessage('Invalid Publish Date provided.');
+      setErrorMessage('Publish date is invalid. Please reselect a valid date.');
       return;
     }
 
@@ -100,7 +101,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         author: formData.author || 'Admin (BangtanMom)',
         status: formData.status || 'Draft',
         category: formData.category || 'General',
-        // Use normalized date
+        // Use normalized date (YYYY-MM-DD)
         date: finalDate
       };
 
