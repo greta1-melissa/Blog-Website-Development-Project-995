@@ -13,12 +13,13 @@ import { stripHtml } from '../utils/textUtils';
 const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon, FiUsers, FiStar, FiChevronRight, FiMusic, FiTv, FiSmile } = FiIcons;
 
 const Home = () => {
-  const { publishedPosts, products, isLoading, fetchData } = useBlog();
+  // Fix: Destructure refreshData instead of fetchData to match BlogContext export
+  const { publishedPosts, products, isLoading, refreshData } = useBlog();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    refreshData();
+  }, [refreshData]);
 
   const latestStories = useMemo(() => publishedPosts.slice(0, 8), [publishedPosts]);
   const productPicks = useMemo(() => products.slice(0, 12), [products]);

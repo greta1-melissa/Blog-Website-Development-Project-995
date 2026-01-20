@@ -1,177 +1,113 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useBlog } from '../contexts/BlogContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
-import { formatDate } from '../utils/dateUtils';
-import { BLOG_PLACEHOLDER, PLACEHOLDER_IMAGE } from '../config/assets';
+import { useBlog } from '../contexts/BlogContext';
+import { BLOG_PLACEHOLDER } from '../config/assets';
 
-const { FiArrowLeft, FiUser, FiClock, FiTag, FiCalendar, FiHeart } = FiIcons;
+const { FiCalendar, FiClock, FiUser, FiArrowLeft, FiShare2, FiBookmark } = FiIcons;
 
 const BlogPost = () => {
   const { id } = useParams();
-  const { getPost } = useBlog();
-  const post = getPost(id);
+  const { posts } = useBlog();
+  const post = posts.find(p => p.id === id || p.slug === id);
 
   useEffect(() => {
     if (post) {
-      // 1. Set Page Title
-      const title = post.seo_title || post.title;
-      document.title = `${title} | Bangtan Mom`;
-
-      // 2. Helper to manage meta tags
-      const setMeta = (name, content, attr = 'name') => {
-        if (!content) return;
-        let el = document.querySelector(`meta[${attr}="${name}"]`);
-        if (!el) {
-          el = document.createElement('meta');
-          el.setAttribute(attr, name);
-          document.head.appendChild(el);
-        }
-        el.setAttribute('content', content);
-      };
-
-      // 3. Set Standard Meta
-      setMeta('description', post.meta_description || post.seo_description || post.excerpt || post.content.replace(/<[^>]*>/g, '').substring(0, 160));
-      setMeta('keywords', post.focus_keyword || post.seo_keywords);
+      // Dynamic SEO Injection
+      document.title = post.meta_title || post.title;
       
-      // 4. Set Open Graph
-      setMeta('og:title', title, 'property');
-      setMeta('og:description', post.meta_description || post.seo_description || post.excerpt, 'property');
-      setMeta('og:image', post.og_image_url || post.image, 'property');
-      setMeta('og:url', window.location.href, 'property');
-      setMeta('og:type', 'article', 'property');
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) metaDescription.setAttribute('content', post.meta_description || post.title);
 
-      // 5. Set Robots
-      if (post.noindex) {
-        setMeta('robots', 'noindex, nofollow');
-      } else {
-        setMeta('robots', 'index, follow');
-      }
+      const metaKeywords = document.querySelector('meta[name="keywords"]');
+      if (metaKeywords) metaKeywords.setAttribute('content', post.meta_keywords || '');
 
-      // 6. Handle Canonical Link
-      let canonical = document.querySelector('link[rel="canonical"]');
-      if (!canonical) {
-        canonical = document.createElement('link');
-        canonical.setAttribute('rel', 'canonical');
-        document.head.appendChild(canonical);
-      }
-      canonical.setAttribute('href', post.canonical_url || window.location.href);
+      // OpenGraph
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', post.meta_title || post.title);
+
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      if (ogImage) ogImage.setAttribute('content', post.og_image || post.image);
+      
+      window.scrollTo(0, 0);
     }
-    
-    return () => {
-      document.title = "Bangtan Mom - BTS, K-Pop, Family & Lifestyle";
-    };
   }, [post]);
 
   if (!post) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-        <div className="bg-purple-50 rounded-xl p-8">
-          <SafeIcon icon={FiHeart} className="text-purple-400 text-6xl mb-4 mx-auto" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Post Not Found</h1>
-          <p className="text-gray-600 mb-8">The blog post you're looking for doesn't exist.</p>
-          <Link to="/" className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium">
-            <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
-          </Link>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Story Not Found</h2>
+        <Link to="/blogs" className="text-purple-600 font-bold flex items-center">
+          <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Stories
+        </Link>
       </div>
     );
   }
 
-  const isHtml = /<[a-z][\s\S]*>/i.test(post.content);
-  const cleanHtmlContent = isHtml ? post.content
-    .replace(/<p>\s*<br\s*\/?>\s*<\/p>/gi, '')
-    .replace(/<p>\s*&nbsp;\s*<\/p>/gi, '') : post.content;
-
-  const fallbackImage = (post.category === 'Product Recommendations') ? PLACEHOLDER_IMAGE : BLOG_PLACEHOLDER;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50">
-      <motion.article 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ duration: 0.6 }} 
-        className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-      >
-        <Link to="/" className="inline-flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 border border-purple-200 transition-colors mb-8 shadow-sm">
-          <SafeIcon icon={FiArrowLeft} className="mr-2" /> Back to Home
-        </Link>
+    <motion.article 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className="max-w-4xl mx-auto px-4 py-12"
+    >
+      <Link to="/blogs" className="inline-flex items-center text-gray-500 hover:text-purple-600 font-bold mb-8 transition-colors group">
+        <SafeIcon icon={FiArrowLeft} className="mr-2 group-hover:-translate-x-1 transition-transform" /> Back to All Stories
+      </Link>
 
-        <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl border border-purple-100 bg-gray-100 aspect-video">
-          <SafeImage 
-            src={post.image || post.image_url} 
-            alt={post.title} 
-            fallback={fallbackImage}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-purple-900/20 to-transparent" />
-          <div className="absolute top-6 left-6">
-            <span className="px-4 py-2 rounded-full text-sm font-medium shadow-lg bg-gradient-to-r from-purple-500 to-purple-700 text-white">
-              <SafeIcon icon={FiTag} className="inline mr-1" /> {post.category}
-            </span>
+      <header className="mb-12">
+        <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-black uppercase tracking-widest rounded-full mb-6">
+          {post.category}
+        </span>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight mb-8 font-serif">
+          {post.title}
+        </h1>
+        
+        <div className="flex flex-wrap items-center gap-6 text-gray-500 border-y border-gray-100 py-6">
+          <div className="flex items-center">
+            <SafeIcon icon={FiUser} className="mr-2" />
+            <span className="font-bold text-gray-900">{post.author}</span>
+          </div>
+          <div className="flex items-center">
+            <SafeIcon icon={FiCalendar} className="mr-2" />
+            <span>{new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+          </div>
+          <div className="flex items-center">
+            <SafeIcon icon={FiClock} className="mr-2" />
+            <span>{post.readtime || '5 min read'}</span>
           </div>
         </div>
+      </header>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-600 mb-6">
-            <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
-              <SafeIcon icon={FiUser} className="mr-1 text-purple-600" />
-              <span className="font-medium text-purple-800">{post.author}</span>
-            </div>
-            <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
-              <SafeIcon icon={FiCalendar} className="mr-1 text-purple-600" />
-              <span className="text-purple-800">{formatDate(post.date)}</span>
-            </div>
-            <div className="flex items-center bg-purple-50 px-3 py-1 rounded-full">
-              <SafeIcon icon={FiClock} className="mr-1 text-purple-600" />
-              <span className="text-purple-800">{post.readtime || post.readTime || "1 min read"}</span>
-            </div>
-          </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight text-center">
-            <span className="bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-              {post.title}
-            </span>
-          </h1>
-        </div>
+      <div className="relative aspect-[21/9] rounded-3xl overflow-hidden mb-12 shadow-2xl">
+        <SafeImage 
+          src={post.image || post.og_image} 
+          alt={post.title} 
+          fallback={BLOG_PLACEHOLDER}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-purple-100">
-          <div className="w-full">
-            {isHtml ? (
-              <div className="article-content" dangerouslySetInnerHTML={{ __html: cleanHtmlContent }} />
-            ) : (
-              <div className="article-content">
-                {post.content.split('\n').filter(p => p.trim() !== '').map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-            )}
+      <div 
+        className="prose prose-purple prose-lg max-w-none prose-headings:font-serif prose-headings:font-bold prose-p:text-gray-700 prose-img:rounded-3xl"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />
+
+      <footer className="mt-16 pt-12 border-t border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button className="p-3 bg-gray-50 rounded-full hover:bg-purple-50 hover:text-purple-600 transition-colors">
+              <SafeIcon icon={FiShare2} />
+            </button>
+            <button className="p-3 bg-gray-50 rounded-full hover:bg-purple-50 hover:text-purple-600 transition-colors">
+              <SafeIcon icon={FiBookmark} />
+            </button>
           </div>
         </div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.6, delay: 0.3 }} 
-          className="bg-gradient-to-r from-purple-600 to-purple-500 rounded-2xl p-8 text-white shadow-lg"
-        >
-          <div className="flex items-center mb-4">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mr-6">
-              <SafeIcon icon={FiUser} className="text-white text-2xl" />
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold mb-1">{post.author}</h3>
-              <p className="text-purple-100">Content Creator & Mom</p>
-            </div>
-          </div>
-          <p className="text-purple-100 leading-relaxed">
-            Hi! I'm Melissa, a mom who loves sharing authentic stories about family life, wellness, and my passion for K-culture. Thank you for being part of this community! 💜
-          </p>
-        </motion.div>
-      </motion.article>
-    </div>
+      </footer>
+    </motion.article>
   );
 };
 

@@ -6,19 +6,18 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
-import { ensureUniqueSlug } from '../utils/slugUtils';
-import { useBlog } from '../contexts/BlogContext';
 import { useAuth } from '../contexts/AuthContext';
-import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
+import { generateSlug } from '../utils/slugUtils';
 
-const { FiX, FiSave, FiImage, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
+const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiUploadCloud } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
-  const { posts } = useBlog();
   const { user } = useAuth();
   const [showSeo, setShowSeo] = useState(false);
-  const [formData, setFormData] = useState({ title: '', slug: '', content: '', category: '', excerpt: '', image: '', status: 'published', seo_title: '', meta_description: '', focus_keyword: '', og_image_url: '', canonical_url: '', noindex: false });
-  const [isUploading, setIsUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '', content: '', category: 'General', author: '', image: '', status: 'Draft',
+    slug: '', meta_title: '', meta_description: '', meta_keywords: '', og_image: '', date: ''
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -26,165 +25,167 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
     if (post) {
       setFormData({
         title: post.title || '',
-        slug: post.slug || '',
         content: post.content || '',
-        category: post.category || '',
-        excerpt: post.excerpt || '',
-        image: post.image || post.image_url || post.featured_image_url || '',
-        status: post.status || 'published',
-        seo_title: post.seo_title || '',
-        meta_description: post.meta_description || post.seo_description || '',
-        focus_keyword: post.focus_keyword || post.seo_keywords || '',
-        og_image_url: post.og_image_url || '',
-        canonical_url: post.canonical_url || '',
-        noindex: post.noindex === true || post.noindex === 'true'
+        category: post.category || 'General',
+        author: post.author || 'Admin (BangtanMom)',
+        image: post.image || '',
+        status: post.status || 'Draft',
+        slug: post.slug || '',
+        meta_title: post.meta_title || '',
+        meta_description: post.meta_description || '',
+        meta_keywords: post.meta_keywords || '',
+        og_image: post.og_image || '',
+        date: post.date || new Date().toISOString().split('T')[0]
       });
-      setErrorMessage('');
+    } else {
+      setFormData({
+        title: '', content: '', category: 'General', author: user?.name || 'Admin (BangtanMom)',
+        image: '', status: 'Draft', slug: '', meta_title: '', meta_description: '',
+        meta_keywords: '', og_image: '', date: new Date().toISOString().split('T')[0]
+      });
     }
-  }, [post, isOpen]);
+    setErrorMessage('');
+  }, [post, isOpen, user]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let finalValue = type === 'checkbox' ? checked : value;
-    if (name === 'image' && typeof finalValue === 'string') {
-      finalValue = normalizeDropboxSharedUrl(finalValue);
-    }
-    setFormData(prev => ({ ...prev, [name]: finalValue }));
-  };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const data = new FormData();
-      data.append('file', file);
-      const res = await fetch('/api/upload-to-dropbox', { method: 'POST', body: data });
-      const result = await res.json();
-      if (res.ok && result.success) {
-        setFormData(prev => ({ ...prev, image: result.proxyUrl }));
-      } else throw new Error(result.message || "Upload failed");
-    } catch (error) { setErrorMessage(error.message); } finally { setIsUploading(false); }
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'title' && !prev.slug) {
+        updated.slug = generateSlug(value);
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (!formData.title.trim() || !formData.content.trim() || !formData.category) {
+      setErrorMessage('Title, Content, and Category are required.');
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage('');
     try {
-      // Apply publishing and author logic
-      const author = user?.name || post?.author || 'Admin';
-      const category = formData.category || 'General';
-      const status = formData.status || 'published';
-      
-      let date = post?.date || null;
-      if (status === 'published') {
-        // Only set date if it wasn't already set or if it was explicitly a draft before
-        if (!date || post?.status === 'draft') {
-          date = new Date().toISOString().split('T')[0];
-        }
-      } else if (status === 'draft') {
-        date = null;
-      }
-
-      const finalSlug = formData.slug.trim() || ensureUniqueSlug(formData.title, posts, post?.id);
-      const submissionData = { 
-        ...formData, 
-        author,
-        category,
-        date,
-        slug: finalSlug 
+      // Auto-fill SEO if empty
+      const submissionData = {
+        ...formData,
+        slug: formData.slug || generateSlug(formData.title),
+        meta_title: formData.meta_title || formData.title,
+        og_image: formData.og_image || formData.image,
       };
-      
+
       await onSave(post?.id, submissionData);
       onClose();
-    } catch (error) { setErrorMessage(error.message); } finally { setIsSaving(false); }
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'Create New Story'}</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"><SafeIcon icon={FiX} /></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><SafeIcon icon={FiX} /></button>
           </div>
           
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
             {errorMessage && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-xs overflow-hidden">
-                <SafeIcon icon={FiAlertTriangle} className="mr-2 flex-shrink-0" />
-                <span className="whitespace-pre-wrap">{errorMessage}</span>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
+                <SafeIcon icon={FiAlertTriangle} className="mr-2" /> {errorMessage}
               </div>
             )}
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Title *</label>
-                  <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none text-lg font-bold" required />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-widest">Post Title *</label>
+                  <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Content *</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-widest">Story Content *</label>
                   <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
+                    <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[300px]" />
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                  <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full text-left">
+                {/* SEO COLLAPSIBLE SECTION */}
+                <div className="border border-purple-100 rounded-xl bg-purple-50/30 overflow-hidden">
+                  <button type="button" onClick={() => setShowSeo(!showSeo)} className="w-full px-6 py-4 flex items-center justify-between font-bold text-purple-900">
                     <div className="flex items-center space-x-2">
-                      <SafeIcon icon={FiSearch} className="text-xs font-bold text-gray-700 uppercase tracking-wide" />
-                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
+                      <SafeIcon icon={FiSearch} /> <span>SEO & Meta Details</span>
                     </div>
-                    <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
+                    <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} />
                   </button>
                   {showSeo && (
-                    <div className="mt-6 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} placeholder="SEO Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
-                        <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} placeholder="Focus Keyword" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
+                    <div className="px-6 pb-6 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Slug</label>
+                          <input type="text" name="slug" value={formData.slug} onChange={handleChange} placeholder="bts-world-tour-2027" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meta Title</label>
+                          <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        </div>
                       </div>
-                      <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" placeholder="Meta Description" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
-                      <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
-                        <input type="checkbox" id="noindex_toggle_edit" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                        <label htmlFor="noindex_toggle_edit" className="text-xs font-medium text-gray-700 cursor-pointer flex items-center">
-                          <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
-                          Index this page?
-                        </label>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meta Description</label>
+                        <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Keywords</label>
+                          <input type="text" name="meta_keywords" value={formData.meta_keywords} onChange={handleChange} placeholder="bts, armor, kpop" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">OG Image URL</label>
+                          <input type="text" name="og_image" value={formData.og_image} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              
+
               <div className="lg:col-span-1 space-y-6">
-                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest">Publishing Info</h3>
-                  <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm">
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                  <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" required>
-                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
-                </div>
-                
-                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-2 mb-2 uppercase text-[10px] tracking-widest">Featured Image</h3>
-                  <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
-                  <div className="relative">
-                    <input type="file" id="post-file-upload-edit" onChange={handleFileUpload} className="hidden" accept="image/*" />
-                    <label htmlFor="post-file-upload-edit" className="flex items-center justify-center w-full px-4 py-2 border border-dashed border-purple-200 text-purple-600 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors text-sm font-medium bg-white">
-                      {isUploading ? <span className="animate-pulse">Uploading...</span> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Change Image</>}
-                    </label>
+                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publishing Status</label>
+                    <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-bold">
+                      <option value="Draft">Draft</option>
+                      <option value="Published">Published</option>
+                    </select>
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publish Date (YYYY-MM-DD)</label>
+                    <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" required />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Author</label>
+                    <input type="text" name="author" value={formData.author} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category</label>
+                    <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium">
+                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Featured Image</label>
+                  <input type="url" name="image" value={formData.image} onChange={handleChange} placeholder="Image URL..." className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-2" />
                   {formData.image && (
-                    <div className="relative h-40 w-full rounded-xl overflow-hidden border border-gray-200">
+                    <div className="aspect-video rounded-lg overflow-hidden border border-gray-200">
                       <SafeImage src={formData.image} alt="Preview" fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
                     </div>
                   )}
@@ -194,8 +195,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
           </form>
           
           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-white rounded-xl transition-colors border border-gray-200">Cancel</button>
-            <button onClick={handleSubmit} disabled={isSaving} className="flex items-center px-10 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 disabled:opacity-50">
+            <button onClick={onClose} className="px-5 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
+            <button onClick={handleSubmit} disabled={isSaving} className="flex items-center px-8 py-2 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 transition-all">
               {isSaving ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> : <SafeIcon icon={FiSave} className="mr-2" />}
               {post ? 'Update Story' : 'Publish Story'}
             </button>
