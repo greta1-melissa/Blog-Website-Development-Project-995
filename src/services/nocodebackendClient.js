@@ -8,11 +8,12 @@
 const NCB_URL = '/api/ncb';
 
 /**
- * Field allowlists for data integrity
- * Aligned with the requested posts table schema
+ * Field allowlists for data integrity.
+ * Updated to include the new Publishing, SEO, and Timestamp fields.
  */
 export const NCB_ALLOWLISTS = {
   posts: [
+    'id',
     'title', 
     'slug', 
     'content', 
@@ -51,16 +52,13 @@ export const NCB_ALLOWLISTS = {
 };
 
 /**
- * Normalizes a date string specifically to YYYY-MM-DD for NCB DATE columns.
- * Supports: DD/MM/YYYY, ISO, and standard Date strings.
+ * Normalizes a date string to YYYY-MM-DD for NCB DATE columns.
  */
 export function normalizeNcbDate(dateValue) {
-  // Default behavior: If no date is selected, auto-fill today in YYYY-MM-DD format.
   if (!dateValue || dateValue === '') {
     return new Date().toISOString().split('T')[0];
   }
 
-  // Case A: Picker returns a Date object
   if (dateValue instanceof Date) {
     if (isNaN(dateValue.getTime())) return null;
     return dateValue.toISOString().slice(0, 10);
@@ -69,24 +67,15 @@ export function normalizeNcbDate(dateValue) {
   const trimmed = String(dateValue).trim();
   if (!trimmed) return new Date().toISOString().split('T')[0];
 
-  // 1. If it's already YYYY-MM-DD (e.g. 2026-01-20)
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
 
-  // Case B: Picker returns a string like "DD/MM/YYYY" (e.g. 20/01/2026)
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
     const [day, month, year] = trimmed.split('/');
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 
-  // Handle DD-MM-YYYY variation
-  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
-    const [day, month, year] = trimmed.split('-');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
-
-  // Fallback to standard JS Date parsing
   try {
     const d = new Date(trimmed);
     if (!isNaN(d.getTime())) {
@@ -96,12 +85,11 @@ export function normalizeNcbDate(dateValue) {
     console.warn('Date normalization failed for:', dateValue);
   }
 
-  // If date cannot be converted, return null (component will handle validation)
   return null;
 }
 
 /**
- * Helper to strip HTML and get plain text
+ * Helper to strip HTML and get plain text for meta descriptions
  */
 const getPlainText = (html) => {
   if (!html) return '';
@@ -110,7 +98,7 @@ const getPlainText = (html) => {
 
 /**
  * Sanitizes payload based on type and allowlist.
- * Ensures strict YYYY-MM-DD date format and mandatory defaults.
+ * Ensures strict YYYY-MM-DD date format and mandatory defaults for the new schema.
  */
 export function sanitizeNcbPayload(type, data) {
   const allowlist = NCB_ALLOWLISTS[type];
@@ -120,33 +108,40 @@ export function sanitizeNcbPayload(type, data) {
   const now = new Date().toISOString();
   
   if (type === 'posts') {
-    // 1. Enforce strict Status
+    // 1. Publishing & Status
     sanitized.status = data.status || 'Draft';
+    sanitized.slug = data.slug || '';
     
     // 2. Enforce strict Date Format (YYYY-MM-DD)
-    // This prevents 500 errors on DATE type columns
     const normalized = normalizeNcbDate(data.date);
     sanitized.date = normalized || new Date().toISOString().split('T')[0];
 
-    // 3. Timestamps
+    // 3. Timestamps (Varchar 255 as requested)
     sanitized.updated_at = now;
-    if (!data.id) sanitized.created_at = now;
+    if (!data.id) {
+      sanitized.created_at = now;
+    } else {
+      sanitized.created_at = data.created_at || now;
+    }
 
-    // 4. Default SEO Fields if empty
-    sanitized.meta_title = data.meta_title || data.title;
-    sanitized.og_image = data.og_image || data.image;
+    // 4. SEO Fields
+    sanitized.meta_title = data.meta_title || data.title || '';
+    sanitized.meta_keywords = data.meta_keywords || '';
+    sanitized.og_image = data.og_image || data.image || '';
     
     if (!data.meta_description) {
       const plain = getPlainText(data.content);
       sanitized.meta_description = plain.substring(0, 160);
+    } else {
+      sanitized.meta_description = data.meta_description;
     }
 
-    // 5. Default Author and Category
+    // 5. Core Defaults
     sanitized.author = data.author || 'Admin (BangtanMom)';
     sanitized.category = data.category || 'General';
   }
 
-  // Map only allowed fields
+  // Map only allowed fields from the input data
   allowlist.forEach(field => {
     if (data[field] !== undefined && sanitized[field] === undefined) {
       sanitized[field] = data[field];
@@ -203,12 +198,22 @@ async function handleResponse(res, context) {
   return { status: 'success' };
 }
 
+/**
+ * Checks the connection status to NCB via the proxy.
+ */
 export async function getNcbStatus() {
   try {
-    const posts = await ncbReadAll('posts', { limit: 1 });
-    return { success: true, timestamp: new Date().toISOString() };
+    const posts = await ncbReadAll('posts', { _limit: 1 });
+    return {
+      canReadPosts: true,
+      message: 'Successfully connected to NCB proxy and read posts table.',
+      count: posts.length
+    };
   } catch (error) {
-    return { success: false, message: error.message };
+    return {
+      canReadPosts: false,
+      message: `Failed to connect to NCB: ${error.message}`
+    };
   }
 }
 
