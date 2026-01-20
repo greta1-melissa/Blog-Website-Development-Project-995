@@ -5,14 +5,14 @@ import SafeImage from '../common/SafeImage';
 import { Link } from 'react-router-dom';
 import { LOGO_URL as logo } from '../config/assets';
 
-const { FiHeart, FiInstagram, FiTwitter, FiYoutube } = FiIcons;
+const { FiHeart, FiInstagram, FiTwitter, FiYoutube, FiLock } = FiIcons;
 
 const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-100 pt-20 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16 mb-16">
-          {/* Column 1: Brand, Bio, Socials, and Safe Space Promise */}
+          {/* Column 1: Brand, Bio, Socials */}
           <div className="flex flex-col">
             <Link to="/" className="flex items-center space-x-3 mb-8">
               <SafeImage src={logo} alt="Logo" className="w-10 h-10 rounded-lg object-cover" />
@@ -60,6 +60,11 @@ const Footer = () => {
               <li><Link to="/safe-space-promise" className="hover:text-purple-600 transition-colors">Safe Space Promise</Link></li>
               <li><Link to="/privacy-policy" className="hover:text-purple-600 transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms-and-conditions" className="hover:text-purple-600 transition-colors">Terms & Conditions</Link></li>
+              <li className="pt-4 border-t border-gray-50">
+                <Link to="/admin" className="flex items-center text-sm text-gray-400 hover:text-purple-600 transition-colors">
+                  <SafeIcon icon={FiLock} className="mr-2" /> Admin Access
+                </Link>
+              </li>
             </ul>
             <div className="mt-10 pt-8 border-t border-gray-100">
               <p className="text-sm text-gray-500 leading-relaxed italic">

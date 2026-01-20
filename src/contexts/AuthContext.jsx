@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ncbCreate } from '../services/nocodebackendClient';
 
 const AuthContext = createContext();
 
@@ -12,12 +11,12 @@ export const useAuth = () => {
   return context;
 };
 
-// Admin credentials
+// Admin credentials from environment variables
 const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME || 'bangtanmom',
+  username: import.meta.env.VITE_ADMIN_USERNAME || 'admin',
   password: import.meta.env.VITE_ADMIN_PASSWORD || 'admin123',
   role: 'admin',
-  email: import.meta.env.VITE_ADMIN_EMAIL || 'bangtanmom@bangtanmom.com'
+  email: 'admin@bangtanmom.com' // Fallback email for consistency
 };
 
 export const AuthProvider = ({ children }) => {
@@ -34,13 +33,13 @@ export const AuthProvider = ({ children }) => {
       const userEmail = localStorage.getItem('userEmail');
       const userName = localStorage.getItem('userName');
 
-      if (userId && token && userRole && userEmail) {
+      if (userId && token && userRole) {
         setIsAuthenticated(true);
         setUser({
           id: userId,
           role: userRole,
-          email: userEmail,
-          name: userName || userEmail?.split('@')[0] || 'User'
+          email: userEmail || '',
+          name: userName || 'User'
         });
       } else {
         setIsAuthenticated(false);
@@ -51,15 +50,11 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Standard login for subscribers (Quest SDK)
   const login = async (userData) => {
-    const { userId, token, newUser, email } = userData;
-    
-    let role = 'subscriber';
-    if (email === ADMIN_CREDENTIALS.email) {
-      role = 'admin';
-    }
-
+    const { userId, token, email } = userData;
     const name = email?.split('@')[0] || 'User';
+    const role = 'subscriber';
 
     localStorage.setItem('userId', userId);
     localStorage.setItem('token', token);
@@ -69,46 +64,36 @@ export const AuthProvider = ({ children }) => {
 
     setIsAuthenticated(true);
     setUser({ id: userId, role: role, email: email, name: name });
-
-    if (newUser) {
-      try {
-        const userPayload = {
-          name,
-          email,
-          username: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
-          role,
-          status: 'active',
-          joinDate: new Date().toISOString().split('T')[0],
-          lastLogin: new Date().toISOString().split('T')[0],
-          userId
-        };
-        await ncbCreate('users', userPayload);
-        navigate('/onboarding');
-      } catch (err) {
-        console.error("Auth: Error during user sync", err);
-        navigate('/');
-      }
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
 
-  // Helper for admin bypass (keeping for admin login convenience)
-  const bypassLogin = (email) => {
-    if (email === ADMIN_CREDENTIALS.email) {
-      login({
-        userId: 'admin-bypass',
-        token: 'admin-token-' + Date.now(),
-        newUser: false,
-        email: ADMIN_CREDENTIALS.email
-      });
-    }
-  };
-
+  // Pure Username + Password Login for Admin
   const adminLogin = (credentials) => {
     const { username, password } = credentials;
+    
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      bypassLogin(ADMIN_CREDENTIALS.email);
+      const adminSession = {
+        userId: 'admin-id',
+        token: 'admin-token-' + Date.now(),
+        role: 'admin',
+        email: ADMIN_CREDENTIALS.email,
+        name: 'Administrator'
+      };
+
+      localStorage.setItem('userId', adminSession.userId);
+      localStorage.setItem('token', adminSession.token);
+      localStorage.setItem('userRole', adminSession.role);
+      localStorage.setItem('userEmail', adminSession.email);
+      localStorage.setItem('userName', adminSession.name);
+
+      setIsAuthenticated(true);
+      setUser({ 
+        id: adminSession.userId, 
+        role: adminSession.role, 
+        email: adminSession.email, 
+        name: adminSession.name 
+      });
+      
       return true;
     }
     return false;
@@ -118,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.clear();
     setIsAuthenticated(false);
     setUser(null);
-    navigate('/login');
+    navigate('/');
   };
 
   const hasPermission = (requiredRole) => {
@@ -131,7 +116,6 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => user?.role === 'admin';
   const isAuthor = () => user?.role === 'author' || user?.role === 'admin';
-  const isSubscriber = () => !!user;
 
   return (
     <AuthContext.Provider value={{
@@ -140,12 +124,10 @@ export const AuthProvider = ({ children }) => {
       isLoading,
       login,
       adminLogin,
-      bypassLogin,
       logout,
       hasPermission,
       isAdmin,
-      isAuthor,
-      isSubscriber
+      isAuthor
     }}>
       {children}
     </AuthContext.Provider>
