@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
@@ -10,81 +10,65 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { BLOG_PLACEHOLDER } from '../config/assets';
-import { normalizeDropboxSharedUrl } from '../utils/dropboxLink';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiEye, FiEyeOff } = FiIcons;
+const { FiSave, FiUploadCloud, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiImage } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { addPost } = useBlog();
+  const { addPost, categories } = useBlog();
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showSeo, setShowSeo] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    category: '',
+    category: 'General',
     image: '',
-    status: 'published',
-    seo_title: '',
+    author: user?.name || 'Admin (BangtanMom)',
+    status: 'Published',
+    date: new Date().toISOString().split('T')[0],
+    slug: '',
+    meta_title: '',
     meta_description: '',
-    focus_keyword: '',
-    og_image_url: '',
-    canonical_url: '',
-    noindex: false
+    meta_keywords: '',
+    og_image: ''
   });
 
-  const categories = ['Health', 'Fam Bam', 'K-Drama', 'BTS', 'Career'];
+  useEffect(() => {
+    if (user?.name) {
+      setFormData(prev => ({ ...prev, author: user.name }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let finalValue = type === 'checkbox' ? checked : value;
-    if (name === 'image' && typeof finalValue === 'string') {
-      finalValue = normalizeDropboxSharedUrl(finalValue);
-    }
-    setFormData({ ...formData, [name]: finalValue });
-  };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setIsUploading(true);
-    setUploadStatus('Uploading...');
-    setErrorMessage('');
-    try {
-      const data = new FormData();
-      data.append('file', file);
-      const response = await fetch('/api/upload-to-dropbox', {
-        method: 'POST',
-        body: data
-      });
-      const result = await response.json();
-      if (response.ok && result.success && result.proxyUrl) {
-        setFormData(prev => ({ ...prev, image: result.proxyUrl }));
-        setUploadStatus('Upload Complete!');
-      } else {
-        throw new Error(result.message || "Upload failed");
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'title' && !prev.slug) {
+        updated.slug = generateSlug(value);
       }
-    } catch (error) {
-      setUploadStatus('Upload Failed');
-      setErrorMessage(`Upload failed: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      e.target.value = null;
-    }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSaving) return;
     
-    if (!formData.title.trim() || !formData.content.trim()) {
-      setErrorMessage('Please fill in Title and Content');
+    // VALIDATION
+    if (!formData.title.trim()) {
+      setErrorMessage('Post Title is required.');
+      return;
+    }
+    if (!formData.content.trim()) {
+      setErrorMessage('Story Content is required.');
+      return;
+    }
+    if (!formData.category) {
+      setErrorMessage('Please select a Category.');
       return;
     }
 
@@ -92,27 +76,20 @@ const CreatePost = () => {
     setIsSaving(true);
     
     try {
-      // Apply publishing and author logic
-      const author = user?.name || 'Admin';
-      const category = formData.category || 'General';
-      const status = formData.status || 'published';
-      
-      let date = null;
-      if (status === 'published') {
-        date = new Date().toISOString().split('T')[0];
-      }
-
+      // PREPARE PAYLOAD (PART 3 & 4)
       const postData = {
         ...formData,
-        category,
-        author,
-        date,
-        slug: generateSlug(formData.title),
-        created_at: new Date().toISOString()
+        slug: formData.slug || generateSlug(formData.title),
+        meta_title: formData.meta_title || formData.title,
+        og_image: formData.og_image || formData.image,
+        author: formData.author || 'Admin (BangtanMom)',
+        status: formData.status || 'Draft',
+        // Strict date format rule
+        date: formData.date || new Date().toISOString().split('T')[0]
       };
 
       const createdPost = await addPost(postData);
-      const targetId = createdPost?.id || createdPost;
+      const targetId = createdPost?.id || createdPost?.slug || createdPost;
       navigate(targetId ? `/post/${targetId}` : '/blogs');
     } catch (error) {
       setErrorMessage(error.message);
@@ -130,12 +107,9 @@ const CreatePost = () => {
         </div>
 
         {errorMessage && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start">
-            <SafeIcon icon={FiAlertTriangle} className="text-red-500 mr-3 mt-1 flex-shrink-0" />
-            <div className="text-red-800 text-xs overflow-hidden">
-              <p className="font-bold mb-1">Error Details</p>
-              <p className="opacity-90 whitespace-pre-wrap">{errorMessage}</p>
-            </div>
+          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
+            <SafeIcon icon={FiAlertTriangle} className="mr-3 flex-shrink-0" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
@@ -157,7 +131,7 @@ const CreatePost = () => {
                 <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full py-2 text-left group">
                   <div className="flex items-center space-x-2">
                     <SafeIcon icon={FiSearch} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
-                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO Settings</span>
+                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO & Meta Detail Settings</span>
                   </div>
                   <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
                 </button>
@@ -166,24 +140,27 @@ const CreatePost = () => {
                   <div className="mt-6 space-y-6 bg-gray-50 rounded-xl p-6 border border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">SEO Title</label>
-                        <input type="text" name="seo_title" value={formData.seo_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Post Title" />
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Slug (URL Path)</label>
+                        <input type="text" name="slug" value={formData.slug} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="bts-world-tour-2027" />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Focus Keyword</label>
-                        <input type="text" name="focus_keyword" value={formData.focus_keyword} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="e.g. BTS lifestyle" />
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Title</label>
+                        <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Title" />
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Description</label>
                       <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="3" className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Excerpt or first 160 chars" />
                     </div>
-                    <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-100">
-                      <input type="checkbox" id="noindex_toggle" name="noindex" checked={!formData.noindex} onChange={(e) => setFormData(prev => ({ ...prev, noindex: !e.target.checked }))} className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500" />
-                      <label htmlFor="noindex_toggle" className="text-sm font-medium text-gray-700 cursor-pointer flex items-center">
-                        <SafeIcon icon={!formData.noindex ? FiEye : FiEyeOff} className="mr-2 text-gray-400" />
-                        Index this page? (Recommended: ON)
-                      </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Keywords</label>
+                        <input type="text" name="meta_keywords" value={formData.meta_keywords} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="e.g. BTS, ARMY" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">OG Image URL</label>
+                        <input type="text" name="og_image" value={formData.og_image} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Cover Image URL" />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -201,18 +178,22 @@ const CreatePost = () => {
                 <div className="pt-2">
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status</label>
                   <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-bold">
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
+                    <option value="Published">Published</option>
+                    <option value="Draft">Draft</option>
                   </select>
+                </div>
+                <div className="pt-2">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publish Date</label>
+                  <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-bold" />
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Category</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Category *</h3>
               <select name="category" value={formData.category} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 text-sm font-medium" required>
                 <option value="">Select Category</option>
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                {(categories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
 
@@ -220,12 +201,6 @@ const CreatePost = () => {
               <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Cover Image</h3>
               <div className="space-y-4">
                 <input type="url" name="image" value={formData.image} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none bg-gray-50" placeholder="Paste image URL..." />
-                <div className="relative">
-                  <input type="file" id="file-upload" onChange={handleFileUpload} className="hidden" accept="image/*" />
-                  <label htmlFor="file-upload" className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-purple-200 rounded-xl cursor-pointer transition-all font-bold text-sm text-purple-600 hover:bg-purple-50">
-                    {isUploading ? <span className="animate-pulse">Uploading...</span> : <><SafeIcon icon={FiUploadCloud} className="mr-2" /> Upload from Device</>}
-                  </label>
-                </div>
                 {formData.image && (
                   <div className="relative rounded-xl overflow-hidden aspect-video w-full border border-gray-100 shadow-inner">
                     <SafeImage src={formData.image} alt="Preview" fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />

@@ -9,7 +9,7 @@ const NCB_URL = '/api/ncb';
 
 /**
  * Field allowlists for data integrity
- * Updated with SEO and Publishing status columns
+ * Aligned with the requested posts table schema
  */
 export const NCB_ALLOWLISTS = {
   posts: [
@@ -33,14 +33,12 @@ export const NCB_ALLOWLISTS = {
   product_recommendations: [
     'title', 
     'slug', 
-    'subcategory', 
+    'category', 
     'rating', 
-    'excerpt', 
-    'content', 
+    'short_blurb', 
+    'full_review', 
     'image', 
     'status', 
-    'short_blurb', 
-    'review', 
     'affiliate_url',
     'created_at', 
     'updated_at'
@@ -62,7 +60,7 @@ const getPlainText = (html) => {
 
 /**
  * Sanitizes payload based on type and allowlist.
- * Adds defaults, timestamps, and formatting rules.
+ * Ensures strict YYYY-MM-DD date format and mandatory defaults.
  */
 export function sanitizeNcbPayload(type, data) {
   const allowlist = NCB_ALLOWLISTS[type];
@@ -71,18 +69,23 @@ export function sanitizeNcbPayload(type, data) {
   const sanitized = {};
   const now = new Date().toISOString();
   
-  // 1. Core Logic for Posts
   if (type === 'posts') {
+    // 1. Enforce strict Status
     sanitized.status = data.status || 'Draft';
+    
+    // 2. Enforce strict Date Format (YYYY-MM-DD)
+    // This prevents 500 errors on DATE type columns
     const rawDate = data.date || new Date();
     const d = new Date(rawDate);
     sanitized.date = isNaN(d.getTime()) 
       ? new Date().toISOString().split('T')[0] 
       : d.toISOString().split('T')[0];
 
+    // 3. Timestamps
     sanitized.updated_at = now;
     if (!data.id) sanitized.created_at = now;
 
+    // 4. Default SEO Fields if empty
     sanitized.meta_title = data.meta_title || data.title;
     sanitized.og_image = data.og_image || data.image;
     
@@ -91,25 +94,12 @@ export function sanitizeNcbPayload(type, data) {
       sanitized.meta_description = plain.substring(0, 160);
     }
 
+    // 5. Default Author and Category
     sanitized.author = data.author || 'Admin (BangtanMom)';
     sanitized.category = data.category || 'General';
   }
 
-  // 2. Logic for Products
-  if (type === 'product_recommendations') {
-    sanitized.status = data.status || 'Published';
-    sanitized.updated_at = now;
-    if (!data.id) sanitized.created_at = now;
-    sanitized.subcategory = data.subcategory || 'General';
-    sanitized.rating = data.rating || 5;
-    
-    // SEO fallbacks
-    if (!data.slug && data.title) {
-      sanitized.slug = data.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-    }
-  }
-
-  // 3. Map Allowlist Fields
+  // Map only allowed fields
   allowlist.forEach(field => {
     if (data[field] !== undefined && sanitized[field] === undefined) {
       sanitized[field] = data[field];
@@ -134,18 +124,9 @@ function buildProxyUrl(path, extraParams = {}) {
   return url.toString();
 }
 
-/**
- * Normalizes individual items (IDs and parsing)
- */
 function normalizeItem(item) {
   if (!item || typeof item !== 'object') return item;
   const id = item.id || item._id || item.ID || item.Id;
-  
-  if (item.status) {
-    const s = String(item.status).toLowerCase();
-    item.status = s === 'published' ? 'Published' : 'Draft';
-  }
-  
   return { ...item, id: id };
 }
 
@@ -165,6 +146,7 @@ async function handleResponse(res, context) {
     }
     const errorMsg = `[NCB Error] ${context} (${res.status}): ${errorDetail}`;
     console.error(errorMsg);
+    if (context.startsWith('readAll')) return []; 
     throw new Error(errorMsg);
   }
   const contentType = res.headers.get('content-type');
@@ -177,19 +159,9 @@ async function handleResponse(res, context) {
 export async function getNcbStatus() {
   try {
     const posts = await ncbReadAll('posts', { limit: 1 });
-    return {
-      success: true,
-      canReadPosts: true,
-      message: `Successfully connected to NCB. Found ${posts.length} posts.`,
-      timestamp: new Date().toISOString()
-    };
+    return { success: true, timestamp: new Date().toISOString() };
   } catch (error) {
-    return {
-      success: false,
-      canReadPosts: false,
-      message: `Failed to connect to NCB: ${error.message}`,
-      timestamp: new Date().toISOString()
-    };
+    return { success: false, message: error.message };
   }
 }
 
@@ -200,50 +172,37 @@ export async function ncbReadAll(table, queryParams = {}) {
     const json = await handleResponse(res, `readAll:${table}`);
     return normalizeArray(json);
   } catch (error) {
-    console.warn(`NCB Table ${table} might be missing or empty.`, error);
-    return []; // Return empty array to prevent UI crash
+    return [];
   }
 }
 
 export async function ncbCreate(table, payload) {
   const sanitized = sanitizeNcbPayload(table, payload);
   const url = buildProxyUrl(`/create/${table}`);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify(sanitized),
-    });
-    const json = await handleResponse(res, `create:${table}`);
-    const data = json?.data || json;
-    return normalizeItem(Array.isArray(data) ? data[0] : data);
-  } catch (error) {
-    throw error;
-  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(sanitized),
+  });
+  const json = await handleResponse(res, `create:${table}`);
+  const data = json?.data || json;
+  return normalizeItem(Array.isArray(data) ? data[0] : data);
 }
 
 export async function ncbUpdate(table, id, payload) {
   const sanitized = sanitizeNcbPayload(table, payload);
   const url = buildProxyUrl(`/update/${table}/${id}`);
-  try {
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: buildHeaders(),
-      body: JSON.stringify(sanitized),
-    });
-    return await handleResponse(res, `update:${table}:${id}`);
-  } catch (error) {
-    throw error;
-  }
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: buildHeaders(),
+    body: JSON.stringify(sanitized),
+  });
+  return await handleResponse(res, `update:${table}:${id}`);
 }
 
 export async function ncbDelete(table, id) {
   const url = buildProxyUrl(`/delete/${table}/${id}`);
-  try {
-    const res = await fetch(url, { method: 'DELETE', headers: buildHeaders() });
-    await handleResponse(res, `delete:${table}:${id}`);
-    return true;
-  } catch (error) {
-    throw error;
-  }
+  const res = await fetch(url, { method: 'DELETE', headers: buildHeaders() });
+  await handleResponse(res, `delete:${table}:${id}`);
+  return true;
 }

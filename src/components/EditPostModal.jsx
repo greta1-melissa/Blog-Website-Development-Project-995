@@ -9,7 +9,7 @@ import { BLOG_PLACEHOLDER } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiUploadCloud } = FiIcons;
+const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp, FiImage } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const { user } = useAuth();
@@ -21,8 +21,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Use local categories if none provided to prevent crash
-  const safeCategories = Array.isArray(categories) ? categories : ['Life', 'BTS', 'Parenting', 'Self-Care', 'K-Drama', 'General'];
+  const safeCategories = Array.isArray(categories) && categories.length > 0 ? categories : ['Life', 'BTS', 'Parenting', 'Self-Care', 'K-Drama', 'General'];
 
   useEffect(() => {
     if (post) {
@@ -54,6 +53,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
+      // Auto-generate slug from title if slug is empty
       if (name === 'title' && !prev.slug) {
         updated.slug = generateSlug(value);
       }
@@ -63,19 +63,37 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.content.trim() || !formData.category) {
-      setErrorMessage('Title, Content, and Category are required.');
+    if (isSaving) return;
+
+    // VALIDATION (PART 5)
+    if (!formData.title.trim()) {
+      setErrorMessage('Post Title is required.');
+      return;
+    }
+    if (!formData.content.trim()) {
+      setErrorMessage('Story Content is required.');
+      return;
+    }
+    if (!formData.category) {
+      setErrorMessage('Please select a Category.');
       return;
     }
 
     setIsSaving(true);
     setErrorMessage('');
+
     try {
+      // PREPARE PAYLOAD (PART 3 & 5)
       const submissionData = {
         ...formData,
         slug: formData.slug || generateSlug(formData.title),
         meta_title: formData.meta_title || formData.title,
         og_image: formData.og_image || formData.image,
+        author: formData.author || 'Admin (BangtanMom)',
+        status: formData.status || 'Draft',
+        category: formData.category || 'General',
+        // DATE FORMAT RULE (PART 4)
+        date: formData.date || new Date().toISOString().split('T')[0]
       };
 
       await onSave(post?.id, submissionData);
@@ -96,7 +114,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
             <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'Create New Story'}</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><SafeIcon icon={FiX} /></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"><SafeIcon icon={FiX} /></button>
           </div>
           
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -119,37 +137,38 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                   </div>
                 </div>
 
+                {/* SEO Settings Collapsible (PART 9) */}
                 <div className="border border-purple-100 rounded-xl bg-purple-50/30 overflow-hidden">
-                  <button type="button" onClick={() => setShowSeo(!showSeo)} className="w-full px-6 py-4 flex items-center justify-between font-bold text-purple-900">
+                  <button type="button" onClick={() => setShowSeo(!showSeo)} className="w-full px-6 py-4 flex items-center justify-between font-bold text-purple-900 hover:bg-purple-100/50 transition-colors">
                     <div className="flex items-center space-x-2">
                       <SafeIcon icon={FiSearch} /> <span>SEO & Meta Details</span>
                     </div>
                     <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} />
                   </button>
                   {showSeo && (
-                    <div className="px-6 pb-6 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="px-6 pb-6 space-y-4 border-t border-purple-100 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Slug</label>
-                          <input type="text" name="slug" value={formData.slug} onChange={handleChange} placeholder="bts-world-tour-2027" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Slug (URL Path)</label>
+                          <input type="text" name="slug" value={formData.slug} onChange={handleChange} placeholder="bts-world-tour-2027" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meta Title</label>
-                          <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                          <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Title" />
                         </div>
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meta Description</label>
-                        <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                        <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: First 160 characters" />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Keywords</label>
-                          <input type="text" name="meta_keywords" value={formData.meta_keywords} onChange={handleChange} placeholder="bts, armor, kpop" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                          <input type="text" name="meta_keywords" value={formData.meta_keywords} onChange={handleChange} placeholder="bts, armor, kpop" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">OG Image URL</label>
-                          <input type="text" name="og_image" value={formData.og_image} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                          <input type="text" name="og_image" value={formData.og_image} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Featured Image" />
                         </div>
                       </div>
                     </div>
@@ -160,7 +179,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publishing Status</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publishing Status *</label>
                     <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-bold">
                       <option value="Draft">Draft</option>
                       <option value="Published">Published</option>
@@ -175,7 +194,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                     <input type="text" name="author" value={formData.author} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category *</label>
                     <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-medium">
                       {(safeCategories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>

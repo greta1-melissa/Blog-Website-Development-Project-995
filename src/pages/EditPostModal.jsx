@@ -9,7 +9,7 @@ import { BLOG_PLACEHOLDER } from '../config/assets';
 
 const { FiX, FiSave, FiImage, FiUploadCloud, FiCheck, FiAlertTriangle } = FiIcons;
 
-const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
+const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -20,6 +20,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
   const [uploadStatus, setUploadStatus] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Protect against undefined categories
+  const safeCategories = Array.isArray(categories) ? categories : ['General', 'Life', 'BTS', 'Parenting', 'Self-Care', 'K-Drama'];
 
   useEffect(() => {
     if (post) {
@@ -167,7 +170,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories }) => {
                       required
                     >
                       <option value="">Select Category</option>
-                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      {(safeCategories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                   </div>
                 </div>
