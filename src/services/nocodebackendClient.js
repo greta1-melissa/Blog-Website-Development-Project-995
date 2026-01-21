@@ -80,12 +80,12 @@ export const sanitizeNcbPayload = (table, payload) => {
 
 /**
  * READ: Fetches all records from a table
- * Uses /api/ncb/read/tableName path structure
+ * Reverted to standard /api/ncb/tableName structure to ensure proxy connectivity
  */
 export const ncbReadAll = async (table) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
-    const response = await fetch(`/api/ncb/read/${table}`);
+    const response = await fetch(`/api/ncb/${table}`);
     if (!response.ok) {
       console.warn(`NCB Read Warning: ${table} returned status ${response.status}`);
       return [];
@@ -100,12 +100,11 @@ export const ncbReadAll = async (table) => {
 
 /**
  * CREATE: Adds a new record
- * Uses /api/ncb/create/tableName path structure
  */
 export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
-  const response = await fetch(`/api/ncb/create/${table}`, {
+  const response = await fetch(`/api/ncb/${table}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
@@ -119,12 +118,11 @@ export const ncbCreate = async (table, data) => {
 
 /**
  * UPDATE: Updates an existing record
- * Uses /api/ncb/update/tableName/id path structure
  */
 export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
-  const response = await fetch(`/api/ncb/update/${table}/${id}`, {
+  const response = await fetch(`/api/ncb/${table}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
@@ -138,11 +136,10 @@ export const ncbUpdate = async (table, id, data) => {
 
 /**
  * DELETE: Removes a record
- * Uses /api/ncb/delete/tableName/id path structure
  */
 export const ncbDelete = async (table, id) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
-  const response = await fetch(`/api/ncb/delete/${table}/${id}`, {
+  const response = await fetch(`/api/ncb/${table}/${id}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
