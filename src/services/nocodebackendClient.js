@@ -24,6 +24,7 @@ export const normalizeNcbDate = (dateInput) => {
     if (dateInput instanceof Date) {
       d = dateInput;
     } else if (typeof dateInput === 'string') {
+      // Handle DD/MM/YYYY
       if (dateInput.includes('/')) {
         const parts = dateInput.split('/');
         if (parts.length === 3) {
@@ -58,13 +59,14 @@ export const sanitizeNcbPayload = (table, payload) => {
   const sanitized = { ...payload };
 
   if (table === 'posts') {
-    // Force normalization for date field to fix 500 error
+    // Force normalization for date field to fix SQL 500 errors
     if (sanitized.date) {
       const normalized = normalizeNcbDate(sanitized.date);
       if (normalized) sanitized.date = normalized;
     }
 
-    if (!sanitized.status) sanitized.status = 'Draft';
+    // Ensure status exists
+    if (!sanitized.status) sanitized.status = 'Published';
     
     // SEO Defaults
     sanitized.meta_title = sanitized.meta_title || sanitized.title || '';
@@ -76,11 +78,18 @@ export const sanitizeNcbPayload = (table, payload) => {
   return sanitized;
 };
 
+/**
+ * READ: Fetches all records from a table
+ * Uses /api/ncb/read/tableName path structure
+ */
 export const ncbReadAll = async (table) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
     const response = await fetch(`/api/ncb/read/${table}`);
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.warn(`NCB Read Warning: ${table} returned status ${response.status}`);
+      return [];
+    }
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -89,6 +98,10 @@ export const ncbReadAll = async (table) => {
   }
 };
 
+/**
+ * CREATE: Adds a new record
+ * Uses /api/ncb/create/tableName path structure
+ */
 export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
@@ -104,6 +117,10 @@ export const ncbCreate = async (table, data) => {
   return response.json();
 };
 
+/**
+ * UPDATE: Updates an existing record
+ * Uses /api/ncb/update/tableName/id path structure
+ */
 export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
@@ -119,6 +136,10 @@ export const ncbUpdate = async (table, id, data) => {
   return response.json();
 };
 
+/**
+ * DELETE: Removes a record
+ * Uses /api/ncb/delete/tableName/id path structure
+ */
 export const ncbDelete = async (table, id) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const response = await fetch(`/api/ncb/delete/${table}/${id}`, {
@@ -131,6 +152,9 @@ export const ncbDelete = async (table, id) => {
   return response.json();
 };
 
+/**
+ * Connectivity Check
+ */
 export const getNcbStatus = async () => {
   try {
     const test = await ncbReadAll('posts');

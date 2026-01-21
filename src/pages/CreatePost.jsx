@@ -9,7 +9,6 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
-import { LOGO_URL } from '../config/assets';
 import { generateSlug, calculateReadTime } from '../utils/slugUtils';
 import { normalizeNcbDate } from '../services/nocodebackendClient';
 
@@ -32,8 +31,7 @@ const CreatePost = () => {
     category: 'Lifestyle',
     tags: '',
     status: 'Published',
-    date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
-    // SEO Fields
+    date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY format for UI
     slug: '',
     meta_title: '',
     meta_description: '',
@@ -43,7 +41,6 @@ const CreatePost = () => {
     noindex: false
   });
 
-  // Auto-generate slug and meta title when title changes
   useEffect(() => {
     if (formData.title && !formData.slug) {
       const slug = generateSlug(formData.title);
@@ -64,7 +61,7 @@ const CreatePost = () => {
       return;
     }
 
-    // Validate and normalize date
+    // Validate date format (DD/MM/YYYY)
     const normalizedDate = normalizeNcbDate(formData.date);
     if (!normalizedDate) {
       setError('Please enter a valid date in DD/MM/YYYY format');
@@ -76,7 +73,7 @@ const CreatePost = () => {
       const readTime = calculateReadTime(formData.content);
       const payload = {
         ...formData,
-        date: normalizedDate,
+        date: normalizedDate, // Send YYYY-MM-DD to backend
         read_time: readTime,
         author: user?.name || 'Admin',
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
@@ -97,7 +94,6 @@ const CreatePost = () => {
     <ProtectedRoute adminOnly>
       <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <button 
               onClick={() => navigate('/admin')}
@@ -117,10 +113,8 @@ const CreatePost = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Main Content Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="space-y-6">
-                {/* Title */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Story Title</label>
                   <div className="relative">
@@ -136,7 +130,6 @@ const CreatePost = () => {
                   </div>
                 </div>
 
-                {/* Excerpt */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Brief Summary (Excerpt)</label>
                   <textarea
@@ -148,7 +141,6 @@ const CreatePost = () => {
                   />
                 </div>
 
-                {/* Content Editor */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Story Content</label>
                   <div className="prose-editor">
@@ -163,7 +155,6 @@ const CreatePost = () => {
               </div>
             </div>
 
-            {/* Metadata Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -228,7 +219,6 @@ const CreatePost = () => {
               </div>
             </div>
 
-            {/* SEO Settings Section */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 type="button"
@@ -259,7 +249,6 @@ const CreatePost = () => {
                             value={formData.slug}
                             onChange={(e) => setFormData({...formData, slug: e.target.value})}
                             className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                            placeholder="my-awesome-story"
                           />
                         </div>
                         <div>
@@ -281,23 +270,12 @@ const CreatePost = () => {
                           className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Keywords</label>
-                        <input
-                          type="text"
-                          value={formData.meta_keywords}
-                          onChange={(e) => setFormData({...formData, meta_keywords: e.target.value})}
-                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                          placeholder="keyword1, keyword2..."
-                        />
-                      </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-4">
               <button
                 type="button"
