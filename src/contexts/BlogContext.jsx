@@ -13,14 +13,13 @@ export const BlogProvider = ({ children }) => {
   const fetchBlogData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Use catch to prevent one failure from blocking the other
       const pData = await ncbReadAll('posts').catch(err => {
-        console.error("Failed to load posts:", err);
+        console.warn("Failed to load posts table:", err);
         return [];
       });
       
       const prodData = await ncbReadAll('product_recommendations').catch(err => {
-        console.error("Failed to load products:", err);
+        console.warn("Failed to load products table:", err);
         return [];
       });
 
@@ -28,8 +27,6 @@ export const BlogProvider = ({ children }) => {
       setProducts(prodData || []);
     } catch (error) {
       console.error('CRITICAL: Error fetching blog data:', error);
-      setPosts([]);
-      setProducts([]);
     } finally {
       setIsLoading(false);
     }
@@ -39,8 +36,7 @@ export const BlogProvider = ({ children }) => {
     fetchBlogData();
   }, [fetchBlogData]);
 
-  // Public filtering: Only show published posts for homepage/public lists
-  // Updated to be case-insensitive for 'status' column and value
+  // Robust filtering: Handles case-sensitivity of column names and values
   const publishedPosts = useMemo(() => 
     (posts || [])
       .filter(p => {
@@ -67,6 +63,7 @@ export const BlogProvider = ({ children }) => {
     const newPost = await ncbCreate('posts', finalData);
     if (newPost) {
       setPosts(prev => [newPost, ...prev]);
+      await fetchBlogData(); // Refresh to sync state
       return newPost;
     }
   };
