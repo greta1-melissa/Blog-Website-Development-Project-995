@@ -55,11 +55,15 @@ const CreatePost = () => {
     });
   };
 
+  /**
+   * Updated Publish Handler
+   * Fixes 500 error by normalizing date to YYYY-MM-DD
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSaving) return;
     
-    // BASIC VALIDATION
+    // VALIDATION
     if (!formData.title.trim()) {
       setErrorMessage('Post Title is required.');
       return;
@@ -69,8 +73,8 @@ const CreatePost = () => {
       return;
     }
 
-    // DATE VALIDATION & CONVERSION
-    // Ensures always sent as YYYY-MM-DD
+    // DATE NORMALIZATION & VALIDATION
+    // This ensures that even if the picker returns DD/MM/YYYY, we send YYYY-MM-DD
     const finalDate = normalizeNcbDate(formData.date);
     if (!finalDate) {
       setErrorMessage('Publish date is invalid. Please reselect a valid date.');
@@ -175,7 +179,7 @@ const CreatePost = () => {
                 </div>
               </div>
             </div>
-            {/* Other sections unchanged... */}
+            {/* Sidebar sections for Category, Image etc remain unchanged */}
           </div>
         </form>
       </motion.div>

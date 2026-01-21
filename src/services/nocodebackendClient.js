@@ -10,36 +10,13 @@ const NCB_URL = '/api/ncb';
  */
 export const NCB_ALLOWLISTS = {
   posts: [
-    'id',
-    'title', 
-    'slug', 
-    'content', 
-    'category', 
-    'author', 
-    'date',
-    'image', 
-    'status', 
-    'meta_title', 
-    'meta_description', 
-    'meta_keywords', 
-    'og_image',
-    'readtime',
-    'ishandpicked',
-    'created_at', 
-    'updated_at'
+    'id', 'title', 'slug', 'content', 'category', 'author', 'date',
+    'image', 'status', 'meta_title', 'meta_description', 'meta_keywords', 
+    'og_image', 'readtime', 'ishandpicked', 'created_at', 'updated_at'
   ],
   product_recommendations: [
-    'title', 
-    'slug', 
-    'category', 
-    'rating', 
-    'short_blurb', 
-    'full_review', 
-    'image', 
-    'status', 
-    'affiliate_url',
-    'created_at', 
-    'updated_at'
+    'title', 'slug', 'category', 'rating', 'short_blurb', 'full_review', 
+    'image', 'status', 'affiliate_url', 'created_at', 'updated_at'
   ],
   kdrama_recommendations: [
     'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
@@ -49,43 +26,40 @@ export const NCB_ALLOWLISTS = {
 };
 
 /**
- * Normalizes a date string to YYYY-MM-DD for NCB DATE columns.
- * Handles Date objects, DD/MM/YYYY strings, and already formatted YYYY-MM-DD strings.
+ * Normalizes a date value to YYYY-MM-DD for NCB DATE columns.
+ * Handles Date objects, DD/MM/YYYY, D/M/YYYY, and YYYY-MM-DD.
  */
 export function normalizeNcbDate(dateValue) {
-  // Case: Blank/Undefined -> Default to Today
   if (!dateValue || dateValue === '') {
     return new Date().toISOString().split('T')[0];
   }
 
-  // Case A: Picker returns a Date object
+  // Case A: Date Object
   if (dateValue instanceof Date) {
     if (isNaN(dateValue.getTime())) return null;
     return dateValue.toISOString().slice(0, 10);
   }
 
-  const trimmed = String(dateValue).trim();
-  if (!trimmed) return new Date().toISOString().split('T')[0];
+  const str = String(dateValue).trim();
+  if (!str) return new Date().toISOString().split('T')[0];
 
-  // Case: Already YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+  // Case B: Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
   }
 
-  // Case B: Picker returns DD/MM/YYYY
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
-    const [day, month, year] = trimmed.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  // Case C: DD/MM/YYYY or D/M/YYYY
+  const dmvRegex = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
+  const match = str.match(dmvRegex);
+  if (match) {
+    const [_, d, m, y] = match;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
 
-  // Fallback for other standard date strings
-  try {
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().split('T')[0];
-    }
-  } catch (e) {
-    console.warn('Date normalization failed for:', dateValue);
+  // Case D: Standard JS Date Parse
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
   }
 
   return null;
@@ -127,7 +101,7 @@ export function sanitizeNcbPayload(type, data) {
       sanitized.created_at = data.created_at || now;
     }
 
-    // 4. SEO Fields
+    // 4. SEO Defaults
     sanitized.meta_title = data.meta_title || data.title || '';
     sanitized.meta_keywords = data.meta_keywords || '';
     sanitized.og_image = data.og_image || data.image || '';
@@ -139,7 +113,6 @@ export function sanitizeNcbPayload(type, data) {
       sanitized.meta_description = data.meta_description;
     }
 
-    // 5. Core Defaults
     sanitized.author = data.author || 'Admin (BangtanMom)';
     sanitized.category = data.category || 'General';
   }
