@@ -10,7 +10,6 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
 import { generateSlug, calculateReadTime } from '../utils/slugUtils';
-import { normalizeNcbDate } from '../services/nocodebackendClient';
 
 const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiEye, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe } = FiIcons;
 
@@ -30,8 +29,7 @@ const CreatePost = () => {
     image: '',
     category: 'Lifestyle',
     tags: '',
-    status: 'Published',
-    date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY format for UI
+    status: 'published', // Changed to lowercase to match sanitizer logic
     slug: '',
     meta_title: '',
     meta_description: '',
@@ -56,27 +54,31 @@ const CreatePost = () => {
     e.preventDefault();
     setError('');
     
-    if (!formData.title || !formData.content) {
-      setError('Title and content are required');
+    // Strict Validation
+    if (!formData.title?.trim()) {
+      setError('Title is required');
       return;
     }
-
-    // Validate date format (DD/MM/YYYY)
-    const normalizedDate = normalizeNcbDate(formData.date);
-    if (!normalizedDate) {
-      setError('Please enter a valid date in DD/MM/YYYY format');
+    if (!formData.content?.trim() || formData.content === '<p><br></p>') {
+      setError('Content is required');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const readTime = calculateReadTime(formData.content);
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Construct payload according to NCB requirements
+      // The sanitizer in ncbCreate will handle final mapping of content -> content_html etc.
       const payload = {
         ...formData,
-        date: normalizedDate, // Send YYYY-MM-DD to backend
         read_time: readTime,
         author: user?.name || 'Admin',
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean).join(', '),
+        created_at: today,
+        updated_at: today,
+        published_at: formData.status === 'published' ? today : null
       };
 
       await addPost(payload);
@@ -84,7 +86,7 @@ const CreatePost = () => {
       navigate('/admin');
     } catch (err) {
       console.error('Submit Error:', err);
-      setError(err.message || 'Failed to create post. Please try again.');
+      setError(err.message || 'Failed to create post. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,21 +187,23 @@ const CreatePost = () => {
                       <option>Mental Wellness</option>
                       <option>Relationships</option>
                       <option>Personal Growth</option>
+                      <option>BTS</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Publish Date (DD/MM/YYYY)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <div className="relative">
-                    <SafeIcon icon={FiClock} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.date}
-                      onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="e.g. 25/12/2023"
-                    />
+                    <SafeIcon icon={FiSettings} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({...formData, status: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none"
+                    >
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
                   </div>
                 </div>
 
