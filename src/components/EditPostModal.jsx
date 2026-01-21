@@ -5,209 +5,251 @@ import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
-import { BLOG_PLACEHOLDER } from '../config/assets';
+import { LOGO_URL } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
-import { generateSlug } from '../utils/slugUtils';
+import { generateSlug, calculateReadTime } from '../utils/slugUtils';
 import { normalizeNcbDate } from '../services/nocodebackendClient';
 
-const { FiX, FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
+const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const { user } = useAuth();
-  const [showSeo, setShowSeo] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '', content: '', category: 'General', author: '', image: '', status: 'Draft',
-    slug: '', meta_title: '', meta_description: '', meta_keywords: '', og_image: '', date: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [formData, setFormData] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSeoSettings, setShowSeoSettings] = useState(false);
+  const [error, setError] = useState(null);
 
-  const safeCategories = Array.isArray(categories) && categories.length > 0 ? categories : ['Life', 'BTS', 'Parenting', 'Self-Care', 'K-Drama', 'General'];
+  // Use a safe fallback for categories
+  const safeCategories = Array.isArray(categories) ? categories : ['Motherhood', 'K-Drama', 'Lifestyle', 'Personal', 'Tips'];
 
   useEffect(() => {
     if (post) {
       setFormData({
-        title: post.title || '',
-        content: post.content || '',
-        category: post.category || 'General',
-        author: post.author || 'Admin (BangtanMom)',
-        image: post.image || '',
-        status: post.status === 'Published' || post.status === 'published' ? 'Published' : 'Draft',
-        slug: post.slug || '',
-        meta_title: post.meta_title || '',
+        ...post,
+        meta_title: post.meta_title || post.title || '',
         meta_description: post.meta_description || '',
         meta_keywords: post.meta_keywords || '',
-        og_image: post.og_image || '',
-        date: post.date || new Date().toISOString().split('T')[0]
+        slug: post.slug || generateSlug(post.title || ''),
+        og_image: post.og_image || post.image || '',
+        status: post.status || 'Published',
+        date: post.date || new Date().toLocaleDateString('en-GB')
       });
+      setError(null);
     }
-    setErrorMessage('');
-  }, [post, isOpen, user]);
+  }, [post]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  /**
-   * Updated Update/Publish Handler for the Modal
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (!formData.title || !formData.content) return;
 
-    // VALIDATION
-    if (!formData.title.trim() || !formData.content.trim()) {
-      setErrorMessage('Title and Content are required.');
+    // Validate and Normalize Date for NCB (YYYY-MM-DD)
+    const normalizedDate = normalizeNcbDate(formData.date);
+    if (!normalizedDate) {
+      setError("Invalid date format. Please use DD/MM/YYYY.");
       return;
     }
 
-    // DATE NORMALIZATION & VALIDATION
-    const finalDate = normalizeNcbDate(formData.date);
-    if (!finalDate) {
-      setErrorMessage('Publish date is invalid. Please reselect a valid date.');
-      return;
-    }
-
-    setIsSaving(true);
-    setErrorMessage('');
-
+    setIsSubmitting(true);
     try {
-      const submissionData = {
+      const updatedPost = {
         ...formData,
-        slug: formData.slug || generateSlug(formData.title),
-        date: finalDate // Strictly YYYY-MM-DD
+        date: normalizedDate,
+        readtime: calculateReadTime(formData.content),
+        updated_at: new Date().toISOString()
       };
-
-      await onSave(post?.id, submissionData);
+      await onSave(updatedPost);
       onClose();
-    } catch (error) {
-      setErrorMessage(error.message);
+    } catch (err) {
+      setError(err.message || "Failed to update post.");
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !formData) return null;
 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'Create New Story'}</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400"><SafeIcon icon={FiX} /></button>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        >
+          {/* Header */}
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Edit Story</h2>
+              <p className="text-gray-500 text-xs">Making updates to your magical content</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <SafeIcon icon={FiX} />
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white px-6 py-2.5 rounded-xl font-bold transition-all flex items-center"
+              >
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                ) : (
+                  <SafeIcon icon={FiSave} className="mr-2" />
+                )}
+                Save Changes
+              </button>
+            </div>
           </div>
-          
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-            {errorMessage && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
-                <SafeIcon icon={FiAlertTriangle} className="mr-2" /> {errorMessage}
+
+          <div className="flex-1 overflow-y-auto p-8 space-y-8">
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm flex items-center">
+                <SafeIcon icon={FiInfo} className="mr-2" />
+                {error}
               </div>
             )}
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-widest">Post Title *</label>
-                  <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" required />
+
+            {/* Title & Category */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Story Title</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white"
+                >
+                  {safeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Status & Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white"
+                >
+                  <option value="Published">Published</option>
+                  <option value="Draft">Draft</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Publish Date (DD/MM/YYYY)</label>
+                <input
+                  type="text"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* SEO Settings */}
+            <div className="border border-gray-100 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSeoSettings(!showSeoSettings)}
+                className="w-full px-6 py-4 bg-gray-50 flex justify-between items-center hover:bg-gray-100"
+              >
+                <div className="flex items-center text-gray-700 font-bold">
+                  <SafeIcon icon={FiSettings} className="mr-2 text-purple-600" />
+                  SEO & Meta Details
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-widest">Story Content *</label>
-                  <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[300px]" />
-                  </div>
-                </div>
-                
-                <div className="border-t border-gray-100 pt-6">
-                  <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full py-2 text-left group">
-                    <div className="flex items-center space-x-2">
-                      <SafeIcon icon={FiSearch} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
-                      <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO & Meta Detail Settings</span>
-                    </div>
-                    <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
-                  </button>
-                  
-                  {showSeo && (
-                    <div className="mt-6 space-y-6 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
+              </button>
+              
+              <AnimatePresence>
+                {showSeoSettings && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
+                    exit={{ height: 0 }}
+                    className="overflow-hidden bg-white"
+                  >
+                    <div className="p-6 space-y-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                          <SafeIcon icon={FiHash} className="mr-2 text-purple-600" />
+                          URL Slug
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.slug}
+                          onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                        />
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Slug (URL Path)</label>
-                          <input type="text" name="slug" value={formData.slug} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="bts-world-tour-2027" />
+                          <label className="block text-sm font-bold text-gray-700 mb-2">Meta Title</label>
+                          <input
+                            type="text"
+                            value={formData.meta_title}
+                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                          />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Title</label>
-                          <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Title" />
+                          <label className="block text-sm font-bold text-gray-700 mb-2">Meta Keywords</label>
+                          <input
+                            type="text"
+                            value={formData.meta_keywords}
+                            onChange={(e) => setFormData({...formData, meta_keywords: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                          />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Description</label>
-                        <textarea name="meta_description" value={formData.meta_description} onChange={handleChange} rows="2" className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Summary for Google..." />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                           <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Keywords (Comma separated)</label>
-                           <input type="text" name="meta_keywords" value={formData.meta_keywords} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="kpop, bts, army..." />
-                        </div>
-                         <div>
-                           <label className="block text-xs font-bold text-gray-500 uppercase mb-2">OG Image URL</label>
-                           <input type="text" name="og_image" value={formData.og_image} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="https://..." />
-                        </div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Meta Description</label>
+                        <textarea
+                          value={formData.meta_description}
+                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
+                          rows="2"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-              <div className="lg:col-span-1 space-y-6">
-                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publishing Status *</label>
-                    <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm font-bold">
-                      <option value="Draft">Draft</option>
-                      <option value="Published">Published</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publish Date</label>
-                    <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" required />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category</label>
-                    <select name="category" value={formData.category} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm">
-                      {safeCategories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Author Name</label>
-                    <input type="text" name="author" value={formData.author} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" placeholder="Your Name" />
-                  </div>
-
-                  <div>
-                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Featured Image URL</label>
-                     <input type="text" name="image" value={formData.image} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm" placeholder="https://..." />
-                     {formData.image && (
-                       <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 h-32">
-                         <SafeImage src={formData.image} alt="Preview" fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
-                       </div>
-                     )}
-                  </div>
-                </div>
+            {/* Editor */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Story Content</label>
+              <div className="rounded-2xl border border-gray-200 overflow-hidden min-h-[300px]">
+                <ReactQuill
+                  theme="snow"
+                  value={formData.content}
+                  onChange={(content) => setFormData({...formData, content})}
+                  className="h-64"
+                />
               </div>
             </div>
-          </form>
-          
-          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-            <button onClick={onClose} className="px-5 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors">Cancel</button>
-            <button onClick={handleSubmit} disabled={isSaving} className="flex items-center px-8 py-2 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200 disabled:opacity-50 transition-all">
-              {isSaving ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" /> : <SafeIcon icon={FiSave} className="mr-2" />}
-              {post ? 'Update Story' : 'Publish Story'}
-            </button>
           </div>
         </motion.div>
       </div>

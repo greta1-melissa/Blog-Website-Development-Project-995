@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete, sanitizeNcbPayload } from '../services/nocodebackendClient';
+import { ncbReadAll, ncbCreate, ncbUpdate, ncbDelete } from '../services/nocodebackendClient';
 import { kdramas as initialSeedData } from '../data/kdramaData';
 import { getImageSrc } from '../utils/media.js';
 import { KDRAMA_PLACEHOLDER } from '../config/assets';
@@ -75,8 +75,8 @@ export const KdramaProvider = ({ children }) => {
 
   const addKdrama = async (dramaData) => {
     try {
-      const payload = sanitizeNcbPayload('kdrama_recommendations', dramaData);
-      const saved = await ncbCreate(TABLE_NAME, payload);
+      // payload sanitization is handled internally by ncbCreate
+      const saved = await ncbCreate(TABLE_NAME, dramaData);
       await fetchKdramas();
       return saved;
     } catch (err) {
@@ -87,8 +87,8 @@ export const KdramaProvider = ({ children }) => {
 
   const updateKdrama = async (id, updates) => {
     try {
-      const payload = sanitizeNcbPayload('kdrama_recommendations', updates);
-      await ncbUpdate(TABLE_NAME, id, payload);
+      // payload sanitization is handled internally by ncbUpdate
+      await ncbUpdate(TABLE_NAME, id, updates);
       await fetchKdramas();
     } catch (err) {
       console.error('Update K-Drama Failed:', err);

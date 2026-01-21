@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { useBlog } from '../contexts/BlogContext';
@@ -9,180 +9,315 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import SafeImage from '../common/SafeImage';
-import { BLOG_PLACEHOLDER } from '../config/assets';
-import { generateSlug } from '../utils/slugUtils';
+import { LOGO_URL } from '../config/assets';
+import { generateSlug, calculateReadTime } from '../utils/slugUtils';
 import { normalizeNcbDate } from '../services/nocodebackendClient';
 
-const { FiSave, FiAlertTriangle, FiSearch, FiChevronDown, FiChevronUp } = FiIcons;
+const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiEye, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { addPost, categories } = useBlog();
+  const { addPost, refreshData } = useBlog();
   const { user } = useAuth();
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showSeo, setShowSeo] = useState(false);
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [showSeoSettings, setShowSeoSettings] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
+    excerpt: '',
     content: '',
-    category: 'General',
     image: '',
-    author: user?.name || 'Admin (BangtanMom)',
+    category: 'Lifestyle',
+    tags: '',
     status: 'Published',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toLocaleDateString('en-GB'), // DD/MM/YYYY
+    // SEO Fields
     slug: '',
     meta_title: '',
     meta_description: '',
     meta_keywords: '',
-    og_image: ''
+    og_image: '',
+    canonical_url: '',
+    noindex: false
   });
 
+  // Auto-generate slug and meta title when title changes
   useEffect(() => {
-    if (user?.name) {
-      setFormData(prev => ({ ...prev, author: user.name }));
+    if (formData.title && !formData.slug) {
+      const slug = generateSlug(formData.title);
+      setFormData(prev => ({
+        ...prev,
+        slug,
+        meta_title: prev.title
+      }));
     }
-  }, [user]);
+  }, [formData.title]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value };
-      if (name === 'title' && !prev.slug) {
-        updated.slug = generateSlug(value);
-      }
-      return updated;
-    });
-  };
-
-  /**
-   * Updated Publish Handler
-   * Fixes 500 error by normalizing date to YYYY-MM-DD
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSaving) return;
+    setError('');
     
-    // VALIDATION
-    if (!formData.title.trim()) {
-      setErrorMessage('Post Title is required.');
-      return;
-    }
-    if (!formData.content.trim()) {
-      setErrorMessage('Story Content is required.');
+    if (!formData.title || !formData.content) {
+      setError('Title and content are required');
       return;
     }
 
-    // DATE NORMALIZATION & VALIDATION
-    // This ensures that even if the picker returns DD/MM/YYYY, we send YYYY-MM-DD
-    const finalDate = normalizeNcbDate(formData.date);
-    if (!finalDate) {
-      setErrorMessage('Publish date is invalid. Please reselect a valid date.');
+    // Validate and normalize date
+    const normalizedDate = normalizeNcbDate(formData.date);
+    if (!normalizedDate) {
+      setError('Please enter a valid date in DD/MM/YYYY format');
       return;
     }
 
-    setErrorMessage('');
-    setIsSaving(true);
-    
+    setIsSubmitting(true);
     try {
-      const postData = {
+      const readTime = calculateReadTime(formData.content);
+      const payload = {
         ...formData,
-        slug: formData.slug || generateSlug(formData.title),
-        meta_title: formData.meta_title || formData.title,
-        og_image: formData.og_image || formData.image,
-        date: finalDate // Strictly YYYY-MM-DD
+        date: normalizedDate,
+        read_time: readTime,
+        author: user?.name || 'Admin',
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       };
 
-      const createdPost = await addPost(postData);
-      const targetId = createdPost?.id || createdPost?.slug || createdPost;
-      navigate(targetId ? `/post/${targetId}` : '/blogs');
-    } catch (error) {
-      setErrorMessage(error.message);
+      await addPost(payload);
+      await refreshData();
+      navigate('/admin');
+    } catch (err) {
+      console.error('Submit Error:', err);
+      setError(err.message || 'Failed to create post. Please try again.');
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <ProtectedRoute requiredRole="author">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4 font-serif">Share Your Story</h1>
-          <p className="text-gray-500">Create a new blog post for your community.</p>
-        </div>
-
-        {errorMessage && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center text-red-700 text-sm">
-            <SafeIcon icon={FiAlertTriangle} className="mr-3 flex-shrink-0" />
-            <span>{errorMessage}</span>
+    <ProtectedRoute adminOnly>
+      <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <button 
+              onClick={() => navigate('/admin')}
+              className="flex items-center text-gray-600 hover:text-purple-600 transition-colors"
+            >
+              <SafeIcon icon={FiChevronLeft} className="mr-2" />
+              Back to Dashboard
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">Create New Story</h1>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-2xl shadow-sm p-8 border border-gray-100">
-              <div className="mb-6">
-                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Post Title *</label>
-                <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-lg font-bold" required />
-              </div>
-              <div className="mb-8">
-                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Story Content *</label>
-                <div className="rounded-xl overflow-hidden border border-gray-200">
-                  <ReactQuill theme="snow" value={formData.content} onChange={(val) => setFormData(p => ({ ...p, content: val }))} className="bg-white min-h-[400px]" />
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center">
+              <SafeIcon icon={FiInfo} className="mr-2" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Main Content Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+              <div className="space-y-6">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Story Title</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiType} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="Enter a catchy title..."
+                    />
+                  </div>
+                </div>
+
+                {/* Excerpt */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Brief Summary (Excerpt)</label>
+                  <textarea
+                    rows="2"
+                    value={formData.excerpt}
+                    onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    placeholder="Short description for the card..."
+                  />
+                </div>
+
+                {/* Content Editor */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Story Content</label>
+                  <div className="prose-editor">
+                    <ReactQuill
+                      theme="snow"
+                      value={formData.content}
+                      onChange={(val) => setFormData({...formData, content: val})}
+                      className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200"
+                    />
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-gray-100 pt-6">
-                <button type="button" onClick={() => setShowSeo(!showSeo)} className="flex items-center justify-between w-full py-2 text-left group">
-                  <div className="flex items-center space-x-2">
-                    <SafeIcon icon={FiSearch} className="text-gray-400 group-hover:text-purple-600 transition-colors" />
-                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO & Meta Detail Settings</span>
+            {/* Metadata Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image URL</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="url"
+                      value={formData.image}
+                      onChange={(e) => setFormData({...formData, image: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="https://images.unsplash.com/..."
+                    />
                   </div>
-                  <SafeIcon icon={showSeo ? FiChevronUp : FiChevronDown} className="text-gray-400" />
-                </button>
-                
-                {showSeo && (
-                  <div className="mt-6 space-y-6 bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Slug (URL Path)</label>
-                        <input type="text" name="slug" value={formData.slug} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="bts-world-tour-2027" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiLayers} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none"
+                    >
+                      <option>Lifestyle</option>
+                      <option>Health</option>
+                      <option>Mental Wellness</option>
+                      <option>Relationships</option>
+                      <option>Personal Growth</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Publish Date (DD/MM/YYYY)</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiClock} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.date}
+                      onChange={(e) => setFormData({...formData, date: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="e.g. 25/12/2023"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma separated)</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiTag} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.tags}
+                      onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="wellness, selfcare, habits"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SEO Settings Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSeoSettings(!showSeoSettings)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center text-gray-700 font-semibold">
+                  <SafeIcon icon={FiGlobe} className="mr-3 text-purple-600" />
+                  SEO & Meta Detail Settings
+                </div>
+                <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
+              </button>
+              
+              <AnimatePresence>
+                {showSeoSettings && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
+                    exit={{ height: 0 }}
+                    className="overflow-hidden border-t border-gray-100"
+                  >
+                    <div className="p-6 space-y-4 bg-gray-50/50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug</label>
+                          <input
+                            type="text"
+                            value={formData.slug}
+                            onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                            placeholder="my-awesome-story"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Title</label>
+                          <input
+                            type="text"
+                            value={formData.meta_title}
+                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
+                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                          />
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Meta Title</label>
-                        <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white" placeholder="Fallback: Title" />
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Description</label>
+                        <textarea
+                          rows="2"
+                          value={formData.meta_description}
+                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
+                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Keywords</label>
+                        <input
+                          type="text"
+                          value={formData.meta_keywords}
+                          onChange={(e) => setFormData({...formData, meta_keywords: e.target.value})}
+                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                          placeholder="keyword1, keyword2..."
+                        />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
-          </div>
 
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Publishing</h3>
-              <div className="space-y-4">
-                <button type="submit" disabled={isSaving} className="w-full flex items-center justify-center px-6 py-4 bg-purple-600 text-white font-bold rounded-xl disabled:opacity-70 shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all">
-                  {isSaving ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" /> : <><SafeIcon icon={FiSave} className="mr-2" /> Publish Story</>}
-                </button>
-                <div className="pt-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status</label>
-                  <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-bold">
-                    <option value="Published">Published</option>
-                    <option value="Draft">Draft</option>
-                  </select>
-                </div>
-                <div className="pt-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Publish Date</label>
-                  <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-bold" />
-                </div>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <SafeIcon icon={isSubmitting ? FiClock : FiSave} className="mr-2" />
+                {isSubmitting ? 'Publishing...' : 'Publish Story'}
+              </button>
             </div>
-            {/* Sidebar sections for Category, Image etc remain unchanged */}
-          </div>
-        </form>
-      </motion.div>
+          </form>
+        </div>
+      </div>
     </ProtectedRoute>
   );
 };

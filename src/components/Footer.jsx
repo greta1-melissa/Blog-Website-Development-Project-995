@@ -81,7 +81,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+        <div className="pt-10 border-t border-gray-100 flex flex-col md:row justify-between items-center text-gray-400 text-sm">
           <p>© {currentYear} BangtanMom. All rights reserved.</p>
           <div className="flex items-center mt-4 md:mt-0">
             <SafeIcon icon={FiShield} className="mr-2 text-purple-400" />

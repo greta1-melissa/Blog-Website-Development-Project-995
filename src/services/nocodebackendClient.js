@@ -1,153 +1,141 @@
 /**
- * NoCodeBackend (NCB) Client
+ * Frontend client for NoCodeBackend (NCB)
+ * Interacts with /api/ncb proxy to inject secrets server-side
  */
 
-const NCB_URL = '/api/ncb';
+const ALLOWED_TABLES = [
+  'posts',
+  'users',
+  'kdrama_recommendations',
+  'product_recommendations',
+  'forum_categories',
+  'forum_threads',
+  'forum_posts'
+];
 
 /**
- * Field allowlists for data integrity.
+ * Normalizes various date inputs into strict YYYY-MM-DD format for NCB/SQL
  */
-export const NCB_ALLOWLISTS = {
-  posts: [
-    'id', 'title', 'slug', 'content', 'category', 'author', 'date',
-    'image', 'status', 'meta_title', 'meta_description', 'meta_keywords', 
-    'og_image', 'readtime', 'ishandpicked', 'created_at', 'updated_at'
-  ],
-  product_recommendations: [
-    'title', 'slug', 'category', 'rating', 'short_blurb', 'full_review', 
-    'image', 'status', 'affiliate_url', 'created_at', 'updated_at'
-  ],
-  kdrama_recommendations: [
-    'title', 'slug', 'tags', 'synopsis_short', 'synopsis_long', 'my_two_cents', 
-    'image_url', 'image', 'is_featured_on_home', 'display_order', 
-    'status', 'created_at', 'updated_at'
-  ]
+export const normalizeNcbDate = (dateInput) => {
+  if (!dateInput) return null;
+
+  try {
+    let d;
+    if (dateInput instanceof Date) {
+      d = dateInput;
+    } else if (typeof dateInput === 'string') {
+      if (dateInput.includes('/')) {
+        const parts = dateInput.split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const year = parseInt(parts[2], 10);
+          d = new Date(year, month, day);
+        }
+      } else {
+        d = new Date(dateInput);
+      }
+    }
+
+    if (d && !isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) {
+    console.error("Date normalization error:", e);
+  }
+  return null;
 };
 
 /**
- * Normalizes a date value to YYYY-MM-DD for NCB DATE columns.
- * Handles Date objects, DD/MM/YYYY, D/M/YYYY, and YYYY-MM-DD.
+ * Sanitizes payload for specific tables before sending to NCB
  */
-export function normalizeNcbDate(dateValue) {
-  if (!dateValue || dateValue === '') {
-    return new Date().toISOString().split('T')[0];
-  }
-
-  if (dateValue instanceof Date) {
-    if (isNaN(dateValue.getTime())) return null;
-    return dateValue.toISOString().slice(0, 10);
-  }
-
-  const str = String(dateValue).trim();
-  if (!str) return new Date().toISOString().split('T')[0];
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    return str;
-  }
-
-  const dmvRegex = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
-  const match = str.match(dmvRegex);
-  if (match) {
-    const [_, d, m, y] = match;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  const d = new Date(str);
-  return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : null;
-}
-
-const getPlainText = (html) => {
-  if (!html) return '';
-  return html.replace(/<[^>]*>/g, '').trim();
-};
-
-export function sanitizeNcbPayload(type, data) {
-  const allowlist = NCB_ALLOWLISTS[type];
-  if (!allowlist) return data;
-
-  const sanitized = {};
-  const now = new Date().toISOString();
+export const sanitizeNcbPayload = (table, payload) => {
+  if (!payload || typeof payload !== 'object') return payload;
   
-  if (type === 'posts') {
-    sanitized.status = data.status || 'Draft';
-    sanitized.date = normalizeNcbDate(data.date) || new Date().toISOString().split('T')[0];
-    sanitized.updated_at = now;
-    if (!data.id) sanitized.created_at = now;
-    
-    sanitized.meta_title = data.meta_title || data.title || '';
-    sanitized.og_image = data.og_image || data.image || '';
-    if (!data.meta_description) {
-      sanitized.meta_description = getPlainText(data.content).substring(0, 160);
-    }
-  }
+  const sanitized = { ...payload };
 
-  allowlist.forEach(field => {
-    if (data[field] !== undefined && sanitized[field] === undefined) {
-      sanitized[field] = data[field];
+  if (table === 'posts') {
+    // Force normalization for date field to fix 500 error
+    if (sanitized.date) {
+      const normalized = normalizeNcbDate(sanitized.date);
+      if (normalized) sanitized.date = normalized;
     }
-  });
+
+    if (!sanitized.status) sanitized.status = 'Draft';
+    
+    // SEO Defaults
+    sanitized.meta_title = sanitized.meta_title || sanitized.title || '';
+    sanitized.meta_description = sanitized.meta_description || '';
+    sanitized.meta_keywords = sanitized.meta_keywords || '';
+    sanitized.og_image = sanitized.og_image || sanitized.image || '';
+  }
 
   return sanitized;
-}
+};
 
-async function handleResponse(res, context) {
-  if (!res.ok) {
-    const errorDetail = await res.text().catch(() => 'Unknown error');
-    const errorMsg = `[NCB Error] ${context} (${res.status}): ${errorDetail}`;
-    if (context.startsWith('readAll')) return []; 
-    throw new Error(errorMsg);
-  }
-  const contentType = res.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    return await res.json().catch(() => ({}));
-  }
-  return { status: 'success' };
-}
-
-export async function getNcbStatus() {
+export const ncbReadAll = async (table) => {
+  if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
-    const posts = await ncbReadAll('posts', { _limit: 1 });
-    return { canReadPosts: true, message: 'Connected to NCB.' };
+    const response = await fetch(`/api/ncb/read/${table}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    return { canReadPosts: false, message: error.message };
+    console.error(`NCB ReadAll Error (${table}):`, error);
+    return [];
   }
-}
+};
 
-export async function ncbReadAll(table, queryParams = {}) {
-  const url = new URL(`${window.location.origin}${NCB_URL}/read/${table}`);
-  Object.entries(queryParams).forEach(([k, v]) => url.searchParams.set(k, v));
-  try {
-    const res = await fetch(url.toString(), { method: 'GET' });
-    const json = await handleResponse(res, `readAll:${table}`);
-    const data = Array.isArray(json) ? json : (json.data || json.records || []);
-    return data.map(item => ({ ...item, id: item.id || item._id }));
-  } catch (error) { return []; }
-}
-
-export async function ncbCreate(table, payload) {
-  const sanitized = sanitizeNcbPayload(table, payload);
-  const res = await fetch(`${window.location.origin}${NCB_URL}/create/${table}`, {
+export const ncbCreate = async (table, data) => {
+  if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
+  const sanitizedData = sanitizeNcbPayload(table, data);
+  const response = await fetch(`/api/ncb/create/${table}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sanitized),
+    body: JSON.stringify(sanitizedData),
   });
-  const json = await handleResponse(res, `create:${table}`);
-  const data = json?.data || json;
-  const item = Array.isArray(data) ? data[0] : data;
-  return { ...item, id: item.id || item._id };
-}
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`NCB Create Error: ${errorText}`);
+  }
+  return response.json();
+};
 
-export async function ncbUpdate(table, id, payload) {
-  const sanitized = sanitizeNcbPayload(table, payload);
-  const res = await fetch(`${window.location.origin}${NCB_URL}/update/${table}/${id}`, {
+export const ncbUpdate = async (table, id, data) => {
+  if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
+  const sanitizedData = sanitizeNcbPayload(table, data);
+  const response = await fetch(`/api/ncb/update/${table}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sanitized),
+    body: JSON.stringify(sanitizedData),
   });
-  return await handleResponse(res, `update:${table}:${id}`);
-}
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`NCB Update Error: ${errorText}`);
+  }
+  return response.json();
+};
 
-export async function ncbDelete(table, id) {
-  const res = await fetch(`${window.location.origin}${NCB_URL}/delete/${table}/${id}`, { method: 'DELETE' });
-  return await handleResponse(res, `delete:${table}:${id}`);
-}
+export const ncbDelete = async (table, id) => {
+  if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
+  const response = await fetch(`/api/ncb/delete/${table}/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`NCB Delete Error: ${errorText}`);
+  }
+  return response.json();
+};
+
+export const getNcbStatus = async () => {
+  try {
+    const test = await ncbReadAll('posts');
+    return { ok: true, count: test.length };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+};
