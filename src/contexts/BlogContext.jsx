@@ -13,14 +13,21 @@ export const BlogProvider = ({ children }) => {
   const fetchBlogData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [pData, prodData] = await Promise.all([
-        ncbReadAll('posts').catch(() => []),
-        ncbReadAll('product_recommendations').catch(() => [])
-      ]);
+      // Use catch to prevent one failure from blocking the other
+      const pData = await ncbReadAll('posts').catch(err => {
+        console.error("Failed to load posts:", err);
+        return [];
+      });
+      
+      const prodData = await ncbReadAll('product_recommendations').catch(err => {
+        console.error("Failed to load products:", err);
+        return [];
+      });
+
       setPosts(pData || []);
       setProducts(prodData || []);
     } catch (error) {
-      console.error('Error fetching blog data:', error);
+      console.error('CRITICAL: Error fetching blog data:', error);
       setPosts([]);
       setProducts([]);
     } finally {
@@ -33,10 +40,18 @@ export const BlogProvider = ({ children }) => {
   }, [fetchBlogData]);
 
   // Public filtering: Only show published posts for homepage/public lists
+  // Updated to be case-insensitive for 'status' column and value
   const publishedPosts = useMemo(() => 
     (posts || [])
-      .filter(p => p.status === 'Published' || p.status === 'published')
-      .sort((a, b) => new Date(b.date) - new Date(a.date)),
+      .filter(p => {
+        const status = (p.status || p.Status || 'Draft').toString().toLowerCase();
+        return status === 'published';
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date || a.Date || 0);
+        const dateB = new Date(b.date || b.Date || 0);
+        return dateB - dateA;
+      }),
   [posts]);
 
   const addPost = async (postData) => {

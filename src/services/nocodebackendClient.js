@@ -80,20 +80,21 @@ export const sanitizeNcbPayload = (table, payload) => {
 
 /**
  * READ: Fetches all records from a table
- * Reverted to standard /api/ncb/tableName structure to ensure proxy connectivity
+ * Uses /api/ncb/tableName structure.
  */
 export const ncbReadAll = async (table) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
     const response = await fetch(`/api/ncb/${table}`);
     if (!response.ok) {
-      console.warn(`NCB Read Warning: ${table} returned status ${response.status}`);
+      const errorText = await response.text();
+      console.error(`NCB Read Error [${table}]: Status ${response.status}`, errorText);
       return [];
     }
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error(`NCB ReadAll Error (${table}):`, error);
+    console.error(`NCB ReadAll Network Error (${table}):`, error);
     return [];
   }
 };

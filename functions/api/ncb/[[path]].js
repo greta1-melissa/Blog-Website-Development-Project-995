@@ -39,11 +39,12 @@ export async function onRequest(context) {
     });
 
     // 3. ENFORCE INSTANCE PARAMETER (Server Side Injection)
-    // Priority: VITE_NCB_INSTANCE > VITE_NCB_INSTANCE_ID > NCB_INSTANCE
+    // Priority: VITE_NCB_INSTANCE > VITE_NCB_INSTANCE_ID > NCB_INSTANCE > NCB_INSTANCE_ID
     const instance =
       env.VITE_NCB_INSTANCE ||
       env.VITE_NCB_INSTANCE_ID ||
-      env.NCB_INSTANCE;
+      env.NCB_INSTANCE ||
+      env.NCB_INSTANCE_ID;
 
     if (!instance) {
       console.error("[NCB Proxy] Missing NCB Instance in environment variables.");
@@ -51,7 +52,7 @@ export async function onRequest(context) {
         JSON.stringify({
           error: "Missing NCB Instance",
           details:
-            "Server configuration error: Instance ID not found in environment.",
+            "Server configuration error: Instance ID not found in environment. Please check Cloudflare Pages settings.",
         }),
         {
           status: 500,
@@ -108,7 +109,6 @@ export async function onRequest(context) {
     newHeaders.set("Access-Control-Allow-Origin", "*");
 
     // ✅ IMPORTANT: NCB may return 204 No Content (especially on DELETE).
-    // Cloudflare Workers/Pages Functions cannot return a body for these statuses.
     if ([101, 204, 205, 304].includes(response.status)) {
       return new Response(null, {
         status: response.status,
@@ -124,7 +124,7 @@ export async function onRequest(context) {
           upstreamStatusText: response.statusText,
           upstreamBody: errorText,
           path: targetUrl.pathname,
-          instance: instance,
+          instance: instance ? "Set (Hidden)" : "Missing",
         }),
         {
           status: response.status,
