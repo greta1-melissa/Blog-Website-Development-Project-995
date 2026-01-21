@@ -49,6 +49,7 @@ export const normalizeNcbDate = (dateInput) => {
 
 /**
  * Sanitizes payload for specific tables before sending to NCB
+ * Enforces exact field names required by the database schema
  */
 export const sanitizeNcbPayload = (table, payload) => {
   if (!payload || typeof payload !== 'object') return payload;
@@ -57,42 +58,33 @@ export const sanitizeNcbPayload = (table, payload) => {
   if (table === 'posts') {
     const today = new Date().toISOString().slice(0, 10);
     
-    // Core Required Fields
-    sanitized.title = sanitized.title || '';
-    sanitized.slug = sanitized.slug || '';
-    
-    // Map 'content' or 'content_html' correctly
-    sanitized.content_html = sanitized.content_html || sanitized.content || '';
-    
-    // Map 'image' to 'featured_image_url'
-    sanitized.featured_image_url = sanitized.featured_image_url || sanitized.image || '';
-    
-    // Optional Fields
-    sanitized.excerpt = sanitized.excerpt || '';
-    sanitized.featured_image_dropbox_url = sanitized.featured_image_dropbox_url || '';
-    
-    // Status Logic
-    const currentStatus = (sanitized.status || 'draft').toLowerCase();
-    sanitized.status = currentStatus === 'published' ? 'published' : 'draft';
-    
-    // Timestamp Logic (YYYY-MM-DD)
-    sanitized.created_at = sanitized.created_at || today;
-    sanitized.updated_at = today;
-    
-    if (sanitized.status === 'published' && !sanitized.published_at) {
-      sanitized.published_at = today;
+    // Core Required Fields as per user request
+    const finalPayload = {
+      title: sanitized.title?.trim() || '',
+      slug: sanitized.slug || '',
+      excerpt: sanitized.excerpt || '',
+      content_html: sanitized.content_html || sanitized.content || '',
+      status: (sanitized.status || 'draft').toLowerCase(),
+      created_at: sanitized.created_at || today,
+      updated_at: today
+    };
+
+    // Set published_at only if status is published
+    if (finalPayload.status === 'published') {
+      finalPayload.published_at = sanitized.published_at || today;
+    } else {
+      finalPayload.published_at = null;
     }
 
-    // Additional metadata
-    sanitized.meta_title = sanitized.meta_title || sanitized.title || '';
-    sanitized.meta_description = sanitized.meta_description || '';
-    sanitized.meta_keywords = sanitized.meta_keywords || '';
-    sanitized.og_image = sanitized.og_image || sanitized.featured_image_url || '';
+    // Preserve optional legacy fields if they exist in the incoming payload 
+    // but ensure the required ones are prioritized
+    if (sanitized.featured_image_url) finalPayload.featured_image_url = sanitized.featured_image_url;
+    if (sanitized.author) finalPayload.author = sanitized.author;
+    if (sanitized.category) finalPayload.category = sanitized.category;
+    if (sanitized.read_time) finalPayload.read_time = sanitized.read_time;
+    if (sanitized.tags) finalPayload.tags = sanitized.tags;
 
-    // Remove temporary frontend-only fields that might break SQL insert
-    delete sanitized.content;
-    delete sanitized.image;
-    delete sanitized.date; // Use published_at or created_at instead
+    return finalPayload;
   }
   
   return sanitized;

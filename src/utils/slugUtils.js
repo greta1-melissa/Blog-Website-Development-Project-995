@@ -14,21 +14,21 @@ export const generateSlug = (text) => {
 
 /**
  * Ensures a slug is unique within a collection
+ * If slug exists, appends - and 4 random characters
  */
 export const ensureUniqueSlug = (title, existingItems = [], currentId = null) => {
   const baseSlug = generateSlug(title);
-  let slug = baseSlug;
-  let counter = 1;
-
+  
   // Ensure existingItems is an array
   const safeItems = Array.isArray(existingItems) ? existingItems : [];
+  
+  const exists = safeItems.some(item => item.slug === baseSlug && item.id !== currentId);
+  
+  if (!exists) return baseSlug;
 
-  while (safeItems.some(item => item.slug === slug && item.id !== currentId)) {
-    counter++;
-    slug = `${baseSlug}-${counter}`;
-  }
-
-  return slug;
+  // Generate random 4 character string
+  const randomChars = Math.random().toString(36).substring(2, 6);
+  return `${baseSlug}-${randomChars}`;
 };
 
 /**

@@ -8,14 +8,13 @@ import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import SafeImage from '../common/SafeImage';
-import { generateSlug, calculateReadTime } from '../utils/slugUtils';
+import { generateSlug, ensureUniqueSlug, calculateReadTime } from '../utils/slugUtils';
 
-const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiEye, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe } = FiIcons;
+const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { addPost, refreshData } = useBlog();
+  const { posts, addPost, refreshData } = useBlog();
   const { user } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,32 +28,29 @@ const CreatePost = () => {
     image: '',
     category: 'Lifestyle',
     tags: '',
-    status: 'published', // Changed to lowercase to match sanitizer logic
+    status: 'published',
     slug: '',
     meta_title: '',
-    meta_description: '',
-    meta_keywords: '',
-    og_image: '',
-    canonical_url: '',
-    noindex: false
+    meta_description: ''
   });
 
+  // Auto-generate slug when title changes
   useEffect(() => {
     if (formData.title && !formData.slug) {
-      const slug = generateSlug(formData.title);
+      const uniqueSlug = ensureUniqueSlug(formData.title, posts);
       setFormData(prev => ({
         ...prev,
-        slug,
+        slug: uniqueSlug,
         meta_title: prev.title
       }));
     }
-  }, [formData.title]);
+  }, [formData.title, posts]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    // Strict Validation
+    // Validation
     if (!formData.title?.trim()) {
       setError('Title is required');
       return;
@@ -69,13 +65,21 @@ const CreatePost = () => {
       const readTime = calculateReadTime(formData.content);
       const today = new Date().toISOString().slice(0, 10);
 
-      // Construct payload according to NCB requirements
-      // The sanitizer in ncbCreate will handle final mapping of content -> content_html etc.
+      // Final slug uniqueness check right before submission
+      const finalSlug = ensureUniqueSlug(formData.slug || formData.title, posts);
+
+      // Construct the exact payload requested by the user
       const payload = {
-        ...formData,
-        read_time: readTime,
+        title: formData.title.trim(),
+        slug: finalSlug,
+        excerpt: formData.excerpt.trim(),
+        content_html: formData.content, // Rich editor output
+        status: formData.status,
+        featured_image_url: formData.image,
+        category: formData.category,
+        tags: formData.tags,
         author: user?.name || 'Admin',
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean).join(', '),
+        read_time: readTime,
         created_at: today,
         updated_at: today,
         published_at: formData.status === 'published' ? today : null
@@ -115,6 +119,7 @@ const CreatePost = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Primary Content Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="space-y-6">
                 <div>
@@ -157,6 +162,7 @@ const CreatePost = () => {
               </div>
             </div>
 
+            {/* Metadata Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -223,6 +229,7 @@ const CreatePost = () => {
               </div>
             </div>
 
+            {/* SEO Settings Collapsible */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 type="button"
@@ -280,6 +287,7 @@ const CreatePost = () => {
               </AnimatePresence>
             </div>
 
+            {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-4">
               <button
                 type="button"
@@ -294,7 +302,7 @@ const CreatePost = () => {
                 className="flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
               >
                 <SafeIcon icon={isSubmitting ? FiClock : FiSave} className="mr-2" />
-                {isSubmitting ? 'Publishing...' : 'Publish Story'}
+                {isSubmitting ? 'Saving...' : 'Save Story'}
               </button>
             </div>
           </form>
