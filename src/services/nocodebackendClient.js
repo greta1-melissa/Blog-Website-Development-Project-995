@@ -1,15 +1,12 @@
 /**
  * NoCodeBackend (NCB) Client
- * 
- * FRONTEND: Strictly calls the Cloudflare Pages Proxy (/api/ncb/*).
- * The proxy handles Instance ID and API Key injection server-side.
  */
 
 const NCB_URL = '/api/ncb';
 
 /**
  * Field allowlists for data integrity.
- * Updated to include the new Publishing, SEO, and Timestamp fields.
+ * Includes Publishing, SEO, and Timestamp fields for the posts table.
  */
 export const NCB_ALLOWLISTS = {
   posts: [
@@ -53,12 +50,15 @@ export const NCB_ALLOWLISTS = {
 
 /**
  * Normalizes a date string to YYYY-MM-DD for NCB DATE columns.
+ * Handles Date objects, DD/MM/YYYY strings, and already formatted YYYY-MM-DD strings.
  */
 export function normalizeNcbDate(dateValue) {
+  // Case: Blank/Undefined -> Default to Today
   if (!dateValue || dateValue === '') {
     return new Date().toISOString().split('T')[0];
   }
 
+  // Case A: Picker returns a Date object
   if (dateValue instanceof Date) {
     if (isNaN(dateValue.getTime())) return null;
     return dateValue.toISOString().slice(0, 10);
@@ -67,15 +67,18 @@ export function normalizeNcbDate(dateValue) {
   const trimmed = String(dateValue).trim();
   if (!trimmed) return new Date().toISOString().split('T')[0];
 
+  // Case: Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
 
+  // Case B: Picker returns DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
     const [day, month, year] = trimmed.split('/');
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 
+  // Fallback for other standard date strings
   try {
     const d = new Date(trimmed);
     if (!isNaN(d.getTime())) {
@@ -98,7 +101,7 @@ const getPlainText = (html) => {
 
 /**
  * Sanitizes payload based on type and allowlist.
- * Ensures strict YYYY-MM-DD date format and mandatory defaults for the new schema.
+ * Ensures strict YYYY-MM-DD date format and mandatory defaults.
  */
 export function sanitizeNcbPayload(type, data) {
   const allowlist = NCB_ALLOWLISTS[type];
@@ -116,7 +119,7 @@ export function sanitizeNcbPayload(type, data) {
     const normalized = normalizeNcbDate(data.date);
     sanitized.date = normalized || new Date().toISOString().split('T')[0];
 
-    // 3. Timestamps (Varchar 255 as requested)
+    // 3. Timestamps
     sanitized.updated_at = now;
     if (!data.id) {
       sanitized.created_at = now;
@@ -198,9 +201,6 @@ async function handleResponse(res, context) {
   return { status: 'success' };
 }
 
-/**
- * Checks the connection status to NCB via the proxy.
- */
 export async function getNcbStatus() {
   try {
     const posts = await ncbReadAll('posts', { _limit: 1 });
