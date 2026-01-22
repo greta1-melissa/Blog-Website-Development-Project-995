@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { generateSlug, calculateReadTime } from '../utils/slugUtils';
 import { normalizeNcbDate } from '../services/nocodebackendClient';
 
-const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash } = FiIcons;
+const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const { user } = useAuth();
@@ -29,6 +29,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
       if (post) {
         setFormData({
           ...post,
+          excerpt: post.excerpt || '',
           meta_title: post.meta_title || post.title || '',
           meta_description: post.meta_description || '',
           meta_keywords: post.meta_keywords || '',
@@ -42,6 +43,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         // Initialize for NEW post
         setFormData({
           title: '',
+          excerpt: '',
           content: '',
           category: safeCategories[0],
           status: 'Draft',
@@ -61,6 +63,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
     }
   }, [post, isOpen]);
 
+  const stripHtml = (html) => {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
@@ -72,10 +80,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
       return;
     }
 
+    // Auto-generate excerpt if blank
+    let finalExcerpt = formData.excerpt?.trim();
+    if (!finalExcerpt && formData.content) {
+      const plainText = stripHtml(formData.content);
+      finalExcerpt = plainText.substring(0, 155).trim();
+      if (plainText.length > 155) finalExcerpt += '...';
+    }
+
     setIsSubmitting(true);
     try {
       const updatedPost = {
         ...formData,
+        excerpt: finalExcerpt || null,
         date: normalizedDate,
         featured_image_url: formData.featured_image_url?.trim() || null,
         readtime: calculateReadTime(formData.content),
@@ -312,6 +329,24 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
+
+            {/* Excerpt */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                <SafeIcon icon={FiAlignLeft} className="mr-2 text-purple-600" />
+                Excerpt
+              </label>
+              <textarea
+                value={formData.excerpt}
+                onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
+                placeholder="Short summary of the post..."
+                rows="3"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+              />
+              <p className="mt-1 text-[10px] text-gray-400 font-medium">
+                Recommended 120–160 characters. If left blank, we'll generate one from your content.
+              </p>
             </div>
 
             {/* Editor */}
