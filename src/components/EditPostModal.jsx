@@ -35,7 +35,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
           slug: post.slug || generateSlug(post.title || ''),
           og_image: post.og_image || post.image || '',
           status: post.status || 'Published',
-          date: post.date || new Date().toLocaleDateString('en-GB')
+          date: post.date || new Date().toLocaleDateString('en-GB'),
+          featured_image_url: post.featured_image_url || post.image || ''
         });
       } else {
         // Initialize for NEW post
@@ -50,7 +51,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
           meta_keywords: '',
           slug: '',
           og_image: '',
-          image: ''
+          image: '',
+          featured_image_url: ''
         });
       }
       setError(null);
@@ -75,6 +77,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
       const updatedPost = {
         ...formData,
         date: normalizedDate,
+        featured_image_url: formData.featured_image_url?.trim() || null,
         readtime: calculateReadTime(formData.content),
         updated_at: new Date().toISOString()
       };
@@ -88,6 +91,17 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   };
 
   if (!isOpen || !formData) return null;
+
+  // Simple URL validation for the inline note
+  const isValidUrl = (url) => {
+    if (!url) return true;
+    try {
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -166,6 +180,39 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                   {safeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
+            </div>
+
+            {/* Featured Image URL */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                  <SafeIcon icon={FiImage} className="mr-2 text-purple-600" />
+                  Featured Image URL
+                </label>
+                <input
+                  type="text"
+                  value={formData.featured_image_url || ''}
+                  placeholder="https://example.com/image.jpg"
+                  onChange={(e) => setFormData({...formData, featured_image_url: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                />
+                {!isValidUrl(formData.featured_image_url) && formData.featured_image_url && (
+                  <p className="mt-1 text-xs text-amber-600 font-medium flex items-center">
+                    <SafeIcon icon={FiInfo} className="mr-1" /> Check image URL format
+                  </p>
+                )}
+              </div>
+              
+              {formData.featured_image_url && isValidUrl(formData.featured_image_url) && (
+                <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50 w-fit max-w-full">
+                  <img 
+                    src={formData.featured_image_url} 
+                    alt="Featured preview" 
+                    className="max-h-[120px] object-contain"
+                    onError={(e) => e.target.parentElement.style.display = 'none'}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Status & Date */}
