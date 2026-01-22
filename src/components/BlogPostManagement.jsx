@@ -18,9 +18,9 @@ const BlogPostManagement = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   const filteredPosts = useMemo(() => {
-    return posts.filter(post => 
-      post.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      post.category.toLowerCase().includes(searchTerm.toLowerCase())
+    return (posts || []).filter(post => 
+      (post.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (post.category || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [posts, searchTerm]);
 
@@ -52,7 +52,15 @@ const BlogPostManagement = () => {
           <h2 className="text-2xl font-bold text-gray-900">Blog Stories</h2>
           <p className="text-sm text-gray-500">Manage your articles (Source: Posts Table)</p>
         </div>
-        <button onClick={() => { setEditingPost(null); setIsModalOpen(true); }} className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-lg font-bold">
+        <button 
+          type="button"
+          onClick={() => { 
+            console.log("Write New Story clicked ✅");
+            setEditingPost(null); 
+            setIsModalOpen(true); 
+          }} 
+          className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-lg font-bold"
+        >
           <SafeIcon icon={FiPlus} className="mr-2" /> Write New Story
         </button>
       </div>

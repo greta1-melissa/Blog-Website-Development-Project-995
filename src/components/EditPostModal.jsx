@@ -20,23 +20,44 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   const [error, setError] = useState(null);
 
   // Use a safe fallback for categories
-  const safeCategories = Array.isArray(categories) ? categories : ['Motherhood', 'K-Drama', 'Lifestyle', 'Personal', 'Tips'];
+  const safeCategories = Array.isArray(categories) && categories.length > 0 
+    ? categories 
+    : ['Motherhood', 'BTS', 'K-Drama', 'Lifestyle', 'Personal', 'Tips'];
 
   useEffect(() => {
-    if (post) {
-      setFormData({
-        ...post,
-        meta_title: post.meta_title || post.title || '',
-        meta_description: post.meta_description || '',
-        meta_keywords: post.meta_keywords || '',
-        slug: post.slug || generateSlug(post.title || ''),
-        og_image: post.og_image || post.image || '',
-        status: post.status || 'Published',
-        date: post.date || new Date().toLocaleDateString('en-GB')
-      });
+    if (isOpen) {
+      if (post) {
+        setFormData({
+          ...post,
+          meta_title: post.meta_title || post.title || '',
+          meta_description: post.meta_description || '',
+          meta_keywords: post.meta_keywords || '',
+          slug: post.slug || generateSlug(post.title || ''),
+          og_image: post.og_image || post.image || '',
+          status: post.status || 'Published',
+          date: post.date || new Date().toLocaleDateString('en-GB')
+        });
+      } else {
+        // Initialize for NEW post
+        setFormData({
+          title: '',
+          content: '',
+          category: safeCategories[0],
+          status: 'Draft',
+          date: new Date().toLocaleDateString('en-GB'),
+          meta_title: '',
+          meta_description: '',
+          meta_keywords: '',
+          slug: '',
+          og_image: '',
+          image: ''
+        });
+      }
       setError(null);
+    } else {
+      setFormData(null);
     }
-  }, [post]);
+  }, [post, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,10 +78,10 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         readtime: calculateReadTime(formData.content),
         updated_at: new Date().toISOString()
       };
-      await onSave(updatedPost);
+      await onSave(post?.id, updatedPost);
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to update post.");
+      setError(err.message || "Failed to save post.");
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +91,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -88,17 +109,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
           {/* Header */}
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Edit Story</h2>
-              <p className="text-gray-500 text-xs">Making updates to your magical content</p>
+              <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'New Story'}</h2>
+              <p className="text-gray-500 text-xs">{post ? 'Making updates to your magical content' : 'Start sharing your magical journey'}</p>
             </div>
             <div className="flex items-center space-x-3">
               <button
+                type="button"
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <SafeIcon icon={FiX} />
               </button>
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white px-6 py-2.5 rounded-xl font-bold transition-all flex items-center"
@@ -108,7 +131,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 ) : (
                   <SafeIcon icon={FiSave} className="mr-2" />
                 )}
-                Save Changes
+                {post ? 'Save Changes' : 'Publish Story'}
               </button>
             </div>
           </div>
@@ -128,6 +151,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 <input
                   type="text"
                   value={formData.title}
+                  placeholder="Enter story title..."
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                 />
@@ -162,6 +186,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 <input
                   type="text"
                   value={formData.date}
+                  placeholder="25/12/2023"
                   onChange={(e) => setFormData({...formData, date: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                 />
@@ -199,6 +224,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                         <input
                           type="text"
                           value={formData.slug}
+                          placeholder="story-url-slug"
                           onChange={(e) => setFormData({...formData, slug: e.target.value})}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                         />
@@ -209,6 +235,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                           <input
                             type="text"
                             value={formData.meta_title}
+                            placeholder="SEO Title"
                             onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                           />
@@ -218,6 +245,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                           <input
                             type="text"
                             value={formData.meta_keywords}
+                            placeholder="BTS, Parenting, Blog"
                             onChange={(e) => setFormData({...formData, meta_keywords: e.target.value})}
                             className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                           />
@@ -228,6 +256,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                         <textarea
                           value={formData.meta_description}
                           onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
+                          placeholder="Short description for search engines..."
                           rows="2"
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                         />
