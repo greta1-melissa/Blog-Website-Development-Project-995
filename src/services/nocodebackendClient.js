@@ -6,7 +6,8 @@
 const ALLOWED_TABLES = [
   'posts',
   'users',
-  'kdrama_recommendations',
+  'kdramas',
+  'categories',
   'product_recommendations',
   'forum_categories',
   'forum_threads',
@@ -62,21 +63,19 @@ export const sanitizeNcbPayload = (table, payload) => {
   if (table === 'posts') {
     const now = new Date().toISOString();
     
-    /**
-     * REQUIRED FIELDS FOR POSTS:
-     * title, slug, content_html, status, created_at, updated_at
-     */
-    
-    // Ensure slug has a unique suffix if it looks like it's a new post or missing unique part
+    // Ensure slug is unique by appending timestamp
     let finalSlug = toNull(sanitized.slug);
     if (!finalSlug && sanitized.title) {
       finalSlug = sanitized.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
     
-    // If it's a creation (no ID in payload usually means creation in many flows, 
-    // but here we always add a timestamp to ensure uniqueness as requested)
-    if (finalSlug && !finalSlug.match(/\d{10,}/)) {
-      finalSlug = `${finalSlug}-${Date.now()}`;
+    // Always append timestamp to ensure uniqueness as per DB constraint
+    if (finalSlug) {
+      // If it already has a long timestamp at the end, don't append another one
+      const timestampRegex = /-\d{13,}$/;
+      if (!timestampRegex.test(finalSlug)) {
+        finalSlug = `${finalSlug}-${Date.now()}`;
+      }
     }
 
     const finalPayload = {
@@ -86,7 +85,7 @@ export const sanitizeNcbPayload = (table, payload) => {
       content_html: toNull(sanitized.content_html || sanitized.content),
       featured_image_dropbox_url: toNull(sanitized.featured_image_dropbox_url),
       featured_image_url: toNull(sanitized.featured_image_url || sanitized.image),
-      category_id: (sanitized.category_id !== undefined && sanitized.category_id !== '') ? Number(sanitized.category_id) : null,
+      category_id: (sanitized.category_id !== undefined && sanitized.category_id !== null && sanitized.category_id !== '') ? Number(sanitized.category_id) : null,
       author_name: toNull(sanitized.author_name || sanitized.author),
       author_email: toNull(sanitized.author_email),
       status: (sanitized.status || 'draft').toLowerCase(),
@@ -94,16 +93,11 @@ export const sanitizeNcbPayload = (table, payload) => {
       updated_at: now
     };
 
-    // Set published_at only if status is published, using full ISO string
+    // Set published_at based on status
     if (finalPayload.status === 'published') {
       finalPayload.published_at = toNull(sanitized.published_at) || now;
     } else {
       finalPayload.published_at = null;
-    }
-
-    // Double check required fields are not null to avoid SQL errors
-    if (!finalPayload.title || !finalPayload.slug || !finalPayload.content_html) {
-      console.warn("NCB Payload Warning: Missing required fields (title, slug, or content_html)");
     }
 
     return finalPayload;
@@ -139,6 +133,9 @@ export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
   
+  // Debug log as requested
+  console.log(`NCB Create [${table}] Payload:`, sanitizedData);
+  
   const response = await fetch(`/api/ncb/create/${table}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -167,6 +164,9 @@ export const ncbCreate = async (table, data) => {
 export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
+  
+  // Debug log as requested
+  console.log(`NCB Update [${table}: ${id}] Payload:`, sanitizedData);
   
   const response = await fetch(`/api/ncb/update/${table}/${id}`, {
     method: 'PUT',

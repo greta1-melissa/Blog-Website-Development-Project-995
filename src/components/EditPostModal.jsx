@@ -4,25 +4,19 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import SafeImage from '../common/SafeImage';
-import { LOGO_URL } from '../config/assets';
 import { useAuth } from '../contexts/AuthContext';
+import { useBlog } from '../contexts/BlogContext';
 import { generateSlug, calculateReadTime } from '../utils/slugUtils';
-import { normalizeNcbDate } from '../services/nocodebackendClient';
 
-const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft } = FiIcons;
+const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft, FiLayers } = FiIcons;
 
-const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
+const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
   const { user } = useAuth();
+  const { categories } = useBlog();
   const [formData, setFormData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSeoSettings, setShowSeoSettings] = useState(false);
   const [error, setError] = useState(null);
-
-  // Use a safe fallback for categories
-  const safeCategories = Array.isArray(categories) && categories.length > 0 
-    ? categories 
-    : ['Motherhood', 'BTS', 'K-Drama', 'Lifestyle', 'Personal', 'Tips'];
 
   useEffect(() => {
     if (isOpen) {
@@ -30,38 +24,31 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
         setFormData({
           ...post,
           excerpt: post.excerpt || '',
-          meta_title: post.meta_title || post.title || '',
-          meta_description: post.meta_description || '',
-          meta_keywords: post.meta_keywords || '',
+          content: post.content_html || post.content || '',
+          category_id: post.category_id || (categories[0]?.id || 1),
+          status: post.status || 'published',
           slug: post.slug || generateSlug(post.title || ''),
-          og_image: post.og_image || post.image || '',
-          status: post.status || 'Published',
-          date: post.date || new Date().toLocaleDateString('en-GB'),
-          featured_image_url: post.featured_image_url || post.image || ''
+          featured_image_url: post.featured_image_url || post.image || '',
+          featured_image_dropbox_url: post.featured_image_dropbox_url || ''
         });
       } else {
-        // Initialize for NEW post
         setFormData({
           title: '',
           excerpt: '',
           content: '',
-          category: safeCategories[0],
-          status: 'Draft',
-          date: new Date().toLocaleDateString('en-GB'),
-          meta_title: '',
-          meta_description: '',
-          meta_keywords: '',
+          category_id: categories[0]?.id || 1,
+          status: 'draft',
           slug: '',
-          og_image: '',
           image: '',
-          featured_image_url: ''
+          featured_image_url: '',
+          featured_image_dropbox_url: ''
         });
       }
       setError(null);
     } else {
       setFormData(null);
     }
-  }, [post, isOpen]);
+  }, [post, isOpen, categories]);
 
   const stripHtml = (html) => {
     const tmp = document.createElement("DIV");
@@ -73,14 +60,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
     e.preventDefault();
     if (!formData.title || !formData.content) return;
 
-    // Validate and Normalize Date for NCB (YYYY-MM-DD)
-    const normalizedDate = normalizeNcbDate(formData.date);
-    if (!normalizedDate) {
-      setError("Invalid date format. Please use DD/MM/YYYY.");
-      return;
-    }
-
-    // Auto-generate excerpt if blank
     let finalExcerpt = formData.excerpt?.trim();
     if (!finalExcerpt && formData.content) {
       const plainText = stripHtml(formData.content);
@@ -90,14 +69,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
 
     setIsSubmitting(true);
     try {
+      const now = new Date().toISOString();
       const updatedPost = {
         ...formData,
         excerpt: finalExcerpt || null,
-        date: normalizedDate,
+        content_html: formData.content,
+        category_id: Number(formData.category_id),
         featured_image_url: formData.featured_image_url?.trim() || null,
-        readtime: calculateReadTime(formData.content),
-        updated_at: new Date().toISOString()
+        featured_image_dropbox_url: formData.featured_image_dropbox_url?.trim() || null,
+        status: formData.status.toLowerCase(),
+        updated_at: now,
+        published_at: formData.status.toLowerCase() === 'published' ? (formData.published_at || now) : null
       };
+      
       await onSave(post?.id, updatedPost);
       onClose();
     } catch (err) {
@@ -108,17 +92,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
   };
 
   if (!isOpen || !formData) return null;
-
-  // Simple URL validation for the inline note
-  const isValidUrl = (url) => {
-    if (!url) return true;
-    try {
-      new URL(url);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -137,11 +110,10 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
-          {/* Header */}
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
             <div>
               <h2 className="text-xl font-bold text-gray-900">{post ? 'Edit Story' : 'New Story'}</h2>
-              <p className="text-gray-500 text-xs">{post ? 'Making updates to your magical content' : 'Start sharing your magical journey'}</p>
+              <p className="text-gray-500 text-xs">Manage your content details</p>
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -162,7 +134,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 ) : (
                   <SafeIcon icon={FiSave} className="mr-2" />
                 )}
-                {post ? 'Save Changes' : 'Publish Story'}
+                Save Changes
               </button>
             </div>
           </div>
@@ -175,7 +147,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
               </div>
             )}
 
-            {/* Title & Category */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-bold text-gray-700 mb-2">Story Title</label>
@@ -190,17 +161,18 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  value={formData.category_id}
+                  onChange={(e) => setFormData({...formData, category_id: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white"
                 >
-                  {safeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* Featured Image URL */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
                   <SafeIcon icon={FiImage} className="mr-2 text-purple-600" />
@@ -209,30 +181,26 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 <input
                   type="text"
                   value={formData.featured_image_url || ''}
-                  placeholder="https://example.com/image.jpg"
+                  placeholder="Display Image URL"
                   onChange={(e) => setFormData({...formData, featured_image_url: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                 />
-                {!isValidUrl(formData.featured_image_url) && formData.featured_image_url && (
-                  <p className="mt-1 text-xs text-amber-600 font-medium flex items-center">
-                    <SafeIcon icon={FiInfo} className="mr-1" /> Check image URL format
-                  </p>
-                )}
               </div>
-              
-              {formData.featured_image_url && isValidUrl(formData.featured_image_url) && (
-                <div className="rounded-2xl border border-gray-100 overflow-hidden bg-gray-50 w-fit max-w-full">
-                  <img 
-                    src={formData.featured_image_url} 
-                    alt="Featured preview" 
-                    className="max-h-[120px] object-contain"
-                    onError={(e) => e.target.parentElement.style.display = 'none'}
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                  <SafeIcon icon={FiImage} className="mr-2 text-purple-600" />
+                  Dropbox Share Link
+                </label>
+                <input
+                  type="text"
+                  value={formData.featured_image_dropbox_url || ''}
+                  placeholder="Dropbox Original Link"
+                  onChange={(e) => setFormData({...formData, featured_image_dropbox_url: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                />
+              </div>
             </div>
 
-            {/* Status & Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Status</label>
@@ -241,23 +209,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                   onChange={(e) => setFormData({...formData, status: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white"
                 >
-                  <option value="Published">Published</option>
-                  <option value="Draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Publish Date (DD/MM/YYYY)</label>
-                <input
-                  type="text"
-                  value={formData.date}
-                  placeholder="25/12/2023"
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
-                />
               </div>
             </div>
 
-            {/* SEO Settings */}
             <div className="border border-gray-100 rounded-2xl overflow-hidden">
               <button
                 type="button"
@@ -266,7 +223,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
               >
                 <div className="flex items-center text-gray-700 font-bold">
                   <SafeIcon icon={FiSettings} className="mr-2 text-purple-600" />
-                  SEO & Meta Details
+                  SEO & URL Settings
                 </div>
                 <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
               </button>
@@ -293,45 +250,12 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                         />
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Meta Title</label>
-                          <input
-                            type="text"
-                            value={formData.meta_title}
-                            placeholder="SEO Title"
-                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Meta Keywords</label>
-                          <input
-                            type="text"
-                            value={formData.meta_keywords}
-                            placeholder="BTS, Parenting, Blog"
-                            onChange={(e) => setFormData({...formData, meta_keywords: e.target.value})}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Meta Description</label>
-                        <textarea
-                          value={formData.meta_description}
-                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
-                          placeholder="Short description for search engines..."
-                          rows="2"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
-                        />
-                      </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Excerpt */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
                 <SafeIcon icon={FiAlignLeft} className="mr-2 text-purple-600" />
@@ -344,12 +268,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave, categories = [] }) => {
                 rows="3"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
               />
-              <p className="mt-1 text-[10px] text-gray-400 font-medium">
-                Recommended 120–160 characters. If left blank, we'll generate one from your content.
-              </p>
             </div>
 
-            {/* Editor */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">Story Content</label>
               <div className="rounded-2xl border border-gray-200 overflow-hidden min-h-[300px]">

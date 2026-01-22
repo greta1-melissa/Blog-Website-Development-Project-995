@@ -8,13 +8,13 @@ import { useAuth } from '../contexts/AuthContext';
 import ProtectedRoute from '../components/ProtectedRoute';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { generateSlug, ensureUniqueSlug, calculateReadTime } from '../utils/slugUtils';
+import { generateSlug } from '../utils/slugUtils';
 
 const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe, FiCheckCircle } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { posts, addPost } = useBlog();
+  const { addPost, categories } = useBlog();
   const { user } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,20 +28,27 @@ const CreatePost = () => {
     content: '',
     image: '',
     category_id: '',
-    status: 'draft', // Default to draft as requested
+    status: 'draft',
     slug: '',
     meta_title: '',
     meta_description: '',
     featured_image_dropbox_url: ''
   });
 
+  // Default to first category if available
+  useEffect(() => {
+    if (categories && categories.length > 0 && !formData.category_id) {
+      setFormData(prev => ({ ...prev, category_id: categories[0].id }));
+    }
+  }, [categories]);
+
   // Auto-generate slug when title changes
   useEffect(() => {
     if (formData.title && !formData.slug) {
-      const uniqueSlug = generateSlug(formData.title);
+      const cleanSlug = generateSlug(formData.title);
       setFormData(prev => ({
         ...prev,
-        slug: uniqueSlug,
+        slug: cleanSlug,
         meta_title: prev.title
       }));
     }
@@ -52,7 +59,6 @@ const CreatePost = () => {
     setError('');
     setSuccess(false);
     
-    // Validation
     if (!formData.title?.trim()) {
       setError('Title is required');
       return;
@@ -65,23 +71,16 @@ const CreatePost = () => {
     setIsSubmitting(true);
     try {
       const now = new Date().toISOString();
-
-      // Ensure slug is unique by appending timestamp (logic also mirrored in client helper)
       const baseSlug = formData.slug || generateSlug(formData.title);
-      const finalSlug = `${baseSlug}-${Date.now()}`;
 
-      /**
-       * Construct the exact payload requested by the user:
-       * title, slug, content_html, status, created_at, updated_at
-       */
       const payload = {
         title: formData.title.trim(),
-        slug: finalSlug,
+        slug: baseSlug, // Unique suffix will be added in nocodebackendClient.js
         excerpt: formData.excerpt?.trim() || null,
-        content_html: formData.content, // Stores rich editor output as HTML string
+        content_html: formData.content,
         featured_image_dropbox_url: formData.featured_image_dropbox_url || null,
         featured_image_url: formData.image || null,
-        category_id: formData.category_id ? parseInt(formData.category_id, 10) : null,
+        category_id: formData.category_id ? Number(formData.category_id) : (categories[0]?.id || 1),
         author_name: user?.name || 'Admin',
         author_email: user?.email || null,
         status: formData.status,
@@ -93,14 +92,12 @@ const CreatePost = () => {
       await addPost(payload);
       setSuccess(true);
       
-      // Feedback & Redirect
       setTimeout(() => {
         navigate('/admin');
       }, 2000);
       
     } catch (err) {
       console.error('Submit Error:', err);
-      // Show clear error message including body
       setError(`Failed to save post: ${err.message}`);
     } finally {
       setIsSubmitting(false);
@@ -138,7 +135,6 @@ const CreatePost = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Primary Content Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="space-y-6">
                 <div>
@@ -181,7 +177,6 @@ const CreatePost = () => {
               </div>
             </div>
 
-            {/* Metadata Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -214,21 +209,23 @@ const CreatePost = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Category ID (Optional)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Category *</label>
                   <div className="relative">
                     <SafeIcon icon={FiLayers} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="number"
+                    <select
                       value={formData.category_id}
                       onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
-                      placeholder="Enter category ID (number)"
-                    />
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none appearance-none"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Dropbox Image URL (Optional)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Dropbox Image Link (Share Link)</label>
                   <div className="relative">
                     <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
@@ -236,14 +233,13 @@ const CreatePost = () => {
                       value={formData.featured_image_dropbox_url}
                       onChange={(e) => setFormData({...formData, featured_image_dropbox_url: e.target.value})}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
-                      placeholder="Dropbox direct link..."
+                      placeholder="Dropbox share link..."
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* SEO Settings Collapsible */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 type="button"
@@ -267,7 +263,7 @@ const CreatePost = () => {
                   >
                     <div className="p-6 space-y-4 bg-gray-50/50">
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug (Will be suffixed with timestamp)</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug</label>
                         <input
                           type="text"
                           value={formData.slug}
@@ -282,7 +278,6 @@ const CreatePost = () => {
               </AnimatePresence>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-4 pb-12">
               <button
                 type="button"

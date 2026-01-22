@@ -17,7 +17,7 @@ export const useKdrama = () => {
 export const KdramaProvider = ({ children }) => {
   const [kdramas, setKdramas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const TABLE_NAME = 'kdrama_recommendations';
+  const TABLE_NAME = 'kdramas'; // Replaces kdrama_recommendations as requested
 
   const normalizeData = useCallback((data) => {
     if (!Array.isArray(data)) return [];
@@ -75,7 +75,6 @@ export const KdramaProvider = ({ children }) => {
 
   const addKdrama = async (dramaData) => {
     try {
-      // payload sanitization is handled internally by ncbCreate
       const saved = await ncbCreate(TABLE_NAME, dramaData);
       await fetchKdramas();
       return saved;
@@ -87,7 +86,6 @@ export const KdramaProvider = ({ children }) => {
 
   const updateKdrama = async (id, updates) => {
     try {
-      // payload sanitization is handled internally by ncbUpdate
       await ncbUpdate(TABLE_NAME, id, updates);
       await fetchKdramas();
     } catch (err) {
