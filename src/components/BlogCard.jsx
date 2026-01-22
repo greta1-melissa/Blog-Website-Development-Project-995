@@ -7,12 +7,21 @@ import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { BLOG_PLACEHOLDER } from '../config/assets';
+import { useBlog } from '../contexts/BlogContext';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
 
 const BlogCard = ({ post, index }) => {
-  const getCategoryColor = (category) => {
-    switch (category) {
+  const { categories } = useBlog();
+
+  const getCategoryName = (categoryId) => {
+    if (!categoryId) return post.category || 'General';
+    const category = categories.find(c => Number(c.id) === Number(categoryId));
+    return category ? category.name : (post.category || 'General');
+  };
+
+  const getCategoryColor = (categoryName) => {
+    switch (categoryName) {
       case 'Health': return 'bg-purple-100 text-purple-800';
       case 'Fam Bam': return 'bg-purple-200 text-purple-900';
       case 'K-Drama': return 'bg-indigo-100 text-indigo-800';
@@ -21,6 +30,8 @@ const BlogCard = ({ post, index }) => {
       default: return 'bg-purple-100 text-purple-800';
     }
   };
+
+  const categoryName = getCategoryName(post.category_id);
 
   return (
     <motion.div 
@@ -31,15 +42,15 @@ const BlogCard = ({ post, index }) => {
     >
       <Link to={`/post/${post.id}`} className="relative overflow-hidden aspect-[4/3] bg-gray-100">
         <SafeImage 
-          src={post.image || post.image_url} 
+          src={post.featured_image_url || post.image || post.image_url} 
           alt={post.title} 
           fallback={BLOG_PLACEHOLDER}
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out" 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute top-4 left-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase backdrop-blur-md ${getCategoryColor(post.category)}`}>
-            {post.category}
+          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase backdrop-blur-md ${getCategoryColor(categoryName)}`}>
+            {categoryName}
           </span>
         </div>
       </Link>
@@ -47,7 +58,7 @@ const BlogCard = ({ post, index }) => {
       <div className="flex-1 p-6 flex flex-col">
         <div className="flex items-center text-xs text-gray-500 mb-4 space-x-3 font-medium">
           <span className="flex items-center text-purple-600 bg-purple-50 px-2 py-1 rounded-md">
-            <SafeIcon icon={FiUser} className="mr-1" /> {post.author}
+            <SafeIcon icon={FiUser} className="mr-1" /> {post.author_name || post.author || 'Admin'}
           </span>
           <span className="w-1 h-1 bg-purple-200 rounded-full"></span>
           <span className="flex items-center">
@@ -62,11 +73,11 @@ const BlogCard = ({ post, index }) => {
         </Link>
         
         <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
-          {stripHtml(post.content).substring(0, 120)}...
+          {post.excerpt || (post.content_html ? stripHtml(post.content_html).substring(0, 120) : stripHtml(post.content || '').substring(0, 120))}...
         </p>
 
         <div className="pt-4 border-t border-purple-50 flex items-center justify-between mt-auto">
-          <span className="text-xs text-gray-400 font-medium">{formatDate(post.date)}</span>
+          <span className="text-xs text-gray-400 font-medium">{formatDate(post.published_at || post.created_at || post.date)}</span>
           <Link 
             to={`/post/${post.id}`} 
             className="inline-flex items-center text-sm font-semibold text-purple-600 group-hover:translate-x-1 transition-transform duration-300"

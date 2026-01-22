@@ -17,12 +17,22 @@ const BlogPostManagement = () => {
   const [editingPost, setEditingPost] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
 
+  const getCategoryName = (categoryId) => {
+    if (!categoryId) return 'General';
+    const category = categories.find(c => Number(c.id) === Number(categoryId));
+    return category ? category.name : 'General';
+  };
+
   const filteredPosts = useMemo(() => {
-    return (posts || []).filter(post => 
-      (post.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (post.category || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [posts, searchTerm]);
+    return (posts || []).filter(post => {
+      const catName = getCategoryName(post.category_id).toLowerCase();
+      const search = searchTerm.toLowerCase();
+      return (
+        (post.title || '').toLowerCase().includes(search) || 
+        catName.includes(search)
+      );
+    });
+  }, [posts, searchTerm, categories]);
 
   const showToast = (msg) => {
     setSuccessMsg(msg);
@@ -30,12 +40,16 @@ const BlogPostManagement = () => {
   };
 
   const handleSave = async (id, data) => {
-    if (id) {
-      await updatePost(id, data);
-      showToast('Post updated successfully!');
-    } else {
-      await addPost(data);
-      showToast('Post published successfully!');
+    try {
+      if (id) {
+        await updatePost(id, data);
+        showToast('Post updated successfully!');
+      } else {
+        await addPost(data);
+        showToast('Post published successfully!');
+      }
+    } catch (err) {
+      console.error('Save Error:', err);
     }
   };
 
@@ -93,13 +107,15 @@ const BlogPostManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-12 h-12 rounded-lg overflow-hidden mr-4 bg-gray-100 border">
-                        <SafeImage src={post.image} fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
+                        <SafeImage src={post.featured_image_url || post.image} fallback={BLOG_PLACEHOLDER} className="w-full h-full object-cover" />
                       </div>
                       <div className="text-sm font-bold text-gray-900">{post.title}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-lg uppercase">{post.category}</span>
+                    <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-lg uppercase">
+                      {getCategoryName(post.category_id)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${post.status === 'published' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>{post.status}</span>
@@ -114,7 +130,7 @@ const BlogPostManagement = () => {
           </tbody>
         </table>
       </div>
-      <EditPostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} post={editingPost} onSave={handleSave} categories={categories} />
+      <EditPostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} post={editingPost} onSave={handleSave} />
     </div>
   );
 };

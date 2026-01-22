@@ -75,12 +75,12 @@ const CreatePost = () => {
 
       const payload = {
         title: formData.title.trim(),
-        slug: baseSlug, // Unique suffix will be added in nocodebackendClient.js
+        slug: baseSlug, 
         excerpt: formData.excerpt?.trim() || null,
         content_html: formData.content,
         featured_image_dropbox_url: formData.featured_image_dropbox_url || null,
         featured_image_url: formData.image || null,
-        category_id: formData.category_id ? Number(formData.category_id) : (categories[0]?.id || 1),
+        category_id: formData.category_id ? Number(formData.category_id) : (categories[0]?.id || null),
         author_name: user?.name || 'Admin',
         author_email: user?.email || null,
         status: formData.status,
@@ -215,8 +215,9 @@ const CreatePost = () => {
                     <select
                       value={formData.category_id}
                       onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none appearance-none"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none appearance-none font-medium"
                     >
+                      <option value="">Select Category</option>
                       {categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}

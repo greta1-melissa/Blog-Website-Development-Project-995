@@ -6,7 +6,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { useBlog } from '../contexts/BlogContext';
-import { generateSlug, calculateReadTime } from '../utils/slugUtils';
+import { generateSlug } from '../utils/slugUtils';
 
 const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft, FiLayers } = FiIcons;
 
@@ -25,7 +25,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
           ...post,
           excerpt: post.excerpt || '',
           content: post.content_html || post.content || '',
-          category_id: post.category_id || (categories[0]?.id || 1),
+          category_id: post.category_id || (categories[0]?.id || ''),
           status: post.status || 'published',
           slug: post.slug || generateSlug(post.title || ''),
           featured_image_url: post.featured_image_url || post.image || '',
@@ -36,7 +36,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
           title: '',
           excerpt: '',
           content: '',
-          category_id: categories[0]?.id || 1,
+          category_id: categories[0]?.id || '',
           status: 'draft',
           slug: '',
           image: '',
@@ -74,7 +74,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
         ...formData,
         excerpt: finalExcerpt || null,
         content_html: formData.content,
-        category_id: Number(formData.category_id),
+        category_id: formData.category_id ? Number(formData.category_id) : (categories[0]?.id || null),
         featured_image_url: formData.featured_image_url?.trim() || null,
         featured_image_dropbox_url: formData.featured_image_dropbox_url?.trim() || null,
         status: formData.status.toLowerCase(),
@@ -163,8 +163,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none bg-white font-medium"
                 >
+                  <option value="">Select Category</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
