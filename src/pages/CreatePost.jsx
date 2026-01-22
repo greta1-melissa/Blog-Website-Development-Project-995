@@ -14,7 +14,7 @@ const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettin
 
 const CreatePost = () => {
   const navigate = useNavigate();
-  const { posts, addPost, refreshData } = useBlog();
+  const { posts, addPost } = useBlog();
   const { user } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,8 +28,7 @@ const CreatePost = () => {
     content: '',
     image: '',
     category_id: '',
-    tags: '',
-    status: 'published',
+    status: 'draft', // Default to draft as requested
     slug: '',
     meta_title: '',
     meta_description: '',
@@ -39,14 +38,14 @@ const CreatePost = () => {
   // Auto-generate slug when title changes
   useEffect(() => {
     if (formData.title && !formData.slug) {
-      const uniqueSlug = ensureUniqueSlug(formData.title, posts);
+      const uniqueSlug = generateSlug(formData.title);
       setFormData(prev => ({
         ...prev,
         slug: uniqueSlug,
         meta_title: prev.title
       }));
     }
-  }, [formData.title, posts]);
+  }, [formData.title]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,31 +64,30 @@ const CreatePost = () => {
 
     setIsSubmitting(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const now = new Date().toISOString();
 
-      // Final slug uniqueness check right before submission
-      const finalSlug = ensureUniqueSlug(formData.slug || formData.title, posts);
+      // Ensure slug is unique by appending timestamp (logic also mirrored in client helper)
+      const baseSlug = formData.slug || generateSlug(formData.title);
+      const finalSlug = `${baseSlug}-${Date.now()}`;
 
       /**
        * Construct the exact payload requested by the user:
-       * title, slug, excerpt, content_html, featured_image_dropbox_url, 
-       * featured_image_url, category_id, author_name, author_email, 
-       * status, published_at, created_at, updated_at
+       * title, slug, content_html, status, created_at, updated_at
        */
       const payload = {
         title: formData.title.trim(),
         slug: finalSlug,
-        excerpt: formData.excerpt.trim(),
+        excerpt: formData.excerpt?.trim() || null,
         content_html: formData.content, // Stores rich editor output as HTML string
         featured_image_dropbox_url: formData.featured_image_dropbox_url || null,
         featured_image_url: formData.image || null,
-        category_id: formData.category_id || null,
+        category_id: formData.category_id ? parseInt(formData.category_id, 10) : null,
         author_name: user?.name || 'Admin',
         author_email: user?.email || null,
         status: formData.status,
-        created_at: today,
-        updated_at: today,
-        published_at: formData.status === 'published' ? today : null
+        created_at: now,
+        updated_at: now,
+        published_at: formData.status === 'published' ? now : null
       };
 
       await addPost(payload);
@@ -97,12 +95,12 @@ const CreatePost = () => {
       
       // Feedback & Redirect
       setTimeout(() => {
-        navigate('/admin'); // Or wherever intended
+        navigate('/admin');
       }, 2000);
       
     } catch (err) {
       console.error('Submit Error:', err);
-      // Show clear error message including body if possible
+      // Show clear error message including body
       setError(`Failed to save post: ${err.message}`);
     } finally {
       setIsSubmitting(false);
@@ -115,6 +113,7 @@ const CreatePost = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <button 
+              type="button"
               onClick={() => navigate('/admin')}
               className="flex items-center text-gray-600 hover:text-purple-600 transition-colors"
             >
@@ -125,14 +124,14 @@ const CreatePost = () => {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center">
-              <SafeIcon icon={FiInfo} className="mr-2" />
-              {error}
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center shadow-sm">
+              <SafeIcon icon={FiInfo} className="mr-2 flex-shrink-0" />
+              <span className="break-all">{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-600 rounded-xl flex items-center">
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-600 rounded-xl flex items-center shadow-sm">
               <SafeIcon icon={FiCheckCircle} className="mr-2" />
               ✅ Post saved successfully! Redirecting...
             </div>
@@ -143,7 +142,7 @@ const CreatePost = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Story Title</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Story Title *</label>
                   <div className="relative">
                     <SafeIcon icon={FiType} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
@@ -151,25 +150,25 @@ const CreatePost = () => {
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none font-medium"
                       placeholder="Enter a catchy title..."
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Brief Summary (Excerpt)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Brief Summary (Excerpt)</label>
                   <textarea
                     rows="2"
                     value={formData.excerpt}
                     onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
                     placeholder="Short description for the card..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Story Content</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Story Content *</label>
                   <div className="prose-editor">
                     <ReactQuill
                       theme="snow"
@@ -186,59 +185,59 @@ const CreatePost = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image URL</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Featured Image URL</label>
                   <div className="relative">
                     <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="url"
                       value={formData.image}
                       onChange={(e) => setFormData({...formData, image: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
                       placeholder="https://images.unsplash.com/..."
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image (Dropbox Link)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Status</label>
                   <div className="relative">
-                    <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.featured_image_dropbox_url}
-                      onChange={(e) => setFormData({...formData, featured_image_dropbox_url: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="Dropbox direct link..."
-                    />
+                    <SafeIcon icon={FiSettings} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({...formData, status: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none outline-none font-medium"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="published">Published</option>
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category ID (Optional)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Category ID (Optional)</label>
                   <div className="relative">
                     <SafeIcon icon={FiLayers} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="number"
                       value={formData.category_id}
                       onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
                       placeholder="Enter category ID (number)"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Dropbox Image URL (Optional)</label>
                   <div className="relative">
-                    <SafeIcon icon={FiSettings} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none"
-                    >
-                      <option value="published">Published</option>
-                      <option value="draft">Draft</option>
-                    </select>
+                    <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.featured_image_dropbox_url}
+                      onChange={(e) => setFormData({...formData, featured_image_dropbox_url: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
+                      placeholder="Dropbox direct link..."
+                    />
                   </div>
                 </div>
               </div>
@@ -251,9 +250,9 @@ const CreatePost = () => {
                 onClick={() => setShowSeoSettings(!showSeoSettings)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
-                <div className="flex items-center text-gray-700 font-semibold">
+                <div className="flex items-center text-gray-700 font-bold">
                   <SafeIcon icon={FiGlobe} className="mr-3 text-purple-600" />
-                  SEO & Meta Detail Settings
+                  SEO & URL Settings
                 </div>
                 <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
               </button>
@@ -267,33 +266,14 @@ const CreatePost = () => {
                     className="overflow-hidden border-t border-gray-100"
                   >
                     <div className="p-6 space-y-4 bg-gray-50/50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug</label>
-                          <input
-                            type="text"
-                            value={formData.slug}
-                            onChange={(e) => setFormData({...formData, slug: e.target.value})}
-                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Title</label>
-                          <input
-                            type="text"
-                            value={formData.meta_title}
-                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
-                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                          />
-                        </div>
-                      </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Description</label>
-                        <textarea
-                          rows="2"
-                          value={formData.meta_description}
-                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
-                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug (Will be suffixed with timestamp)</label>
+                        <input
+                          type="text"
+                          value={formData.slug}
+                          onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
+                          placeholder="my-cool-story"
                         />
                       </div>
                     </div>
@@ -303,21 +283,30 @@ const CreatePost = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-4">
+            <div className="flex justify-end space-x-4 pt-4 pb-12">
               <button
                 type="button"
                 onClick={() => navigate('/admin')}
-                className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-all"
+                className="px-6 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-all"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                className="flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-purple-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                <SafeIcon icon={isSubmitting ? FiClock : FiSave} className="mr-2" />
-                {isSubmitting ? 'Saving...' : 'Save Story'}
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <SafeIcon icon={FiSave} className="mr-2" />
+                    Save Story
+                  </>
+                )}
               </button>
             </div>
           </form>

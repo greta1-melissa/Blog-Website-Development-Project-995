@@ -15,6 +15,7 @@ const ALLOWED_TABLES = [
 
 /**
  * Normalizes various date inputs into strict YYYY-MM-DD format for NCB/SQL
+ * @deprecated Prefer toISOString() for timestamp fields as per latest requirements
  */
 export const normalizeNcbDate = (dateInput) => {
   if (!dateInput) return null;
@@ -49,7 +50,7 @@ export const normalizeNcbDate = (dateInput) => {
 
 /**
  * Sanitizes payload for specific tables before sending to NCB
- * Enforces exact field names required by the database schema
+ * Enforces exact field names and ISO formats required by the database schema
  */
 export const sanitizeNcbPayload = (table, payload) => {
   if (!payload || typeof payload !== 'object') return payload;
@@ -59,17 +60,28 @@ export const sanitizeNcbPayload = (table, payload) => {
   const toNull = (val) => (val === undefined || val === '' || val === null) ? null : val;
 
   if (table === 'posts') {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
     
     /**
-     * EXACT FIELD MAPPING REQUESTED BY USER:
-     * title, slug, excerpt, content_html, featured_image_dropbox_url, 
-     * featured_image_url, category_id, author_name, author_email, 
-     * status, published_at, created_at, updated_at
+     * REQUIRED FIELDS FOR POSTS:
+     * title, slug, content_html, status, created_at, updated_at
      */
+    
+    // Ensure slug has a unique suffix if it looks like it's a new post or missing unique part
+    let finalSlug = toNull(sanitized.slug);
+    if (!finalSlug && sanitized.title) {
+      finalSlug = sanitized.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+    
+    // If it's a creation (no ID in payload usually means creation in many flows, 
+    // but here we always add a timestamp to ensure uniqueness as requested)
+    if (finalSlug && !finalSlug.match(/\d{10,}/)) {
+      finalSlug = `${finalSlug}-${Date.now()}`;
+    }
+
     const finalPayload = {
       title: toNull(sanitized.title),
-      slug: toNull(sanitized.slug),
+      slug: finalSlug,
       excerpt: toNull(sanitized.excerpt),
       content_html: toNull(sanitized.content_html || sanitized.content),
       featured_image_dropbox_url: toNull(sanitized.featured_image_dropbox_url),
@@ -78,15 +90,20 @@ export const sanitizeNcbPayload = (table, payload) => {
       author_name: toNull(sanitized.author_name || sanitized.author),
       author_email: toNull(sanitized.author_email),
       status: (sanitized.status || 'draft').toLowerCase(),
-      created_at: normalizeNcbDate(sanitized.created_at || today),
-      updated_at: normalizeNcbDate(today)
+      created_at: toNull(sanitized.created_at) || now,
+      updated_at: now
     };
 
-    // Set published_at only if status is published
+    // Set published_at only if status is published, using full ISO string
     if (finalPayload.status === 'published') {
-      finalPayload.published_at = normalizeNcbDate(sanitized.published_at || today);
+      finalPayload.published_at = toNull(sanitized.published_at) || now;
     } else {
       finalPayload.published_at = null;
+    }
+
+    // Double check required fields are not null to avoid SQL errors
+    if (!finalPayload.title || !finalPayload.slug || !finalPayload.content_html) {
+      console.warn("NCB Payload Warning: Missing required fields (title, slug, or content_html)");
     }
 
     return finalPayload;
@@ -131,7 +148,15 @@ export const ncbCreate = async (table, data) => {
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`NCB Create [${table}] Error (Status ${response.status}):`, errorText);
-    throw new Error(`NCB Create Error: ${errorText || response.statusText}`);
+    
+    let parsedError;
+    try {
+      parsedError = JSON.parse(errorText);
+    } catch (e) {
+      parsedError = errorText;
+    }
+    
+    throw new Error(typeof parsedError === 'object' ? JSON.stringify(parsedError) : errorText || response.statusText);
   }
   return response.json();
 };
