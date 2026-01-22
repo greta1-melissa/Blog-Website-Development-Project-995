@@ -55,34 +55,39 @@ export const sanitizeNcbPayload = (table, payload) => {
   if (!payload || typeof payload !== 'object') return payload;
   const sanitized = { ...payload };
 
+  // Helper to convert empty values to null
+  const toNull = (val) => (val === undefined || val === '' || val === null) ? null : val;
+
   if (table === 'posts') {
     const today = new Date().toISOString().slice(0, 10);
     
-    // Core Required Fields as per user request
+    /**
+     * EXACT FIELD MAPPING REQUESTED BY USER:
+     * title, slug, excerpt, content_html, featured_image_dropbox_url, 
+     * featured_image_url, category_id, author_name, author_email, 
+     * status, published_at, created_at, updated_at
+     */
     const finalPayload = {
-      title: sanitized.title?.trim() || '',
-      slug: sanitized.slug || '',
-      excerpt: sanitized.excerpt || '',
-      content_html: sanitized.content_html || sanitized.content || '',
+      title: toNull(sanitized.title),
+      slug: toNull(sanitized.slug),
+      excerpt: toNull(sanitized.excerpt),
+      content_html: toNull(sanitized.content_html || sanitized.content),
+      featured_image_dropbox_url: toNull(sanitized.featured_image_dropbox_url),
+      featured_image_url: toNull(sanitized.featured_image_url || sanitized.image),
+      category_id: (sanitized.category_id !== undefined && sanitized.category_id !== '') ? Number(sanitized.category_id) : null,
+      author_name: toNull(sanitized.author_name || sanitized.author),
+      author_email: toNull(sanitized.author_email),
       status: (sanitized.status || 'draft').toLowerCase(),
-      created_at: sanitized.created_at || today,
-      updated_at: today
+      created_at: normalizeNcbDate(sanitized.created_at || today),
+      updated_at: normalizeNcbDate(today)
     };
 
     // Set published_at only if status is published
     if (finalPayload.status === 'published') {
-      finalPayload.published_at = sanitized.published_at || today;
+      finalPayload.published_at = normalizeNcbDate(sanitized.published_at || today);
     } else {
       finalPayload.published_at = null;
     }
-
-    // Preserve optional legacy fields if they exist in the incoming payload 
-    // but ensure the required ones are prioritized
-    if (sanitized.featured_image_url) finalPayload.featured_image_url = sanitized.featured_image_url;
-    if (sanitized.author) finalPayload.author = sanitized.author;
-    if (sanitized.category) finalPayload.category = sanitized.category;
-    if (sanitized.read_time) finalPayload.read_time = sanitized.read_time;
-    if (sanitized.tags) finalPayload.tags = sanitized.tags;
 
     return finalPayload;
   }
@@ -125,8 +130,8 @@ export const ncbCreate = async (table, data) => {
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`NCB Create [${table}] Error:`, errorText);
-    throw new Error(`NCB Create Error: ${errorText}`);
+    console.error(`NCB Create [${table}] Error (Status ${response.status}):`, errorText);
+    throw new Error(`NCB Create Error: ${errorText || response.statusText}`);
   }
   return response.json();
 };

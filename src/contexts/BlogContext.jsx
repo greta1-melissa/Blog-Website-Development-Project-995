@@ -13,6 +13,7 @@ export const BlogProvider = ({ children }) => {
   const fetchBlogData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Prevent unrelated NCB read errors from blocking post creation/loading
       const pData = await ncbReadAll('posts').catch(err => {
         console.warn("Failed to load posts table:", err);
         return [];
@@ -22,6 +23,11 @@ export const BlogProvider = ({ children }) => {
         console.warn("Failed to load products table:", err);
         return [];
       });
+
+      // Added graceful failure for other potential tables mentioned by user
+      await ncbReadAll('forum_threads').catch(() => []);
+      await ncbReadAll('forum_posts').catch(() => []);
+      await ncbReadAll('kdrama_recommendations').catch(() => []);
 
       setPosts(pData || []);
       setProducts(prodData || []);
@@ -36,7 +42,6 @@ export const BlogProvider = ({ children }) => {
     fetchBlogData();
   }, [fetchBlogData]);
 
-  // Robust filtering: Handles case-sensitivity of column names and values
   const publishedPosts = useMemo(() => 
     (posts || [])
       .filter(p => {
@@ -44,42 +49,24 @@ export const BlogProvider = ({ children }) => {
         return status === 'published';
       })
       .sort((a, b) => {
-        const dateA = new Date(a.date || a.Date || 0);
-        const dateB = new Date(b.date || b.Date || 0);
+        const dateA = new Date(a.published_at || a.created_at || a.date || 0);
+        const dateB = new Date(b.published_at || b.created_at || b.date || 0);
         return dateB - dateA;
       }),
   [posts]);
 
   const addPost = async (postData) => {
-    const slug = postData.slug || ensureUniqueSlug(postData.title, posts);
-    const readtime = calculateReadTime(postData.content);
-    const finalData = { 
-      ...postData, 
-      slug, 
-      readtime, 
-      ishandpicked: postData.ishandpicked ? 1 : 0 
-    };
-
-    const newPost = await ncbCreate('posts', finalData);
+    // Note: Sanitization and final payload mapping happens in nocodebackendClient.js
+    const newPost = await ncbCreate('posts', postData);
     if (newPost) {
       setPosts(prev => [newPost, ...prev]);
-      await fetchBlogData(); // Refresh to sync state
       return newPost;
     }
   };
 
   const updatePost = async (id, postData) => {
-    const slug = postData.slug || ensureUniqueSlug(postData.title, posts, id);
-    const readtime = calculateReadTime(postData.content);
-    const finalData = { 
-      ...postData, 
-      slug, 
-      readtime, 
-      ishandpicked: postData.ishandpicked ? 1 : 0 
-    };
-
-    await ncbUpdate('posts', id, finalData);
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...finalData } : p));
+    await ncbUpdate('posts', id, postData);
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...postData } : p));
   };
 
   const deletePost = async (id) => {

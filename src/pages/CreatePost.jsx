@@ -10,7 +10,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { generateSlug, ensureUniqueSlug, calculateReadTime } from '../utils/slugUtils';
 
-const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe } = FiIcons;
+const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe, FiCheckCircle } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const CreatePost = () => {
   const { user } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showSeoSettings, setShowSeoSettings] = useState(false);
   
@@ -26,12 +27,13 @@ const CreatePost = () => {
     excerpt: '',
     content: '',
     image: '',
-    category: 'Lifestyle',
+    category_id: '',
     tags: '',
     status: 'published',
     slug: '',
     meta_title: '',
-    meta_description: ''
+    meta_description: '',
+    featured_image_dropbox_url: ''
   });
 
   // Auto-generate slug when title changes
@@ -49,6 +51,7 @@ const CreatePost = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
     
     // Validation
     if (!formData.title?.trim()) {
@@ -62,35 +65,45 @@ const CreatePost = () => {
 
     setIsSubmitting(true);
     try {
-      const readTime = calculateReadTime(formData.content);
       const today = new Date().toISOString().slice(0, 10);
 
       // Final slug uniqueness check right before submission
       const finalSlug = ensureUniqueSlug(formData.slug || formData.title, posts);
 
-      // Construct the exact payload requested by the user
+      /**
+       * Construct the exact payload requested by the user:
+       * title, slug, excerpt, content_html, featured_image_dropbox_url, 
+       * featured_image_url, category_id, author_name, author_email, 
+       * status, published_at, created_at, updated_at
+       */
       const payload = {
         title: formData.title.trim(),
         slug: finalSlug,
         excerpt: formData.excerpt.trim(),
-        content_html: formData.content, // Rich editor output
+        content_html: formData.content, // Stores rich editor output as HTML string
+        featured_image_dropbox_url: formData.featured_image_dropbox_url || null,
+        featured_image_url: formData.image || null,
+        category_id: formData.category_id || null,
+        author_name: user?.name || 'Admin',
+        author_email: user?.email || null,
         status: formData.status,
-        featured_image_url: formData.image,
-        category: formData.category,
-        tags: formData.tags,
-        author: user?.name || 'Admin',
-        read_time: readTime,
         created_at: today,
         updated_at: today,
         published_at: formData.status === 'published' ? today : null
       };
 
       await addPost(payload);
-      await refreshData();
-      navigate('/admin');
+      setSuccess(true);
+      
+      // Feedback & Redirect
+      setTimeout(() => {
+        navigate('/admin'); // Or wherever intended
+      }, 2000);
+      
     } catch (err) {
       console.error('Submit Error:', err);
-      setError(err.message || 'Failed to create post. Please check your connection and try again.');
+      // Show clear error message including body if possible
+      setError(`Failed to save post: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -115,6 +128,13 @@ const CreatePost = () => {
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center">
               <SafeIcon icon={FiInfo} className="mr-2" />
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-600 rounded-xl flex items-center">
+              <SafeIcon icon={FiCheckCircle} className="mr-2" />
+              ✅ Post saved successfully! Redirecting...
             </div>
           )}
 
@@ -180,21 +200,30 @@ const CreatePost = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image (Dropbox Link)</label>
+                  <div className="relative">
+                    <SafeIcon icon={FiImage} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={formData.featured_image_dropbox_url}
+                      onChange={(e) => setFormData({...formData, featured_image_dropbox_url: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="Dropbox direct link..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category ID (Optional)</label>
                   <div className="relative">
                     <SafeIcon icon={FiLayers} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({...formData, category: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none"
-                    >
-                      <option>Lifestyle</option>
-                      <option>Health</option>
-                      <option>Mental Wellness</option>
-                      <option>Relationships</option>
-                      <option>Personal Growth</option>
-                      <option>BTS</option>
-                    </select>
+                    <input
+                      type="number"
+                      value={formData.category_id}
+                      onChange={(e) => setFormData({...formData, category_id: e.target.value})}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="Enter category ID (number)"
+                    />
                   </div>
                 </div>
 
@@ -210,20 +239,6 @@ const CreatePost = () => {
                       <option value="published">Published</option>
                       <option value="draft">Draft</option>
                     </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma separated)</label>
-                  <div className="relative">
-                    <SafeIcon icon={FiTag} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.tags}
-                      onChange={(e) => setFormData({...formData, tags: e.target.value})}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="wellness, selfcare, habits"
-                    />
                   </div>
                 </div>
               </div>
