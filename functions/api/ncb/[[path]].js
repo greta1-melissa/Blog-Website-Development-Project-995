@@ -1,9 +1,20 @@
+/**
+ * Robust NoCodeBackend (NCB) Proxy for Cloudflare Pages
+ * 
+ * Features:
+ * 1. Strict server-side environment variable usage
+ * 2. Multi-pattern URL resolution for flexible API routing
+ * 3. Fallback logic for 'read' vs 'readAll' endpoints
+ * 4. Crash-proof JSON error reporting
+ */
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*"
     }
   });
 }
@@ -13,110 +24,151 @@ export async function onRequest(context) {
 
   try {
     const url = new URL(request.url);
-    const debug = url.searchParams.get("debug") === "1";
+    
+    // 1. Extract Server-Side Env Vars
+    const base = env.NCB_BASE_URL || "";
+    const instance = env.NCB_INSTANCE || "";
+    const apiKey = env.NCB_API_KEY || "";
 
-    // ✅ Use server env vars (preferred)
-    const base =
-      env.NCB_BASE_URL ||
-      env.VITE_NCB_BASE_URL ||
-      env.VITE_NCB_URL ||
-      "";
-
-    const instance =
-      env.NCB_INSTANCE ||
-      env.VITE_NCB_INSTANCE ||
-      env.VITE_NCB_INSTANCE_ID ||
-      "";
-
-    const apiKey =
-      env.NCB_API_KEY || ""; // ✅ server-only secret
-
-    // ✅ Handle Cloudflare optional catch-all param safely
+    // 2. Resolve requested subpath
     const rawPath = params?.path;
-    const path = Array.isArray(rawPath)
-      ? rawPath.join("/")
-      : (rawPath || "");
+    const subpath = Array.isArray(rawPath) ? rawPath.join("/") : (rawPath || "");
+
+    // 3. Health Check / Root Endpoint
+    if (!subpath || subpath === "health") {
+      return json({
+        ok: true,
+        status: "operational",
+        endpoint: "/api/ncb",
+        config: {
+          hasBase: !!base,
+          hasInstance: !!instance,
+          hasKey: !!apiKey
+        }
+      });
+    }
 
     if (!base || !instance) {
       return json({
         ok: false,
-        error: "Missing NCB_BASE_URL or NCB_INSTANCE",
-        hasNCB_BASE_URL: !!base,
-        hasNCB_INSTANCE: !!instance,
-        hasNCB_API_KEY: !!apiKey
-      }, 200);
+        error: "Missing NCB_BASE_URL or NCB_INSTANCE in server environment",
+        details: "Ensure NCB_BASE_URL and NCB_INSTANCE are set in Cloudflare Pages dashboard."
+      }, 500);
     }
 
     const cleanBase = base.replace(/\/$/, "");
-    const upstreamUrl = new URL(`${cleanBase}/${instance}/${path}`);
+    
+    // 4. Generate candidate URL patterns
+    const patterns = [
+      `${cleanBase}/${instance}/${subpath}`,
+      `${cleanBase}/${instance}/api/${subpath}`,
+      `${cleanBase}/api/${instance}/${subpath}`
+    ];
 
-    // ✅ Forward query params
-    url.searchParams.forEach((v, k) => {
-      upstreamUrl.searchParams.set(k, v);
-    });
+    // Special handling for read/ -> readAll/ transformation
+    if (subpath.startsWith("read/")) {
+      const readAllPath = subpath.replace("read/", "readAll/");
+      patterns.push(`${cleanBase}/${instance}/${readAllPath}`);
+      patterns.push(`${cleanBase}/${instance}/api/${readAllPath}`);
+    }
 
-    // ✅ Forward method + body
+    // 5. Prepare Request Body & Headers
     const method = request.method.toUpperCase();
-    let body;
-    if (method !== "GET" && method !== "HEAD") {
-      body = await request.arrayBuffer();
+    const isBodyAllowed = !["GET", "HEAD"].includes(method);
+    const bodyBuffer = isBodyAllowed ? await request.arrayBuffer() : null;
+
+    const commonHeaders = {
+      "Accept": "application/json",
+      "x-api-key": apiKey
+    };
+
+    const requestContentType = request.headers.get("content-type");
+    if (requestContentType) {
+      commonHeaders["Content-Type"] = requestContentType;
     }
 
-    const headers = new Headers();
-    headers.set("Accept", "application/json");
+    // 6. Try URL patterns sequentially
+    let lastResponse = null;
+    let lastError = null;
+    let lastUrlUsed = "";
+    const triedUrls = [];
 
-    // Forward content-type for POST/PUT/PATCH
-    const contentType = request.headers.get("content-type");
-    if (contentType) headers.set("content-type", contentType);
+    for (const pattern of patterns) {
+      const targetUrl = new URL(pattern);
+      
+      // Forward original query parameters
+      url.searchParams.forEach((v, k) => {
+        targetUrl.searchParams.set(k, v);
+      });
 
-    // ✅ Send API key using common header styles
-    if (apiKey) {
-      headers.set("x-api-key", apiKey);
-      headers.set("authorization", `Bearer ${apiKey}`);
+      const currentUrl = targetUrl.toString();
+      triedUrls.push(currentUrl);
+
+      try {
+        const response = await fetch(currentUrl, {
+          method,
+          headers: commonHeaders,
+          body: bodyBuffer
+        });
+
+        lastResponse = response;
+        lastUrlUsed = currentUrl;
+
+        // If we get a successful response or a definitive 400/500 from the app, 
+        // we stop. If it's a 404, we try the next pattern.
+        if (response.status !== 404) {
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        console.error(`Fetch failed for ${currentUrl}:`, err);
+      }
     }
 
-    const upstreamRes = await fetch(upstreamUrl.toString(), {
-      method,
-      headers,
-      body
-    });
+    if (!lastResponse) {
+      return json({
+        ok: false,
+        error: "Failed to connect to any NCB upstream pattern",
+        triedUrls,
+        lastError: lastError ? String(lastError) : "No response"
+      }, 502);
+    }
 
-    const upstreamText = await upstreamRes.text();
-    const upstreamCT = upstreamRes.headers.get("content-type") || "";
-
-    // ✅ Try parse JSON if possible
-    let parsed = null;
+    // 7. Process Upstream Response
+    const upstreamText = await lastResponse.text();
+    let parsedJson = null;
     try {
-      parsed = JSON.parse(upstreamText);
-    } catch (_) {
-      parsed = null;
+      parsedJson = JSON.parse(upstreamText);
+    } catch (e) {
+      parsedJson = null;
     }
 
-    // ✅ Always return JSON to the browser (avoid Cloudflare HTML 502 page)
-    if (!upstreamRes.ok) {
+    // 8. Return Standardized Output
+    if (!lastResponse.ok) {
       return json({
         ok: false,
         error: "Upstream NCB request failed",
-        upstreamStatus: upstreamRes.status,
-        upstreamContentType: upstreamCT,
-        upstreamUrl: debug ? upstreamUrl.toString() : undefined,
+        upstreamStatus: lastResponse.status,
+        upstreamUrlUsed: lastUrlUsed,
         upstreamPreview: upstreamText.slice(0, 250),
-        upstreamJson: parsed
-      }, 200);
+        upstreamJson: parsedJson,
+        triedUrls
+      }, 200); // Return 200 to ensure client gets the JSON body
     }
 
     return json({
       ok: true,
-      upstreamStatus: upstreamRes.status,
-      data: parsed ?? upstreamText
-    }, 200);
+      upstreamStatus: lastResponse.status,
+      data: parsedJson ?? upstreamText,
+      url: lastUrlUsed
+    });
 
   } catch (err) {
-    // ✅ Never crash (crash = Cloudflare Bad Gateway)
     return json({
       ok: false,
-      error: "Function crashed",
-      message: String(err)
-    }, 200);
+      error: "Cloudflare Function Exception",
+      message: String(err),
+      stack: err.stack
+    }, 500);
   }
 }
