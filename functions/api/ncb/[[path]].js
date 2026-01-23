@@ -11,17 +11,9 @@ export async function onRequest(context) {
       },
     });
 
-  const baseRaw =
-    env.NCB_BASE_URL ||
-    env.VITE_NCB_BASE_URL ||
-    env.VITE_NCB_URL ||
-    "https://api.nocodebackend.com";
-
-  const base = String(baseRaw).trim().replace(/\/+$/, "");
-  const instance = String(
-    env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID || ""
-  ).trim();
-
+  // Use ONLY server-side context.env values
+  const base = String(env.NCB_BASE_URL || "https://api.nocodebackend.com").trim().replace(/\/+$/, "");
+  const instance = String(env.NCB_INSTANCE || "").trim();
   const apiKey = String(env.NCB_API_KEY || "").trim();
 
   const relPath = Array.isArray(params.path)
@@ -30,139 +22,68 @@ export async function onRequest(context) {
 
   const method = request.method.toUpperCase();
 
-  // Read body ONCE so we can reuse it in multiple attempts
-  const bodyBuf =
-    method === "GET" || method === "HEAD" ? null : await request.arrayBuffer();
+  // Logging requested path and env status
+  console.log(`[NCB Proxy] Path: ${relPath} | Method: ${method}`);
+  console.log(`[NCB Proxy] API Key Exists: ${!!apiKey}`);
+  console.log(`[NCB Proxy] Instance: ${instance}`);
 
-  if (!instance || !apiKey) {
-    console.log("[NCB] Missing env vars", {
-      base,
-      instance,
-      hasKey: !!apiKey,
+  if (!apiKey) {
+    return json({ status: "failed", error: "NCB_API_KEY missing in server env" }, 500);
+  }
+
+  if (!instance) {
+    return json({ status: "failed", error: "NCB_INSTANCE missing in server env" }, 500);
+  }
+
+  // Primary upstream URL
+  const upstreamUrl = `${base}/${instance}/${relPath}${url.search}`;
+  console.log(`[NCB Proxy] Upstream URL: ${upstreamUrl}`);
+
+  try {
+    const bodyBuf = (method === "GET" || method === "HEAD") ? null : await request.arrayBuffer();
+    
+    const headers = new Headers();
+    headers.set("accept", "application/json");
+    
+    const ct = request.headers.get("content-type");
+    if (ct) headers.set("content-type", ct);
+
+    // Auth headers
+    headers.set("x-api-key", apiKey);
+    headers.set("authorization", `Bearer ${apiKey}`);
+
+    const upstreamRes = await fetch(upstreamUrl, {
+      method,
+      headers,
+      body: bodyBuf,
     });
 
-    return json(
-      {
-        ok: false,
-        error: "Missing server env vars for NCB",
-        expected: ["NCB_BASE_URL", "NCB_INSTANCE", "NCB_API_KEY"],
-        have: {
-          NCB_BASE_URL: base || null,
-          NCB_INSTANCE: instance || null,
-          NCB_API_KEY_present: !!apiKey,
-        },
-      },
-      200
-    );
-  }
+    const upstreamContentType = upstreamRes.headers.get("content-type") || "";
+    const upstreamText = await upstreamRes.text();
 
-  // Try multiple upstream patterns (we’ll see which one works)
-  const candidates = [
-    `${base}/${instance}/${relPath}`,
-    `${base}/api/${instance}/${relPath}`,
-    `${base}/api/v1/${instance}/${relPath}`,
-    `${base}/v1/${instance}/${relPath}`,
-  ];
+    console.log(`[NCB Proxy] Upstream Status: ${upstreamRes.status}`);
+    console.log(`[NCB Proxy] Upstream Content-Type: ${upstreamContentType}`);
 
-  const attempts = [];
-
-  for (const upstreamBase of candidates) {
-    const upstreamUrl = upstreamBase + url.search;
-
+    // Try to return the upstream response as JSON
     try {
-      const headers = new Headers();
-
-      // Force JSON
-      headers.set("accept", "application/json");
-
-      // Keep content-type for POST/PUT
-      const ct = request.headers.get("content-type");
-      if (ct) headers.set("content-type", ct);
-
-      // Auth headers (NCB can vary; we send both)
-      headers.set("x-api-key", apiKey);
-      headers.set("authorization", `Bearer ${apiKey}`);
-
-      const upstreamRes = await fetch(upstreamUrl, {
-        method,
-        headers,
-        body: bodyBuf,
-      });
-
-      const upstreamContentType = upstreamRes.headers.get("content-type") || "";
-      const upstreamText = await upstreamRes.text();
-      const sample = upstreamText.slice(0, 250);
-
-      console.log("[NCB] Attempt result", {
-        upstreamUrl,
-        status: upstreamRes.status,
+      const parsed = JSON.parse(upstreamText);
+      return json(parsed, upstreamRes.status);
+    } catch {
+      // If parsing fails, return the text wrapped in JSON for debugging
+      return json({
+        status: upstreamRes.ok ? "success" : "failed",
+        upstreamStatus: upstreamRes.status,
         upstreamContentType,
-      });
-
-      attempts.push({
-        upstreamUrl,
-        status: upstreamRes.status,
-        upstreamContentType,
-        sample,
-      });
-
-      // Try parse JSON even if content-type is wrong
-      let parsed = null;
-      try {
-        parsed = JSON.parse(upstreamText);
-      } catch (err) {
-        console.warn("JSON parse failed", err);
-      }
-
-      if (parsed !== null) {
-        return json(
-          {
-            ok: upstreamRes.ok,
-            upstreamUrl,
-            upstreamStatus: upstreamRes.status,
-            data: parsed,
-            attempts,
-          },
-          200
-        );
-      }
-
-      // If not JSON, return debug payload anyway (still JSON response)
-      if (upstreamRes.ok) {
-        return json(
-          {
-            ok: true,
-            upstreamUrl,
-            upstreamStatus: upstreamRes.status,
-            upstreamContentType,
-            upstreamTextPreview: sample,
-            attempts,
-          },
-          200
-        );
-      }
-    } catch (err) {
-      console.log("[NCB] Fetch error", { upstreamUrl, err: String(err) });
-
-      attempts.push({
-        upstreamUrl,
-        status: "fetch_error",
-        error: String(err),
-      });
+        data: upstreamText.slice(0, 1000)
+      }, upstreamRes.status);
     }
-  }
 
-  // If we reach here, everything failed — return JSON debug instead of 502 HTML
-  return json(
-    {
-      ok: false,
-      error: "All upstream attempts failed or returned non-JSON",
-      base,
-      instance,
-      relPath,
-      method,
-      attempts,
-    },
-    200
-  );
+  } catch (err) {
+    console.error(`[NCB Proxy] Fatal Error:`, err);
+    return json({
+      status: "failed",
+      error: "Proxy internal error",
+      message: String(err)
+    }, 500);
+  }
 }
