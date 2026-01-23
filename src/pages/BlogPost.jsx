@@ -16,7 +16,6 @@ const BlogPost = () => {
 
   useEffect(() => {
     if (post) {
-      // PART 8 — SEO implementation on Public Post Pages
       document.title = post.meta_title || post.title;
       
       const updateMeta = (name, content) => {
@@ -36,14 +35,14 @@ const BlogPost = () => {
       // OpenGraph
       updateMeta('og:title', post.meta_title || post.title);
       updateMeta('og:description', post.meta_description || post.title);
-      updateMeta('og:image', post.og_image || post.image || BLOG_PLACEHOLDER);
+      updateMeta('og:image', post.og_image || post.displayImage || BLOG_PLACEHOLDER);
       updateMeta('og:type', 'article');
       
       // Twitter
       updateMeta('twitter:card', 'summary_large_image');
       updateMeta('twitter:title', post.meta_title || post.title);
       updateMeta('twitter:description', post.meta_description || post.title);
-      updateMeta('twitter:image', post.og_image || post.image || BLOG_PLACEHOLDER);
+      updateMeta('twitter:image', post.og_image || post.displayImage || BLOG_PLACEHOLDER);
 
       // Canonical
       let canonical = document.querySelector('link[rel="canonical"]');
@@ -77,7 +76,7 @@ const BlogPost = () => {
 
       <header className="mb-12">
         <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-widest rounded-full mb-6">
-          {post.category}
+          {post.categoryName || 'General'}
         </span>
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight mb-8 font-serif">
           {post.title}
@@ -86,11 +85,11 @@ const BlogPost = () => {
         <div className="flex flex-wrap items-center gap-6 text-gray-500 border-y border-gray-100 py-6">
           <div className="flex items-center">
             <SafeIcon icon={FiUser} className="mr-2 text-purple-400" />
-            <span className="font-bold text-gray-900">{post.author}</span>
+            <span className="font-bold text-gray-900">{post.author_name || post.author || 'Admin'}</span>
           </div>
           <div className="flex items-center">
             <SafeIcon icon={FiCalendar} className="mr-2 text-purple-400" />
-            <span>{post.date ? new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Recently'}</span>
+            <span>{post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Recently'}</span>
           </div>
           <div className="flex items-center">
             <SafeIcon icon={FiClock} className="mr-2 text-purple-400" />
@@ -101,7 +100,7 @@ const BlogPost = () => {
 
       <div className="relative aspect-[21/9] rounded-3xl overflow-hidden mb-12 shadow-2xl border border-gray-100">
         <SafeImage 
-          src={post.image || post.og_image} 
+          src={post.displayImage || post.featured_image_url || post.image} 
           alt={post.title} 
           fallback={BLOG_PLACEHOLDER}
           className="w-full h-full object-cover"
@@ -110,7 +109,7 @@ const BlogPost = () => {
 
       <div 
         className="prose prose-purple prose-lg max-w-none prose-headings:font-serif prose-headings:font-bold prose-p:text-gray-700 prose-img:rounded-3xl"
-        dangerouslySetInnerHTML={{ __html: post.content }}
+        dangerouslySetInnerHTML={{ __html: post.content_html || post.content }}
       />
 
       <footer className="mt-16 pt-12 border-t border-gray-100">

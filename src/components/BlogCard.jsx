@@ -7,19 +7,10 @@ import SafeImage from '../common/SafeImage';
 import { stripHtml } from '../utils/textUtils';
 import { formatDate } from '../utils/dateUtils';
 import { BLOG_PLACEHOLDER } from '../config/assets';
-import { useBlog } from '../contexts/BlogContext';
 
 const { FiClock, FiUser, FiArrowRight } = FiIcons;
 
 const BlogCard = ({ post, index }) => {
-  const { categories } = useBlog();
-
-  const getCategoryName = (categoryId) => {
-    if (!categoryId) return post.category || 'General';
-    const category = categories.find(c => Number(c.id) === Number(categoryId));
-    return category ? category.name : (post.category || 'General');
-  };
-
   const getCategoryColor = (categoryName) => {
     switch (categoryName) {
       case 'Health': return 'bg-purple-100 text-purple-800';
@@ -31,7 +22,7 @@ const BlogCard = ({ post, index }) => {
     }
   };
 
-  const categoryName = getCategoryName(post.category_id);
+  const categoryName = post.categoryName || 'General';
 
   return (
     <motion.div 
@@ -42,7 +33,7 @@ const BlogCard = ({ post, index }) => {
     >
       <Link to={`/post/${post.id}`} className="relative overflow-hidden aspect-[4/3] bg-gray-100">
         <SafeImage 
-          src={post.featured_image_url || post.image || post.image_url} 
+          src={post.displayImage || post.featured_image_url || post.image} 
           alt={post.title} 
           fallback={BLOG_PLACEHOLDER}
           className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-in-out" 
@@ -73,7 +64,7 @@ const BlogCard = ({ post, index }) => {
         </Link>
         
         <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
-          {post.excerpt || (post.content_html ? stripHtml(post.content_html).substring(0, 120) : stripHtml(post.content || '').substring(0, 120))}...
+          {post.excerpt || (post.content_html ? stripHtml(post.content_html).substring(0, 120) : '')}...
         </p>
 
         <div className="pt-4 border-t border-purple-50 flex items-center justify-between mt-auto">

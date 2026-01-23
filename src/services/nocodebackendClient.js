@@ -16,7 +16,6 @@ const ALLOWED_TABLES = [
 
 /**
  * Normalizes various date inputs into strict YYYY-MM-DD format for NCB/SQL
- * @deprecated Prefer toISOString() for timestamp fields as per latest requirements
  */
 export const normalizeNcbDate = (dateInput) => {
   if (!dateInput) return null;
@@ -51,27 +50,22 @@ export const normalizeNcbDate = (dateInput) => {
 
 /**
  * Sanitizes payload for specific tables before sending to NCB
- * Enforces exact field names and ISO formats required by the database schema
  */
 export const sanitizeNcbPayload = (table, payload) => {
   if (!payload || typeof payload !== 'object') return payload;
   const sanitized = { ...payload };
 
-  // Helper to convert empty values to null
   const toNull = (val) => (val === undefined || val === '' || val === null) ? null : val;
 
   if (table === 'posts') {
     const now = new Date().toISOString();
     
-    // Ensure slug is unique by appending timestamp
     let finalSlug = toNull(sanitized.slug);
     if (!finalSlug && sanitized.title) {
       finalSlug = sanitized.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
     
-    // Always append timestamp to ensure uniqueness as per DB constraint
     if (finalSlug) {
-      // If it already has a long timestamp at the end, don't append another one
       const timestampRegex = /-\d{13,}$/;
       if (!timestampRegex.test(finalSlug)) {
         finalSlug = `${finalSlug}-${Date.now()}`;
@@ -93,7 +87,6 @@ export const sanitizeNcbPayload = (table, payload) => {
       updated_at: now
     };
 
-    // Set published_at based on status
     if (finalPayload.status === 'published') {
       finalPayload.published_at = toNull(sanitized.published_at) || now;
     } else {
@@ -118,8 +111,16 @@ export const ncbReadAll = async (table) => {
       console.error(`NCB Read Error [${table}]: Status ${response.status}`, errorText);
       return [];
     }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const result = await response.json();
+    
+    // NCB response might be { status: "success", data: [...] } or just [...]
+    if (result && result.status === 'success' && Array.isArray(result.data)) {
+      return result.data;
+    }
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return [];
   } catch (error) {
     console.error(`NCB ReadAll Network Error (${table}):`, error);
     return [];
@@ -127,14 +128,11 @@ export const ncbReadAll = async (table) => {
 };
 
 /**
- * CREATE: Adds a new record using /api/ncb/create/tableName
+ * CREATE: Adds a new record
  */
 export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
-  
-  // Debug log as requested
-  console.log(`NCB Create [${table}] Payload:`, sanitizedData);
   
   const response = await fetch(`/api/ncb/create/${table}`, {
     method: 'POST',
@@ -145,28 +143,17 @@ export const ncbCreate = async (table, data) => {
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`NCB Create [${table}] Error (Status ${response.status}):`, errorText);
-    
-    let parsedError;
-    try {
-      parsedError = JSON.parse(errorText);
-    } catch (e) {
-      parsedError = errorText;
-    }
-    
-    throw new Error(typeof parsedError === 'object' ? JSON.stringify(parsedError) : errorText || response.statusText);
+    throw new Error(errorText || response.statusText);
   }
   return response.json();
 };
 
 /**
- * UPDATE: Updates a record using /api/ncb/update/tableName/id
+ * UPDATE: Updates a record
  */
 export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
-  
-  // Debug log as requested
-  console.log(`NCB Update [${table}: ${id}] Payload:`, sanitizedData);
   
   const response = await fetch(`/api/ncb/update/${table}/${id}`, {
     method: 'PUT',
@@ -183,7 +170,7 @@ export const ncbUpdate = async (table, id, data) => {
 };
 
 /**
- * DELETE: Removes a record using /api/ncb/delete/tableName/id
+ * DELETE: Removes a record
  */
 export const ncbDelete = async (table, id) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);

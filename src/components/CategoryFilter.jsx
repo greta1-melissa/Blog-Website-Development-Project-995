@@ -2,11 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const CategoryFilter = ({ categories, selectedCategory, onCategoryChange }) => {
-  const getCategoryStyle = (category) => {
-    const isSelected = selectedCategory === category;
+  const getCategoryStyle = (categoryName) => {
+    const isSelected = selectedCategory === categoryName;
     
-    // All purple variations instead of different colors
-    switch (category) {
+    switch (categoryName) {
       case 'Health':
         return isSelected
           ? 'bg-purple-500 text-white shadow-lg shadow-purple-200'
@@ -18,19 +17,11 @@ const CategoryFilter = ({ categories, selectedCategory, onCategoryChange }) => {
       case 'K-Drama':
         return isSelected
           ? 'bg-purple-500 text-white shadow-lg shadow-purple-200'
-          : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'; // Indigo is mapped to Purple in config
+          : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200';
       case 'BTS':
         return isSelected
           ? 'bg-purple-700 text-white shadow-lg shadow-purple-300'
           : 'bg-purple-100 text-purple-900 hover:bg-purple-200 border border-purple-300';
-      case 'Product Recommendations':
-        return isSelected
-          ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200';
-      case 'Career':
-        return isSelected
-          ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-200'
-          : 'bg-fuchsia-50 text-fuchsia-800 hover:bg-fuchsia-100 border border-fuchsia-200';
       default:
         return isSelected
           ? 'bg-purple-800 text-white shadow-lg shadow-purple-400'
@@ -52,17 +43,23 @@ const CategoryFilter = ({ categories, selectedCategory, onCategoryChange }) => {
       >
         All Posts
       </motion.button>
-      {categories.map(category => (
-        <motion.button
-          key={category}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onCategoryChange(category)}
-          className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ${getCategoryStyle(category)}`}
-        >
-          {category}
-        </motion.button>
-      ))}
+      {categories.map(cat => {
+        // Handle both objects and strings
+        const name = typeof cat === 'string' ? cat : (cat.name || cat.category_name);
+        if (!name) return null;
+        
+        return (
+          <motion.button
+            key={name}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onCategoryChange(name)}
+            className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ${getCategoryStyle(name)}`}
+          >
+            {name}
+          </motion.button>
+        );
+      })}
     </div>
   );
 };
