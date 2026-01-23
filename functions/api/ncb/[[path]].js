@@ -1,89 +1,122 @@
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store"
+    }
+  });
+}
+
 export async function onRequest(context) {
   const { request, env, params } = context;
-  const url = new URL(request.url);
-
-  const json = (obj, status = 200) =>
-    new Response(JSON.stringify(obj, null, 2), {
-      status,
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
-
-  // Use ONLY server-side context.env values
-  const base = String(env.NCB_BASE_URL || "https://api.nocodebackend.com").trim().replace(/\/+$/, "");
-  const instance = String(env.NCB_INSTANCE || "").trim();
-  const apiKey = String(env.NCB_API_KEY || "").trim();
-
-  const relPath = Array.isArray(params.path)
-    ? params.path.join("/")
-    : String(params.path || "").replace(/^\/+/, "");
-
-  const method = request.method.toUpperCase();
-
-  // Logging requested path and env status
-  console.log(`[NCB Proxy] Path: ${relPath} | Method: ${method}`);
-  console.log(`[NCB Proxy] API Key Exists: ${!!apiKey}`);
-  console.log(`[NCB Proxy] Instance: ${instance}`);
-
-  if (!apiKey) {
-    return json({ status: "failed", error: "NCB_API_KEY missing in server env" }, 500);
-  }
-
-  if (!instance) {
-    return json({ status: "failed", error: "NCB_INSTANCE missing in server env" }, 500);
-  }
-
-  // Primary upstream URL
-  const upstreamUrl = `${base}/${instance}/${relPath}${url.search}`;
-  console.log(`[NCB Proxy] Upstream URL: ${upstreamUrl}`);
 
   try {
-    const bodyBuf = (method === "GET" || method === "HEAD") ? null : await request.arrayBuffer();
-    
-    const headers = new Headers();
-    headers.set("accept", "application/json");
-    
-    const ct = request.headers.get("content-type");
-    if (ct) headers.set("content-type", ct);
+    const url = new URL(request.url);
+    const debug = url.searchParams.get("debug") === "1";
 
-    // Auth headers
-    headers.set("x-api-key", apiKey);
-    headers.set("authorization", `Bearer ${apiKey}`);
+    // ✅ Use server env vars (preferred)
+    const base =
+      env.NCB_BASE_URL ||
+      env.VITE_NCB_BASE_URL ||
+      env.VITE_NCB_URL ||
+      "";
 
-    const upstreamRes = await fetch(upstreamUrl, {
-      method,
-      headers,
-      body: bodyBuf,
-    });
+    const instance =
+      env.NCB_INSTANCE ||
+      env.VITE_NCB_INSTANCE ||
+      env.VITE_NCB_INSTANCE_ID ||
+      "";
 
-    const upstreamContentType = upstreamRes.headers.get("content-type") || "";
-    const upstreamText = await upstreamRes.text();
+    const apiKey =
+      env.NCB_API_KEY || ""; // ✅ server-only secret
 
-    console.log(`[NCB Proxy] Upstream Status: ${upstreamRes.status}`);
-    console.log(`[NCB Proxy] Upstream Content-Type: ${upstreamContentType}`);
+    // ✅ Handle Cloudflare optional catch-all param safely
+    const rawPath = params?.path;
+    const path = Array.isArray(rawPath)
+      ? rawPath.join("/")
+      : (rawPath || "");
 
-    // Try to return the upstream response as JSON
-    try {
-      const parsed = JSON.parse(upstreamText);
-      return json(parsed, upstreamRes.status);
-    } catch {
-      // If parsing fails, return the text wrapped in JSON for debugging
+    if (!base || !instance) {
       return json({
-        status: upstreamRes.ok ? "success" : "failed",
-        upstreamStatus: upstreamRes.status,
-        upstreamContentType,
-        data: upstreamText.slice(0, 1000)
-      }, upstreamRes.status);
+        ok: false,
+        error: "Missing NCB_BASE_URL or NCB_INSTANCE",
+        hasNCB_BASE_URL: !!base,
+        hasNCB_INSTANCE: !!instance,
+        hasNCB_API_KEY: !!apiKey
+      }, 200);
     }
 
-  } catch (err) {
-    console.error(`[NCB Proxy] Fatal Error:`, err);
+    const cleanBase = base.replace(/\/$/, "");
+    const upstreamUrl = new URL(`${cleanBase}/${instance}/${path}`);
+
+    // ✅ Forward query params
+    url.searchParams.forEach((v, k) => {
+      upstreamUrl.searchParams.set(k, v);
+    });
+
+    // ✅ Forward method + body
+    const method = request.method.toUpperCase();
+    let body;
+    if (method !== "GET" && method !== "HEAD") {
+      body = await request.arrayBuffer();
+    }
+
+    const headers = new Headers();
+    headers.set("Accept", "application/json");
+
+    // Forward content-type for POST/PUT/PATCH
+    const contentType = request.headers.get("content-type");
+    if (contentType) headers.set("content-type", contentType);
+
+    // ✅ Send API key using common header styles
+    if (apiKey) {
+      headers.set("x-api-key", apiKey);
+      headers.set("authorization", `Bearer ${apiKey}`);
+    }
+
+    const upstreamRes = await fetch(upstreamUrl.toString(), {
+      method,
+      headers,
+      body
+    });
+
+    const upstreamText = await upstreamRes.text();
+    const upstreamCT = upstreamRes.headers.get("content-type") || "";
+
+    // ✅ Try parse JSON if possible
+    let parsed = null;
+    try {
+      parsed = JSON.parse(upstreamText);
+    } catch (_) {
+      parsed = null;
+    }
+
+    // ✅ Always return JSON to the browser (avoid Cloudflare HTML 502 page)
+    if (!upstreamRes.ok) {
+      return json({
+        ok: false,
+        error: "Upstream NCB request failed",
+        upstreamStatus: upstreamRes.status,
+        upstreamContentType: upstreamCT,
+        upstreamUrl: debug ? upstreamUrl.toString() : undefined,
+        upstreamPreview: upstreamText.slice(0, 250),
+        upstreamJson: parsed
+      }, 200);
+    }
+
     return json({
-      status: "failed",
-      error: "Proxy internal error",
+      ok: true,
+      upstreamStatus: upstreamRes.status,
+      data: parsed ?? upstreamText
+    }, 200);
+
+  } catch (err) {
+    // ✅ Never crash (crash = Cloudflare Bad Gateway)
+    return json({
+      ok: false,
+      error: "Function crashed",
       message: String(err)
-    }, 500);
+    }, 200);
   }
 }
