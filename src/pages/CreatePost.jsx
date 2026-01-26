@@ -10,7 +10,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe, FiCheckCircle } = FiIcons;
+const { FiPlus, FiImage, FiType, FiTag, FiClock, FiChevronLeft, FiSave, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiLayers, FiGlobe, FiCheckCircle, FiSearch } = FiIcons;
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -32,6 +32,7 @@ const CreatePost = () => {
     slug: '',
     meta_title: '',
     meta_description: '',
+    keywords: '',
     featured_image_dropbox_url: ''
   });
 
@@ -42,7 +43,7 @@ const CreatePost = () => {
     }
   }, [categories]);
 
-  // Auto-generate slug when title changes
+  // Auto-generate slug and meta title when title changes
   useEffect(() => {
     if (formData.title && !formData.slug) {
       const cleanSlug = generateSlug(formData.title);
@@ -84,6 +85,9 @@ const CreatePost = () => {
         author_name: user?.name || 'Admin',
         author_email: user?.email || null,
         status: formData.status,
+        meta_title: formData.meta_title?.trim() || null,
+        meta_description: formData.meta_description?.trim() || null,
+        keywords: formData.keywords?.trim() || null,
         created_at: now,
         updated_at: now,
         published_at: formData.status === 'published' ? now : null
@@ -249,7 +253,7 @@ const CreatePost = () => {
               >
                 <div className="flex items-center text-gray-700 font-bold">
                   <SafeIcon icon={FiGlobe} className="mr-3 text-purple-600" />
-                  SEO & URL Settings
+                  SEO & Meta Details
                 </div>
                 <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
               </button>
@@ -262,16 +266,53 @@ const CreatePost = () => {
                     exit={{ height: 0 }}
                     className="overflow-hidden border-t border-gray-100"
                   >
-                    <div className="p-6 space-y-4 bg-gray-50/50">
+                    <div className="p-6 space-y-6 bg-gray-50/50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug</label>
+                          <input
+                            type="text"
+                            value={formData.slug}
+                            onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
+                            placeholder="my-cool-story"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Title</label>
+                          <input
+                            type="text"
+                            value={formData.meta_title}
+                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
+                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                            placeholder="SEO Title..."
+                          />
+                        </div>
+                      </div>
+
                       <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Slug</label>
-                        <input
-                          type="text"
-                          value={formData.slug}
-                          onChange={(e) => setFormData({...formData, slug: e.target.value})}
-                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono"
-                          placeholder="my-cool-story"
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Meta Description</label>
+                        <textarea
+                          rows="2"
+                          value={formData.meta_description}
+                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
+                          className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                          placeholder="Search engine description..."
                         />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Focus Keywords (comma separated)</label>
+                        <div className="relative">
+                          <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                          <input
+                            type="text"
+                            value={formData.keywords}
+                            onChange={(e) => setFormData({...formData, keywords: e.target.value})}
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm"
+                            placeholder="k-drama, lifestyle, tips..."
+                          />
+                        </div>
                       </div>
                     </div>
                   </motion.div>

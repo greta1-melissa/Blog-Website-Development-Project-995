@@ -29,20 +29,20 @@ const BlogPost = () => {
         el.setAttribute('content', content || '');
       };
 
-      updateMeta('description', post.meta_description || post.title);
-      updateMeta('keywords', post.meta_keywords || '');
+      updateMeta('description', post.meta_description || post.excerpt || post.title);
+      updateMeta('keywords', post.keywords || '');
       
       // OpenGraph
       updateMeta('og:title', post.meta_title || post.title);
-      updateMeta('og:description', post.meta_description || post.title);
-      updateMeta('og:image', post.og_image || post.displayImage || BLOG_PLACEHOLDER);
+      updateMeta('og:description', post.meta_description || post.excerpt || post.title);
+      updateMeta('og:image', post.featured_image_url || post.image || BLOG_PLACEHOLDER);
       updateMeta('og:type', 'article');
       
       // Twitter
       updateMeta('twitter:card', 'summary_large_image');
       updateMeta('twitter:title', post.meta_title || post.title);
-      updateMeta('twitter:description', post.meta_description || post.title);
-      updateMeta('twitter:image', post.og_image || post.displayImage || BLOG_PLACEHOLDER);
+      updateMeta('twitter:description', post.meta_description || post.excerpt || post.title);
+      updateMeta('twitter:image', post.featured_image_url || post.image || BLOG_PLACEHOLDER);
 
       // Canonical
       let canonical = document.querySelector('link[rel="canonical"]');
@@ -100,7 +100,7 @@ const BlogPost = () => {
 
       <div className="relative aspect-[21/9] rounded-3xl overflow-hidden mb-12 shadow-2xl border border-gray-100">
         <SafeImage 
-          src={post.displayImage || post.featured_image_url || post.image} 
+          src={post.featured_image_url || post.image} 
           alt={post.title} 
           fallback={BLOG_PLACEHOLDER}
           className="w-full h-full object-cover"

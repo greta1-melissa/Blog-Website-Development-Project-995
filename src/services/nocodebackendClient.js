@@ -99,6 +99,9 @@ export const sanitizeNcbPayload = (table, payload) => {
       author_name: toNull(sanitized.author_name || sanitized.author),
       author_email: toNull(sanitized.author_email),
       status: (sanitized.status || 'draft').toLowerCase(),
+      meta_title: toNull(sanitized.meta_title),
+      meta_description: toNull(sanitized.meta_description),
+      keywords: toNull(sanitized.keywords),
       created_at: toNull(sanitized.created_at) || now,
       updated_at: now
     };

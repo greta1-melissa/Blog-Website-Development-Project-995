@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useBlog } from '../contexts/BlogContext';
 import { generateSlug } from '../utils/slugUtils';
 
-const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft, FiLayers } = FiIcons;
+const { FiX, FiSave, FiImage, FiSettings, FiChevronDown, FiChevronUp, FiInfo, FiHash, FiAlignLeft, FiLayers, FiGlobe, FiSearch, FiType } = FiIcons;
 
 const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
   const { user } = useAuth();
@@ -28,6 +28,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
           category_id: post.category_id || (categories[0]?.id || ''),
           status: post.status || 'published',
           slug: post.slug || generateSlug(post.title || ''),
+          meta_title: post.meta_title || post.title || '',
+          meta_description: post.meta_description || '',
+          keywords: post.keywords || '',
           featured_image_url: post.featured_image_url || post.image || '',
           featured_image_dropbox_url: post.featured_image_dropbox_url || ''
         });
@@ -39,6 +42,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
           category_id: categories[0]?.id || '',
           status: 'draft',
           slug: '',
+          meta_title: '',
+          meta_description: '',
+          keywords: '',
           image: '',
           featured_image_url: '',
           featured_image_dropbox_url: ''
@@ -78,6 +84,9 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
         featured_image_url: formData.featured_image_url?.trim() || null,
         featured_image_dropbox_url: formData.featured_image_dropbox_url?.trim() || null,
         status: formData.status.toLowerCase(),
+        meta_title: formData.meta_title?.trim() || null,
+        meta_description: formData.meta_description?.trim() || null,
+        keywords: formData.keywords?.trim() || null,
         updated_at: now,
         published_at: formData.status.toLowerCase() === 'published' ? (formData.published_at || now) : null
       };
@@ -223,8 +232,8 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                 className="w-full px-6 py-4 bg-gray-50 flex justify-between items-center hover:bg-gray-100"
               >
                 <div className="flex items-center text-gray-700 font-bold">
-                  <SafeIcon icon={FiSettings} className="mr-2 text-purple-600" />
-                  SEO & URL Settings
+                  <SafeIcon icon={FiGlobe} className="mr-2 text-purple-600" />
+                  SEO & Meta Details
                 </div>
                 <SafeIcon icon={showSeoSettings ? FiChevronUp : FiChevronDown} />
               </button>
@@ -238,16 +247,59 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                     className="overflow-hidden bg-white"
                   >
                     <div className="p-6 space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                            <SafeIcon icon={FiHash} className="mr-2 text-purple-600" />
+                            URL Slug
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.slug}
+                            placeholder="story-url-slug"
+                            onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                            <SafeIcon icon={FiType} className="mr-2 text-purple-600" />
+                            Meta Title
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.meta_title}
+                            placeholder="SEO Title..."
+                            onChange={(e) => setFormData({...formData, meta_title: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                          />
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
-                          <SafeIcon icon={FiHash} className="mr-2 text-purple-600" />
-                          URL Slug
+                          <SafeIcon icon={FiAlignLeft} className="mr-2 text-purple-600" />
+                          Meta Description
+                        </label>
+                        <textarea
+                          value={formData.meta_description}
+                          onChange={(e) => setFormData({...formData, meta_description: e.target.value})}
+                          placeholder="Search engine description..."
+                          rows="2"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+                          <SafeIcon icon={FiSearch} className="mr-2 text-purple-600" />
+                          Focus Keywords (comma separated)
                         </label>
                         <input
                           type="text"
-                          value={formData.slug}
-                          placeholder="story-url-slug"
-                          onChange={(e) => setFormData({...formData, slug: e.target.value})}
+                          value={formData.keywords}
+                          placeholder="k-drama, lifestyle, tips..."
+                          onChange={(e) => setFormData({...formData, keywords: e.target.value})}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-400 outline-none"
                         />
                       </div>
