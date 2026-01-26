@@ -49,6 +49,22 @@ export const normalizeNcbDate = (dateInput) => {
 };
 
 /**
+ * Helper to handle Cloudflare Proxy responses and NCB inner results
+ */
+const handleNcbResponse = (result) => {
+  // 1. Check for proxy-level error (even if HTTP 200)
+  if (result && result.ok === false) {
+    const errorMsg = result.error || result.message || (result.upstreamPreview ? `Upstream error: ${result.upstreamPreview}` : 'NCB Proxy error');
+    throw new Error(errorMsg);
+  }
+
+  // 2. Unwrap proxy data if present (the proxy wraps upstream response in "data")
+  let data = (result && result.ok === true && result.data !== undefined) ? result.data : result;
+  
+  return data;
+};
+
+/**
  * Sanitizes payload for specific tables before sending to NCB
  */
 export const sanitizeNcbPayload = (table, payload) => {
@@ -111,18 +127,25 @@ export const ncbReadAll = async (table) => {
       console.error(`NCB Read Error [${table}]: Status ${response.status}`, errorText);
       return [];
     }
-    const result = await response.json();
     
-    // NCB response might be { status: "success", data: [...] } or just [...]
+    const rawResult = await response.json();
+    
+    // 1. Detect and handle proxy errors/wrapping
+    const result = handleNcbResponse(rawResult);
+    
+    // 2. Handle NCB "status: success" wrapper
     if (result && result.status === 'success' && Array.isArray(result.data)) {
       return result.data;
     }
+    
+    // 3. Handle direct array (some endpoints might return raw array)
     if (Array.isArray(result)) {
       return result;
     }
+    
     return [];
   } catch (error) {
-    console.error(`NCB ReadAll Network Error (${table}):`, error);
+    console.error(`NCB ReadAll Exception (${table}):`, error);
     return [];
   }
 };
@@ -142,10 +165,18 @@ export const ncbCreate = async (table, data) => {
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`NCB Create [${table}] Error (Status ${response.status}):`, errorText);
     throw new Error(errorText || response.statusText);
   }
-  return response.json();
+  
+  const rawResult = await response.json();
+  const result = handleNcbResponse(rawResult);
+  
+  // Detect NCB-level failure
+  if (result && result.status === 'failed') {
+    throw new Error(result.message || result.error || 'NCB Creation failed');
+  }
+  
+  return result;
 };
 
 /**
@@ -163,10 +194,18 @@ export const ncbUpdate = async (table, id, data) => {
   
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`NCB Update [${table}] Error:`, errorText);
     throw new Error(`NCB Update Error: ${errorText}`);
   }
-  return response.json();
+  
+  const rawResult = await response.json();
+  const result = handleNcbResponse(rawResult);
+  
+  // Detect NCB-level failure
+  if (result && result.status === 'failed') {
+    throw new Error(result.message || result.error || 'NCB Update failed');
+  }
+  
+  return result;
 };
 
 /**
@@ -177,11 +216,21 @@ export const ncbDelete = async (table, id) => {
   const response = await fetch(`/api/ncb/delete/${table}/${id}`, {
     method: 'DELETE',
   });
+  
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`NCB Delete Error: ${errorText}`);
   }
-  return response.json();
+  
+  const rawResult = await response.json();
+  const result = handleNcbResponse(rawResult);
+  
+  // Detect NCB-level failure
+  if (result && result.status === 'failed') {
+    throw new Error(result.message || result.error || 'NCB Delete failed');
+  }
+  
+  return result;
 };
 
 /**
