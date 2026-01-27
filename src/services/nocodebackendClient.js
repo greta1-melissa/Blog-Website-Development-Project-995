@@ -3,6 +3,9 @@
  * Interacts with /api/ncb proxy to inject secrets server-side
  */
 
+// Hardcoded base URL for the Cloudflare Proxy
+const NCB_BASE = '/api/ncb';
+
 const ALLOWED_TABLES = [
   'posts',
   'users',
@@ -46,6 +49,20 @@ export const normalizeNcbDate = (dateInput) => {
     console.error("Date normalization error:", e);
   }
   return null;
+};
+
+/**
+ * Safely parses JSON response and handles non-JSON (HTML) errors
+ */
+const safeJsonParse = async (response) => {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    // Return a structured error if parsing fails (likely an HTML error page)
+    const preview = text.substring(0, 100).replace(/[\n\r]+/g, ' ');
+    throw new Error(`Expected JSON but received non-JSON response. (Preview: ${preview}...)`);
+  }
 };
 
 /**
@@ -124,14 +141,17 @@ export const sanitizeNcbPayload = (table, payload) => {
 export const ncbReadAll = async (table) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
-    const response = await fetch(`/api/ncb/read/${table}`);
+    const response = await fetch(`${NCB_BASE}/read/${table}`);
+    
+    // Check if response is OK before parsing
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`NCB Read Error [${table}]: Status ${response.status}`, errorText);
+      const preview = errorText.substring(0, 100).replace(/[\n\r]+/g, ' ');
+      console.error(`NCB Read Error [${table}]: Status ${response.status}`, preview);
       return [];
     }
     
-    const rawResult = await response.json();
+    const rawResult = await safeJsonParse(response);
     
     // 1. Detect and handle proxy errors/wrapping
     const result = handleNcbResponse(rawResult);
@@ -148,7 +168,7 @@ export const ncbReadAll = async (table) => {
     
     return [];
   } catch (error) {
-    console.error(`NCB ReadAll Exception (${table}):`, error);
+    console.error(`NCB ReadAll Exception (${table}):`, error.message);
     return [];
   }
 };
@@ -160,18 +180,13 @@ export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
   
-  const response = await fetch(`/api/ncb/create/${table}`, {
+  const response = await fetch(`${NCB_BASE}/create/${table}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
   });
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || response.statusText);
-  }
-  
-  const rawResult = await response.json();
+  const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
   // Detect NCB-level failure
@@ -189,18 +204,13 @@ export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
   
-  const response = await fetch(`/api/ncb/update/${table}/${id}`, {
+  const response = await fetch(`${NCB_BASE}/update/${table}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
   });
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NCB Update Error: ${errorText}`);
-  }
-  
-  const rawResult = await response.json();
+  const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
   // Detect NCB-level failure
@@ -216,16 +226,11 @@ export const ncbUpdate = async (table, id, data) => {
  */
 export const ncbDelete = async (table, id) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
-  const response = await fetch(`/api/ncb/delete/${table}/${id}`, {
+  const response = await fetch(`${NCB_BASE}/delete/${table}/${id}`, {
     method: 'DELETE',
   });
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`NCB Delete Error: ${errorText}`);
-  }
-  
-  const rawResult = await response.json();
+  const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
   // Detect NCB-level failure
