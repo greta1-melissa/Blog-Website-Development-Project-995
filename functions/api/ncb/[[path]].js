@@ -23,7 +23,16 @@ export async function onRequest(context) {
     // 1. Extract Environment Variables
     const instance = env.NCB_INSTANCE || env.NCB_INSTANCE_ID || env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID;
     const apiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
-    const ncbHost = (env.NCB_BASE_URL || "https://api.nocodebackend.com").replace(/\/$/, "");
+    
+    // Ensure we only use the protocol and host from the NCB URL, dropping any pathname
+    const rawBase = (env.NCB_URL || env.NCB_BASE_URL || "https://api.nocodebackend.com").trim();
+    let ncbHost = "https://api.nocodebackend.com";
+    try {
+      const u = new URL(rawBase);
+      ncbHost = `${u.protocol}//${u.host}`;
+    } catch (e) {
+      ncbHost = "https://api.nocodebackend.com";
+    }
 
     // 2. Resolve requested path parts [operation, table, id]
     // Strip instance from the start of the path if it appears there
