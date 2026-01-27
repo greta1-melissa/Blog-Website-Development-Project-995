@@ -26,8 +26,13 @@ export async function onRequest(context) {
     const ncbHost = (env.NCB_BASE_URL || "https://api.nocodebackend.com").replace(/\/$/, "");
 
     // 2. Resolve requested path parts [operation, table, id]
-    const pathParts = params?.path || [];
-    const [operation, table, id] = pathParts;
+    // Strip instance from the start of the path if it appears there
+    let pathSegments = params?.path || [];
+    if (instance && pathSegments[0] === instance) {
+      pathSegments = pathSegments.slice(1);
+    }
+    
+    const [operation, table, id] = pathSegments;
 
     // 3. Health Check / Root Endpoint
     if (!operation || operation === "health") {
@@ -65,7 +70,9 @@ export async function onRequest(context) {
 
     // Forward original query parameters (limit, offset, etc.)
     url.searchParams.forEach((v, k) => {
-      if (k.toLowerCase() !== "instance") {
+      const lowerK = k.toLowerCase();
+      // Don't duplicate Instance; don't forward cache-busters like _t
+      if (lowerK !== "instance" && lowerK !== "_t") {
         targetUrl.searchParams.set(k, v);
       }
     });
