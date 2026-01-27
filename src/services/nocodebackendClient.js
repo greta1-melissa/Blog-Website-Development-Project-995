@@ -3,8 +3,8 @@
  * Interacts with /api/ncb proxy to inject secrets server-side
  */
 
-// Hardcoded base URL for the Cloudflare Proxy
-const NCB_BASE = '/api/ncb';
+// Hardcoded base path for the Cloudflare proxy
+const PROXY_BASE = "/api/ncb";
 
 const ALLOWED_TABLES = [
   'posts',
@@ -60,8 +60,8 @@ const safeJsonParse = async (response) => {
     return JSON.parse(text);
   } catch (e) {
     // Return a structured error if parsing fails (likely an HTML error page)
-    const preview = text.substring(0, 100).replace(/[\n\r]+/g, ' ');
-    throw new Error(`Expected JSON but received non-JSON response. (Preview: ${preview}...)`);
+    const preview = text.substring(0, 120).replace(/[\n\r]+/g, ' ');
+    throw new Error(`Invalid JSON response (HTML or non-JSON). Preview: ${preview}...`);
   }
 };
 
@@ -69,16 +69,18 @@ const safeJsonParse = async (response) => {
  * Helper to handle Cloudflare Proxy responses and NCB inner results
  */
 const handleNcbResponse = (result) => {
-  // 1. Check for proxy-level error (even if HTTP 200)
+  // 1. If the proxy returns { ok:false, ... } even with HTTP 200, throw an Error
   if (result && result.ok === false) {
     const errorMsg = result.error || result.message || (result.upstreamPreview ? `Upstream error: ${result.upstreamPreview}` : 'NCB Proxy error');
     throw new Error(errorMsg);
   }
 
-  // 2. Unwrap proxy data if present (the proxy wraps upstream response in "data")
-  let data = (result && result.ok === true && result.data !== undefined) ? result.data : result;
+  // 2. If the proxy returns { ok:true, data: ... }, unwrap and return .data
+  if (result && result.ok === true && result.data !== undefined) {
+    return result.data;
+  }
   
-  return data;
+  return result;
 };
 
 /**
@@ -136,32 +138,30 @@ export const sanitizeNcbPayload = (table, payload) => {
 };
 
 /**
- * READ ALL: Fetches records using /api/ncb/read/tableName
+ * READ ALL: Fetches records using GET /api/ncb/read/tableName
  */
 export const ncbReadAll = async (table) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   try {
-    const response = await fetch(`${NCB_BASE}/read/${table}`);
+    const response = await fetch(`${PROXY_BASE}/read/${table}`, {
+      method: 'GET'
+    });
     
-    // Check if response is OK before parsing
     if (!response.ok) {
       const errorText = await response.text();
-      const preview = errorText.substring(0, 100).replace(/[\n\r]+/g, ' ');
-      console.error(`NCB Read Error [${table}]: Status ${response.status}`, preview);
-      return [];
+      const preview = errorText.substring(0, 120).replace(/[\n\r]+/g, ' ');
+      throw new Error(`HTTP ${response.status} Error. Preview: ${preview}...`);
     }
     
     const rawResult = await safeJsonParse(response);
-    
-    // 1. Detect and handle proxy errors/wrapping
     const result = handleNcbResponse(rawResult);
     
-    // 2. Handle NCB "status: success" wrapper
+    // Handle NCB "status: success" wrapper
     if (result && result.status === 'success' && Array.isArray(result.data)) {
       return result.data;
     }
     
-    // 3. Handle direct array (some endpoints might return raw array)
+    // Handle direct array
     if (Array.isArray(result)) {
       return result;
     }
@@ -169,18 +169,19 @@ export const ncbReadAll = async (table) => {
     return [];
   } catch (error) {
     console.error(`NCB ReadAll Exception (${table}):`, error.message);
+    // For reads, we return empty array to prevent UI crash, but we log the throw
     return [];
   }
 };
 
 /**
- * CREATE: Adds a new record
+ * CREATE: Adds a new record using POST /api/ncb/create/tableName
  */
 export const ncbCreate = async (table, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
   
-  const response = await fetch(`${NCB_BASE}/create/${table}`, {
+  const response = await fetch(`${PROXY_BASE}/create/${table}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
@@ -189,7 +190,6 @@ export const ncbCreate = async (table, data) => {
   const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
-  // Detect NCB-level failure
   if (result && result.status === 'failed') {
     throw new Error(result.message || result.error || 'NCB Creation failed');
   }
@@ -198,14 +198,14 @@ export const ncbCreate = async (table, data) => {
 };
 
 /**
- * UPDATE: Updates a record
+ * UPDATE: Updates a record using POST /api/ncb/update/tableName/id
  */
 export const ncbUpdate = async (table, id, data) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
   const sanitizedData = sanitizeNcbPayload(table, data);
   
-  const response = await fetch(`${NCB_BASE}/update/${table}/${id}`, {
-    method: 'PUT',
+  const response = await fetch(`${PROXY_BASE}/update/${table}/${id}`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sanitizedData),
   });
@@ -213,7 +213,6 @@ export const ncbUpdate = async (table, id, data) => {
   const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
-  // Detect NCB-level failure
   if (result && result.status === 'failed') {
     throw new Error(result.message || result.error || 'NCB Update failed');
   }
@@ -222,18 +221,17 @@ export const ncbUpdate = async (table, id, data) => {
 };
 
 /**
- * DELETE: Removes a record
+ * DELETE: Removes a record using POST /api/ncb/delete/tableName/id
  */
 export const ncbDelete = async (table, id) => {
   if (!ALLOWED_TABLES.includes(table)) throw new Error(`Table ${table} is not allowed`);
-  const response = await fetch(`${NCB_BASE}/delete/${table}/${id}`, {
-    method: 'DELETE',
+  const response = await fetch(`${PROXY_BASE}/delete/${table}/${id}`, {
+    method: 'POST',
   });
   
   const rawResult = await safeJsonParse(response);
   const result = handleNcbResponse(rawResult);
   
-  // Detect NCB-level failure
   if (result && result.status === 'failed') {
     throw new Error(result.message || result.error || 'NCB Delete failed');
   }
