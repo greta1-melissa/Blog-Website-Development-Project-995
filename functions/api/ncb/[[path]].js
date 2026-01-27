@@ -1,6 +1,6 @@
 /**
  * Canonical NoCodeBackend (NCB) Proxy for Cloudflare Pages
- * Handles all CRUD operations via a single robust catch-all handler.
+ * Handles all CRUD operations via explicit routing and normalization.
  */
 
 function json(data, status = 200) {
@@ -9,7 +9,9 @@ function json(data, status = 200) {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
-      "Access-Control-Allow-Origin": "*"
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization"
     }
   });
 }
@@ -17,50 +19,60 @@ function json(data, status = 200) {
 export async function onRequest(context) {
   const { request, env, params } = context;
 
+  // Handle CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    });
+  }
+
   try {
     const url = new URL(request.url);
     
-    // 1. Extract Environment Variables
-    const instance = env.NCB_INSTANCE || env.NCB_INSTANCE_ID || env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID;
-    const apiKey = env.NCB_API_KEY || env.VITE_NCB_API_KEY;
+    // 1. Resolve Environment Variables
+    const instance = (env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID || env.NCB_INSTANCE || "").trim();
+    const apiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
     
-    // Ensure we only use the protocol and host from the NCB URL, dropping any pathname
     const rawBase = (env.NCB_URL || env.NCB_BASE_URL || "https://api.nocodebackend.com").trim();
     let ncbHost = "https://api.nocodebackend.com";
     try {
       const u = new URL(rawBase);
-      ncbHost = `${u.protocol}//${u.host}`;
+      ncbHost = `${u.protocol}//${u.host}`; // Origin only
     } catch (e) {
       ncbHost = "https://api.nocodebackend.com";
     }
 
-    // 2. Resolve requested path parts [operation, table, id]
-    // Strip instance from the start of the path if it appears there
+    // 2. Normalize Path Segments
     let pathSegments = params?.path || [];
-    if (instance && pathSegments[0] === instance) {
+    
+    // Strip "api" if it's the first segment (happens if routing is fuzzy)
+    if (pathSegments[0] === "api") {
       pathSegments = pathSegments.slice(1);
     }
     
+    // Strip instance if it's the first segment
+    if (instance && pathSegments[0] === instance) {
+      pathSegments = pathSegments.slice(1);
+    }
+
     const [operation, table, id] = pathSegments;
 
-    // 3. Health Check / Root Endpoint
+    // 3. Validation & Health Check
     if (!operation || operation === "health") {
       return json({
         ok: true,
         status: "operational",
-        config: {
-          hasInstance: !!instance,
-          hasKey: !!apiKey,
-          ncbHost
-        }
+        config: { hasInstance: !!instance, hasKey: !!apiKey, ncbHost }
       });
     }
 
     if (!instance || !apiKey) {
-      return json({
-        ok: false,
-        error: "Missing NCB configuration (Instance or API Key) in environment variables."
-      }, 500);
+      return json({ ok: false, error: "Missing NCB configuration (Instance or API Key) in environment variables." }, 500);
     }
 
     if (!table) {
@@ -80,7 +92,6 @@ export async function onRequest(context) {
     // Forward original query parameters (limit, offset, etc.)
     url.searchParams.forEach((v, k) => {
       const lowerK = k.toLowerCase();
-      // Don't duplicate Instance; don't forward cache-busters like _t
       if (lowerK !== "instance" && lowerK !== "_t") {
         targetUrl.searchParams.set(k, v);
       }
@@ -88,7 +99,7 @@ export async function onRequest(context) {
 
     const finalUrl = targetUrl.toString();
 
-    // 5. Prepare Proxy Request
+    // 5. Execute Proxy Request
     const method = request.method.toUpperCase();
     const headers = {
       "Accept": "application/json",
@@ -100,29 +111,19 @@ export async function onRequest(context) {
       headers["Content-Type"] = contentType;
     }
 
-    // Read body if applicable
     let body = null;
     if (!["GET", "HEAD"].includes(method)) {
       body = await request.arrayBuffer();
     }
 
-    // 6. Execute Upstream Request
     let response;
     try {
-      response = await fetch(finalUrl, {
-        method,
-        headers,
-        body
-      });
+      response = await fetch(finalUrl, { method, headers, body });
     } catch (fetchErr) {
-      return json({
-        ok: false,
-        error: "Failed to connect to NCB upstream server.",
-        details: String(fetchErr)
-      }, 502);
+      return json({ ok: false, error: "Failed to connect to NCB upstream server.", details: String(fetchErr) }, 502);
     }
 
-    // 7. Process Response
+    // 6. Process Upstream Response
     const responseText = await response.text();
     let responseJson = null;
     try {
@@ -131,15 +132,15 @@ export async function onRequest(context) {
       responseJson = null;
     }
 
-    // 8. Return Standardized Output
+    // 7. Standardized Output
     if (!response.ok) {
       return json({
         ok: false,
-        error: "Upstream NCB request failed.",
+        error: "Upstream NCB request failed",
         upstreamStatus: response.status,
         upstreamUrlUsed: finalUrl,
         upstreamPreview: responseText.slice(0, 300)
-      }, 200); // Return 200 so the client can parse the JSON error
+      }); // Return 200 so the frontend client can parse the error object
     }
 
     return json({
@@ -150,10 +151,6 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
-    return json({
-      ok: false,
-      error: "Cloudflare Proxy Function Exception",
-      message: String(err)
-    }, 500);
+    return json({ ok: false, error: "Cloudflare Proxy Function Exception", message: String(err) }, 500);
   }
 }
