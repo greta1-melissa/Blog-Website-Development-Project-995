@@ -1,208 +1,253 @@
+/**
+ * Cloudflare Pages Function: NoCodeBackend Proxy (robust)
+ *
+ * Route: /api/ncb/*
+ *
+ * Why this exists:
+ * - Inject Instance + Authorization server-side
+ * - Normalize Cloudflare wildcard params reliably
+ * - Avoid 404 loops like: "Cannot GET /<instance>/read/posts"
+ * - Try multiple NCB URL formats (Instance as query param vs Instance in path, /api-prefixed, read vs readAll)
+ */
 export async function onRequest(context) {
   const { request, env, params } = context;
 
-  const CORS = {
+  const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
   };
 
-  const json = (obj, status = 200) =>
+  const json = (obj, status = 200, extraHeaders = {}) =>
     new Response(JSON.stringify(obj), {
       status,
-      headers: { "Content-Type": "application/json", ...CORS },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        ...corsHeaders,
+        ...extraHeaders,
+      },
     });
 
-  // Preflight
-  if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
+  // 1) CORS Preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    // Base URL (origin only)
-    const rawBase = env.NCB_URL || env.NCB_BASE_URL || "https://api.nocodebackend.com";
-    let ncbHost = "https://api.nocodebackend.com";
-    try {
-      ncbHost = new URL(rawBase).origin;
-    } catch (_) {
-      // keep default
-    }
-
-    const instance = String(
-      env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID || ""
+    // 2) Required config
+    const instance = (
+      env.VITE_NCB_INSTANCE ||
+      env.VITE_NCB_INSTANCE_ID ||
+      env.NCB_INSTANCE ||
+      ""
     ).trim();
 
-    const apiKey = String(env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
+    const apiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
+
+    const rawBase = (env.NCB_URL || "https://api.nocodebackend.com").trim();
+
+    let ncbHost;
+    try {
+      // Use origin only so any accidental path in NCB_URL won't break routing
+      ncbHost = new URL(rawBase).origin;
+    } catch {
+      ncbHost = "https://api.nocodebackend.com";
+    }
 
     if (!instance || !apiKey) {
       return json(
         {
           ok: false,
-          error: "Missing NCB configuration (Instance or API Key) in environment variables.",
-          details: {
-            hasInstance: !!instance,
-            hasApiKey: !!apiKey,
-            ncbHost,
-          },
+          error: "Missing NCB configuration",
+          hasInstance: !!instance,
+          hasApiKey: !!apiKey,
         },
         500
       );
     }
 
-    // Parse incoming path segments
-    const rawPath = params?.path || [];
-    let segments = Array.isArray(rawPath)
+    // 3) Normalize wildcard param into path segments (string vs array safety)
+    const rawPath = params?.path;
+    let pathSegments = Array.isArray(rawPath)
       ? rawPath
-      : String(rawPath).split("/").filter(Boolean);
+      : String(rawPath || "")
+          .split("/")
+          .filter(Boolean);
 
-    // Operations we support (case-insensitive)
-    const allowedOps = new Set(["read", "readall", "create", "update", "delete"]);
+    // Common accidental prefix
+    if (pathSegments[0] === "api") pathSegments = pathSegments.slice(1);
 
-    const s0 = String(segments[0] || "").toLowerCase();
-    const s1 = String(segments[1] || "").toLowerCase();
+    // If someone accidentally included the instance in the URL path, strip it
+    if (pathSegments[0] === instance) pathSegments = pathSegments.slice(1);
 
-    // 1) Strip instance if it matches env instance
-    if (segments.length >= 3 && segments[0] === instance) {
-      segments = segments.slice(1);
+    // Extra safety: if first segment LOOKS like an instance and next is an operation, strip it
+    const allowedOps = new Set(["read", "readAll", "create", "update", "delete"]);
+    if (
+      pathSegments.length >= 2 &&
+      /^\d+_/.test(pathSegments[0]) &&
+      allowedOps.has(pathSegments[1])
+    ) {
+      pathSegments = pathSegments.slice(1);
     }
 
-    // 2) Strip any "legacy instance prefix" if first isn't an op but second is an op
-    //    This fixes /api/ncb/<instance>/read/posts even if env instance differs slightly.
-    if (segments.length >= 2 && !allowedOps.has(s0) && allowedOps.has(s1)) {
-      segments = segments.slice(1);
+    const [operationRaw, table, id] = pathSegments;
+
+    if (!operationRaw || !table) {
+      return json(
+        {
+          ok: false,
+          error: "Invalid proxy path. Expected /<op>/<table>[/<id>]",
+          pathSegments,
+        },
+        400
+      );
     }
 
-    // 3) Allow optional leading "api" segment (we'll also try api/ in upstream fallbacks)
-    if (String(segments[0] || "").toLowerCase() === "api") {
-      segments = segments.slice(1);
-    }
-
-    // Extract operation/table/id
-    let operation = segments[0] || "read";
-    let table = segments[1] || "";
-    let id = segments[2];
-
-    const opLower = String(operation).toLowerCase();
-    if (opLower === "readall") operation = "readAll";
-    else if (opLower === "read") operation = "read";
-    else if (opLower === "create") operation = "create";
-    else if (opLower === "update") operation = "update";
-    else if (opLower === "delete") operation = "delete";
-    else {
-      // If operation is unknown, treat first segment as table and default to read
-      table = segments[0] || "";
-      id = segments[1];
-      operation = "read";
-    }
-
-    if (!table) {
-      return json({ ok: false, error: "Missing table name in request path.", segments }, 400);
-    }
-
+    // 4) Forward query params (but avoid cache-buster and duplicate Instance)
     const reqUrl = new URL(request.url);
+    const forwardParams = new URLSearchParams();
+    reqUrl.searchParams.forEach((val, key) => {
+      if (key === "_t") return; // prevents NCB where-clause issues
+      if (key.toLowerCase() === "instance") return; // we inject our own
+      forwardParams.set(key, val);
+    });
 
-    const makeQueryStyleUrl = (prefix, op) => {
-      const upstreamPath = `${prefix}${op}/${table}${id ? `/${id}` : ""}`;
-      const target = new URL(`${ncbHost}/${upstreamPath}`);
-
-      // Force correct instance from server env
-      target.searchParams.set("Instance", instance);
-
-      // Forward query params EXCEPT Instance and cache-busters
-      reqUrl.searchParams.forEach((v, k) => {
-        const lk = k.toLowerCase();
-        if (lk === "instance" || lk === "_t") return;
-        target.searchParams.set(k, v);
-      });
-
-      return target.toString();
-    };
-
-    // Candidate upstream URLs (try safest first)
-    const candidates = [];
-    candidates.push(makeQueryStyleUrl("", operation));
-    candidates.push(makeQueryStyleUrl("api/", operation));
-
-    // Fallback read <-> readAll when upstream says "Cannot GET"
-    if (operation === "read") {
-      candidates.push(makeQueryStyleUrl("", "readAll"));
-      candidates.push(makeQueryStyleUrl("api/", "readAll"));
-    } else if (operation === "readAll") {
-      candidates.push(makeQueryStyleUrl("", "read"));
-      candidates.push(makeQueryStyleUrl("api/", "read"));
-    }
-
-    // Dedupe
-    const triedUrls = [...new Set(candidates)];
-
-    // Forward request
-    const method = request.method.toUpperCase();
-    const headers = {
-      Accept: "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    };
-
-    const ct = request.headers.get("content-type");
-    if (ct) headers["Content-Type"] = ct;
-
-    let body = null;
-    if (!["GET", "HEAD"].includes(method)) {
-      body = await request.arrayBuffer();
-    }
-
-    let lastStatus = 0;
-    let lastText = "";
-    let usedUrl = "";
-
-    for (const u of triedUrls) {
-      usedUrl = u;
-
-      let resp;
+    // 5) Buffer body for non-GET/HEAD
+    let rawBody = null;
+    if (request.method !== "GET" && request.method !== "HEAD") {
       try {
-        resp = await fetch(u, { method, headers, body });
+        rawBody = await request.text();
+      } catch {
+        rawBody = null;
+      }
+    }
+
+    // 6) Prepare headers (Authorization injected)
+    const headers = new Headers(request.headers);
+    headers.set("Authorization", `Bearer ${apiKey}`);
+    headers.delete("Host");
+
+    const operation = String(operationRaw);
+
+    // 7) Build candidate upstream URLs
+    const makeBasePath = (op) =>
+      `${op}/${table}${id ? `/${id}` : ""}`;
+
+    const candidates = [];
+    const triedUrls = [];
+
+    // Try the requested operation first, then fall back read <-> readAll
+    const opVariants = [operation];
+    if (operation === "read") opVariants.push("readAll");
+    if (operation === "readAll") opVariants.push("read");
+
+    for (const op of opVariants) {
+      const basePath = makeBasePath(op);
+
+      // Style A: Instance as query parameter (most common)
+      candidates.push({ url: `${ncbHost}/${basePath}`, includeInstanceQuery: true });
+      candidates.push({ url: `${ncbHost}/api/${basePath}`, includeInstanceQuery: true });
+
+      // Style B: Instance in path (some NCB setups / older patterns)
+      candidates.push({ url: `${ncbHost}/${instance}/${basePath}`, includeInstanceQuery: false });
+      candidates.push({ url: `${ncbHost}/${instance}/api/${basePath}`, includeInstanceQuery: false });
+      candidates.push({ url: `${ncbHost}/api/${instance}/${basePath}`, includeInstanceQuery: false });
+    }
+
+    // 8) Try candidates until one works
+    let last = null;
+
+    for (const c of candidates) {
+      const u = new URL(c.url);
+
+      // Always forward other query params
+      forwardParams.forEach((v, k) => u.searchParams.set(k, v));
+
+      // Inject Instance when using query style
+      if (c.includeInstanceQuery) {
+        u.searchParams.set("Instance", instance);
+      }
+
+      triedUrls.push(u.toString());
+
+      let res;
+      try {
+        res = await fetch(
+          new Request(u.toString(), {
+            method: request.method,
+            headers,
+            body: rawBody,
+            redirect: "follow",
+          })
+        );
       } catch (e) {
-        lastStatus = 0;
-        lastText = String(e);
+        last = { upstreamStatus: 0, upstreamStatusText: "FETCH_FAILED", upstreamPreview: String(e) };
         continue;
       }
 
-      lastStatus = resp.status;
-      lastText = await resp.text();
-
-      // If upstream returns a "Cannot GET ..." HTML 404, keep trying fallbacks
-      if (!resp.ok) continue;
-
-      // Success
-      let payload;
-      try {
-        payload = JSON.parse(lastText);
-      } catch (_) {
-        payload = lastText;
+      // Handle no-body statuses safely
+      if ([101, 204, 205, 304].includes(res.status)) {
+        return json({
+          ok: true,
+          data: null,
+          upstreamStatus: res.status,
+          upstreamUrlUsed: u.toString(),
+          triedUrls,
+        });
       }
 
-      return json({
-        ok: true,
-        data: payload,
-        upstreamStatus: resp.status,
-        upstreamUrlUsed: u,
-        normalized: { operation, table, id },
-      });
+      const contentType = res.headers.get("content-type") || "";
+      const text = await res.text().catch(() => "");
+
+      // Try parse JSON even if content-type is wrong
+      let parsed = null;
+      if (contentType.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("[")) {
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = null;
+        }
+      }
+
+      if (res.ok) {
+        return json({
+          ok: true,
+          data: parsed ?? text,
+          upstreamStatus: res.status,
+          upstreamUrlUsed: u.toString(),
+          triedUrls,
+        });
+      }
+
+      // Save last failure and decide whether to continue
+      last = {
+        upstreamStatus: res.status,
+        upstreamStatusText: res.statusText,
+        upstreamUrlUsed: u.toString(),
+        upstreamPreview: (text || "").slice(0, 500),
+        upstreamJson: parsed,
+      };
+
+      // Auth failures won't be fixed by trying other URL shapes
+      if (res.status === 401 || res.status === 403) break;
     }
 
-    // All failed
-    return json({
-      ok: false,
-      error: "Upstream NCB request failed",
-      upstreamStatus: lastStatus || 502,
-      upstreamUrlUsed: usedUrl,
-      triedUrls,
-      upstreamPreview: String(lastText || "").slice(0, 600),
-      normalized: { operation, table, id, segments },
-    });
+    return json(
+      {
+        ok: false,
+        error: "Upstream NCB request failed",
+        ...last,
+        triedUrls,
+      },
+      (last && last.upstreamStatus) || 502
+    );
   } catch (err) {
     return json(
       {
         ok: false,
         error: "Proxy Internal Error",
-        message: err?.message ? String(err.message) : String(err),
+        message: err?.message || String(err),
       },
       500
     );
