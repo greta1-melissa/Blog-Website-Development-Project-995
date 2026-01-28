@@ -1,292 +1,309 @@
-const PROXY_VERSION = "2026-01-28-proxy-hardened";
-
-const KNOWN_OPS = new Set([
-  "read",
-  "readAll",
-  "create",
-  "update",
-  "delete",
-  "insert",
-  "upsert",
-]);
-
-function normalizeSegments(paramsPath) {
-  if (Array.isArray(paramsPath)) return paramsPath.filter(Boolean);
-  if (!paramsPath) return [];
-  return String(paramsPath).split("/").filter(Boolean);
-}
-
-function looksLikeRouteMissing(status, text) {
-  if (status === 404 || status === 405) return true;
-  return /Cannot\s+(GET|POST|PUT|DELETE|PATCH)\b/i.test(text || "");
-}
-
-function preview(text, limit = 4000) {
-  const t = typeof text === "string" ? text : String(text ?? "");
-  return t.length > limit ? t.slice(0, limit) : t;
-}
-
+/**
+ * Cloudflare Pages Function: NoCodeBackend Proxy (Robust)
+ *
+ * Route: /api/ncb/*
+ *
+ * Goals:
+ * - Always inject Instance + Authorization server-side.
+ * - Be resilient to different NCB endpoint shapes (/read/:table, /api/read/:table, /readAll/:table, etc).
+ * - Protect against misconfigured NCB_URL that includes a path (e.g. https://.../54230_instance).
+ * - Provide rich debug fields (upstreamUrlUsed, triedUrls, upstreamPreview) while keeping UI unchanged.
+ */
 export async function onRequest(context) {
   const { request, env, params } = context;
-  const reqUrl = new URL(request.url);
 
-  const apiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
-  const instance = (env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || "").trim();
-
-  const rawBase = (env.NCB_BASE_URL || env.NCB_URL || "https://api.nocodebackend.com").trim();
-  let ncbHost = "https://api.nocodebackend.com";
-  try {
-    ncbHost = new URL(rawBase).origin; // strips any accidental /<instance> path
-  } catch (e) {
-    // Fallback to default host if URL is invalid
-    console.warn("Invalid NCB_BASE_URL provided, using default.", e);
+  // --- CORS preflight
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+      },
+    });
   }
 
-  const headersOut = {
-    "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  const proxyVersion = "2026-01-28-robust-ncb-proxy";
+
+  // --- Resolve instance + api key
+  const instance =
+    (env.VITE_NCB_INSTANCE || env.VITE_NCB_INSTANCE_ID || env.NCB_INSTANCE || "").trim();
+
+  const ncbApiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
+
+  if (!instance) {
+    return json(
+      {
+        ok: false,
+        proxyVersion,
+        error: "Missing NCB Instance",
+        details:
+          "Server configuration error: Instance ID not found in environment (VITE_NCB_INSTANCE / VITE_NCB_INSTANCE_ID / NCB_INSTANCE).",
+      },
+      500
+    );
+  }
+
+  if (!ncbApiKey) {
+    return json(
+      {
+        ok: false,
+        proxyVersion,
+        error: "Missing NCB API key",
+        details: "Server configuration error: NCB_API_KEY not found in environment.",
+      },
+      500
+    );
+  }
+
+  // --- Resolve NCB base URL safely (strip any path)
+  const rawBase = (env.NCB_URL || "https://api.nocodebackend.com").trim();
+  let baseOrigin = rawBase;
+  try {
+    // Ensure we can parse even if someone omitted scheme
+    const normalized = rawBase.startsWith("http") ? rawBase : `https://${rawBase}`;
+    baseOrigin = new URL(normalized).origin;
+  } catch (e) {
+    // Fall back, but keep going
+    baseOrigin = "https://api.nocodebackend.com";
+  }
+
+  // --- Parse the incoming path after /api/ncb/
+  let segments = params?.path || [];
+  if (typeof segments === "string") segments = segments.split("/").filter(Boolean);
+
+  // Strip leading slashes just in case
+  segments = (segments || []).map(s => (s || "").toString()).filter(Boolean);
+
+  // If someone accidentally includes the instance in the path, strip it:
+  // /api/ncb/54230_bangtanmom/read/posts -> /read/posts
+  if (segments[0] === instance) segments = segments.slice(1);
+
+  // If someone includes "api" in the path, allow it but normalize away for parsing
+  // /api/ncb/api/read/posts -> /read/posts
+  if (segments[0] === "api") segments = segments.slice(1);
+
+  const operation = segments[0] || "";
+  const table = segments[1] || "";
+  const rest = segments.slice(2); // e.g. /read/posts/123
+
+  if (!operation) {
+    return json(
+      {
+        ok: false,
+        proxyVersion,
+        error: "Missing operation",
+        details: "Expected /api/ncb/<operation>/<table>...",
+        received: { segments },
+      },
+      400
+    );
+  }
+
+  // --- Copy query params (ignore cache-buster _t)
+  const reqUrl = new URL(request.url);
+  const passthroughParams = new URLSearchParams();
+  reqUrl.searchParams.forEach((val, key) => {
+    if (key === "_t") return;
+    passthroughParams.set(key, val);
+  });
+
+  // --- Helper: build candidate URL
+  const buildUrl = (origin, path, { includeInstanceQuery = true } = {}) => {
+    const u = new URL(`${origin}${path.startsWith("/") ? "" : "/"}${path}`);
+    // Preserve user query params
+    passthroughParams.forEach((v, k) => u.searchParams.set(k, v));
+    if (includeInstanceQuery) u.searchParams.set("Instance", instance);
+    return u.toString();
   };
 
-  if (request.method === "OPTIONS") {
-    return new Response(null, { headers: headersOut });
-  }
+  // --- Candidate upstream paths (cover both query-param and instance-in-path styles)
+  const opAll = operation === "read" ? "readAll" : operation;
 
-  if (!apiKey || !instance) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: "Missing NCB configuration (need NCB_API_KEY and NCB_INSTANCE or VITE_NCB_INSTANCE).",
-        proxyVersion: PROXY_VERSION,
-        hasKey: !!apiKey,
-        hasInstance: !!instance,
-      }),
-      { status: 500, headers: headersOut }
-    );
-  }
+  const tail = rest.length ? `/${rest.join("/")}` : "";
 
-  // Normalize and sanitize path segments
-  let segs = normalizeSegments(params?.path);
+  const candidatePaths = [];
 
-  // Strip leading "api" if present
-  if (segs[0] === "api") segs = segs.slice(1);
+  // Preferred: Instance as query param
+  if (table) {
+    candidatePaths.push(`/${operation}/${table}${tail}`);
+    candidatePaths.push(`/api/${operation}/${table}${tail}`);
 
-  // IMPORTANT HARDENING:
-  // If path looks like /api/ncb/<something>/<op>/<table> then strip the first segment
-  if (segs.length >= 2 && KNOWN_OPS.has(segs[1]) && !KNOWN_OPS.has(segs[0])) {
-    segs = segs.slice(1);
-  }
-
-  // Strip env instance if present (best-case)
-  if (segs[0] === instance) segs = segs.slice(1);
-
-  const seg0 = segs[0];
-  const seg1 = segs[1];
-  const seg2 = segs[2];
-
-  const operation = KNOWN_OPS.has(seg0) ? seg0 : "read";
-  const table = KNOWN_OPS.has(seg0) ? seg1 : seg0;
-  const id = KNOWN_OPS.has(seg0) ? seg2 : seg1;
-
-  if (!table) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: "Missing table name. Expected /api/ncb/<op>/<table> (e.g. /api/ncb/read/posts).",
-        proxyVersion: PROXY_VERSION,
-        requestInfo: { segs, operation, table, id },
-      }),
-      { status: 200, headers: headersOut }
-    );
-  }
-
-  // Build upstream candidates
-  const candidates = [];
-  const add = (p) => candidates.push(p);
-
-  if (operation === "read" || operation === "readAll") {
-    if (id) {
-      add(`read/${table}/${id}`);
-      add(`api/read/${table}/${id}`);
-    } else {
-      add(`read/${table}`);
-      add(`readAll/${table}`);
-      add(`api/readAll/${table}`);
-      add(`api/read/${table}`);
+    if (operation === "read") {
+      candidatePaths.push(`/${opAll}/${table}${tail}`);
+      candidatePaths.push(`/api/${opAll}/${table}${tail}`);
     }
-  } else if (operation === "create" || operation === "insert") {
-    add(`create/${table}`);
-    add(`insert/${table}`);
-    add(`api/create/${table}`);
-    add(`api/insert/${table}`);
-  } else if (operation === "update" || operation === "upsert") {
-    if (id) {
-      add(`update/${table}/${id}`);
-      add(`api/update/${table}/${id}`);
+
+    // Some backends expect Instance in the path
+    candidatePaths.push(`/${instance}/${operation}/${table}${tail}`);
+    candidatePaths.push(`/${instance}/api/${operation}/${table}${tail}`);
+
+    if (operation === "read") {
+      candidatePaths.push(`/${instance}/${opAll}/${table}${tail}`);
+      candidatePaths.push(`/${instance}/api/${opAll}/${table}${tail}`);
     }
-    add(`update/${table}`);
-    add(`api/update/${table}`);
-  } else if (operation === "delete") {
-    if (id) {
-      add(`delete/${table}/${id}`);
-      add(`api/delete/${table}/${id}`);
-    }
-    add(`delete/${table}`);
-    add(`api/delete/${table}`);
+  } else {
+    // Operation-only endpoints (rare)
+    candidatePaths.push(`/${operation}${tail}`);
+    candidatePaths.push(`/api/${operation}${tail}`);
+    candidatePaths.push(`/${instance}/${operation}${tail}`);
+    candidatePaths.push(`/${instance}/api/${operation}${tail}`);
   }
 
-  // Forward body for non-GET requests
-  const method = request.method.toUpperCase();
-  const body =
-    method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
+  // Table-as-query fallback (covers APIs like /read?table=posts)
+  if (operation === "read" && table && !tail) {
+    const q = new URLSearchParams(passthroughParams);
+    q.set("table", table);
+    q.set("Instance", instance);
+    candidatePaths.push(`/read?${q.toString()}`);
+    candidatePaths.push(`/api/read?${q.toString()}`);
+  }
 
-  // Copy query params (except cache busters), enforce Instance
-  const qp = new URLSearchParams(reqUrl.searchParams);
-  qp.delete("_t");
-  qp.delete("Instance");
-  qp.set("Instance", instance);
-
-  // Build headers for upstream
-  const upstreamHeaders = new Headers();
-  upstreamHeaders.set("Authorization", `Bearer ${apiKey}`);
-  upstreamHeaders.set("Accept", "application/json");
-
-  const incomingCT = request.headers.get("content-type");
-  if (incomingCT && method !== "GET" && method !== "HEAD") {
-    upstreamHeaders.set("content-type", incomingCT);
+  // De-duplicate while preserving order
+  const uniq = [];
+  const seen = new Set();
+  for (const p of candidatePaths) {
+    const key = p;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniq.push(p);
+    }
   }
 
   const triedUrls = [];
-  let lastStatus = 0;
-  let lastPreview = "";
-  let lastUpstreamUrl = "";
 
-  for (const path of candidates) {
-    const upstreamUrl = new URL(`${ncbHost.replace(/\/$/, "")}/${path}`);
-    upstreamUrl.search = qp.toString();
-    const upstreamUrlStr = upstreamUrl.toString();
+  // --- Prepare headers + body
+  const headers = new Headers(request.headers);
+  headers.set("Authorization", `Bearer ${ncbApiKey}`);
+  headers.delete("Host");
 
-    triedUrls.push(upstreamUrlStr);
-    lastUpstreamUrl = upstreamUrlStr;
-
-    let res;
+  // Body buffering (avoid reading twice)
+  let rawBody = null;
+  if (request.method !== "GET" && request.method !== "HEAD") {
     try {
-      res = await fetch(upstreamUrlStr, {
-        method,
-        headers: upstreamHeaders,
-        body,
-        redirect: "follow",
-      });
+      rawBody = await request.text();
     } catch (e) {
-      lastPreview = preview(e?.message || String(e));
-      continue;
+      rawBody = null;
     }
-
-    lastStatus = res.status;
-    const text = await res.text();
-    const ct = res.headers.get("content-type") || "";
-
-    // Try JSON parse if likely JSON
-    const looksJson = ct.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("[");
-    if (looksJson) {
-      try {
-        const jsonBody = JSON.parse(text);
-
-        // Treat NCB "status":"success" as success
-        const isSuccess =
-          res.ok &&
-          (jsonBody?.ok === true ||
-            jsonBody?.status === "success" ||
-            Array.isArray(jsonBody?.data) ||
-            typeof jsonBody?.data !== "undefined");
-
-        if (isSuccess) {
-          return new Response(
-            JSON.stringify({
-              ok: true,
-              data: jsonBody,
-              upstreamStatus: res.status,
-              upstreamUrlUsed: upstreamUrlStr,
-              proxyVersion: PROXY_VERSION,
-              triedUrls,
-              requestInfo: { segs, operation, table, id },
-            }),
-            { status: 200, headers: headersOut }
-          );
-        }
-
-        const jprev = preview(JSON.stringify(jsonBody));
-        if (looksLikeRouteMissing(res.status, jprev)) {
-          lastPreview = jprev;
-          continue;
-        }
-
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: jsonBody?.error || jsonBody?.message || "Upstream error",
-            upstreamStatus: res.status,
-            upstreamUrlUsed: upstreamUrlStr,
-            upstreamPreview: jprev,
-            proxyVersion: PROXY_VERSION,
-            triedUrls,
-            requestInfo: { segs, operation, table, id },
-          }),
-          { status: 200, headers: headersOut }
-        );
-      } catch (e) {
-        lastPreview = preview(text);
-        if (looksLikeRouteMissing(res.status, lastPreview)) continue;
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: "Upstream returned invalid JSON",
-            upstreamStatus: res.status,
-            upstreamUrlUsed: upstreamUrlStr,
-            upstreamPreview: lastPreview,
-            proxyVersion: PROXY_VERSION,
-            triedUrls,
-            requestInfo: { segs, operation, table, id },
-          }),
-          { status: 200, headers: headersOut }
-        );
-      }
-    }
-
-    const prev = preview(text);
-    lastPreview = prev;
-    if (looksLikeRouteMissing(res.status, prev)) {
-      continue;
-    }
-
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: "Upstream returned non-JSON response",
-        upstreamStatus: res.status,
-        upstreamUrlUsed: upstreamUrlStr,
-        upstreamPreview: prev,
-        proxyVersion: PROXY_VERSION,
-        triedUrls,
-        requestInfo: { segs, operation, table, id },
-      }),
-      { status: 200, headers: headersOut }
-    );
   }
 
-  return new Response(
-    JSON.stringify({
+  // --- Execute attempts
+  let lastErr = null;
+
+  for (const path of uniq) {
+    // For instance-in-path candidates, don't *also* force Instance query param (avoid weird rewrites),
+    // but keep it for query-param candidates.
+    const isInstanceInPath = path.startsWith(`/${instance}/`);
+    const upstreamUrl = buildUrl(baseOrigin, path, { includeInstanceQuery: !isInstanceInPath });
+
+    triedUrls.push(upstreamUrl);
+
+    try {
+      const proxyReq = new Request(upstreamUrl, {
+        method: request.method,
+        headers,
+        body: rawBody,
+        redirect: "follow",
+      });
+
+      const res = await fetch(proxyReq);
+
+      // Handle no-body statuses
+      if ([101, 204, 205, 304].includes(res.status)) {
+        return new Response(null, {
+          status: res.status,
+          headers: corsHeaders(res.headers),
+        });
+      }
+
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+
+      // Prefer JSON parsing, but fall back to text
+      let text = null;
+      let parsed = null;
+
+      if (ct.includes("application/json")) {
+        text = await res.text();
+        try {
+          parsed = text ? JSON.parse(text) : null;
+        } catch (e) {
+          parsed = null;
+        }
+      } else {
+        text = await res.text();
+      }
+
+      // Determine "ok" for NCB:
+      // - HTTP ok AND not an explicit ok:false body
+      const bodySaysNotOk =
+        parsed && typeof parsed === "object" && parsed !== null && parsed.ok === false;
+
+      if (res.ok && !bodySaysNotOk) {
+        // Success — return in a stable wrapper
+        return json(
+          {
+            ok: true,
+            proxyVersion,
+            upstreamStatus: res.status,
+            upstreamUrlUsed: upstreamUrl,
+            triedUrls,
+            data: parsed ?? text,
+          },
+          200,
+          res.headers
+        );
+      }
+
+      // Not ok — capture preview and continue trying if 404/405 (route mismatch)
+      const preview = (text || "").slice(0, 2000);
+      const shouldRetry = res.status === 404 || res.status === 405;
+
+      lastErr = {
+        ok: false,
+        proxyVersion,
+        upstreamStatus: res.status,
+        upstreamUrlUsed: upstreamUrl,
+        upstreamPreview: preview,
+        triedUrls,
+      };
+
+      if (!shouldRetry) {
+        // Don't keep trying on auth errors, server errors, etc.
+        return json(lastErr, res.status, res.headers);
+      }
+    } catch (e) {
+      lastErr = {
+        ok: false,
+        proxyVersion,
+        upstreamStatus: 0,
+        upstreamUrlUsed: upstreamUrl,
+        upstreamPreview: String(e?.message || e),
+        triedUrls,
+      };
+    }
+  }
+
+  // All attempts failed
+  return json(
+    lastErr || {
       ok: false,
-      error: "All upstream route candidates failed (likely route mismatch or wrong instance).",
-      upstreamStatus: lastStatus || 0,
-      upstreamUrlUsed: lastUpstreamUrl || null,
-      upstreamPreview: lastPreview || null,
-      proxyVersion: PROXY_VERSION,
+      proxyVersion,
+      error: "All upstream attempts failed",
       triedUrls,
-      requestInfo: { segs, operation, table, id },
-    }),
-    { status: 200, headers: headersOut }
+    },
+    502
   );
+}
+
+/** Helpers */
+function corsHeaders(existingHeaders) {
+  const h = new Headers(existingHeaders || {});
+  h.set("Access-Control-Allow-Origin", "*");
+  return h;
+}
+
+function json(obj, status = 200, existingHeaders) {
+  const h = corsHeaders(existingHeaders);
+  h.set("Content-Type", "application/json");
+  return new Response(JSON.stringify(obj), { status, headers: h });
 }
