@@ -1,255 +1,292 @@
-/**
- * Cloudflare Pages Function: NoCodeBackend Proxy (robust)
- *
- * Route: /api/ncb/*
- *
- * Why this exists:
- * - Inject Instance + Authorization server-side
- * - Normalize Cloudflare wildcard params reliably
- * - Avoid 404 loops like: "Cannot GET /<instance>/read/posts"
- * - Try multiple NCB URL formats (Instance as query param vs Instance in path, /api-prefixed, read vs readAll)
- */
+const PROXY_VERSION = "2026-01-28-proxy-hardened";
+
+const KNOWN_OPS = new Set([
+  "read",
+  "readAll",
+  "create",
+  "update",
+  "delete",
+  "insert",
+  "upsert",
+]);
+
+function normalizeSegments(paramsPath) {
+  if (Array.isArray(paramsPath)) return paramsPath.filter(Boolean);
+  if (!paramsPath) return [];
+  return String(paramsPath).split("/").filter(Boolean);
+}
+
+function looksLikeRouteMissing(status, text) {
+  if (status === 404 || status === 405) return true;
+  return /Cannot\s+(GET|POST|PUT|DELETE|PATCH)\b/i.test(text || "");
+}
+
+function preview(text, limit = 4000) {
+  const t = typeof text === "string" ? text : String(text ?? "");
+  return t.length > limit ? t.slice(0, limit) : t;
+}
+
 export async function onRequest(context) {
   const { request, env, params } = context;
+  const reqUrl = new URL(request.url);
 
-  const corsHeaders = {
+  const apiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
+  const instance = (env.NCB_INSTANCE || env.VITE_NCB_INSTANCE || "").trim();
+
+  const rawBase = (env.NCB_BASE_URL || env.NCB_URL || "https://api.nocodebackend.com").trim();
+  let ncbHost = "https://api.nocodebackend.com";
+  try {
+    ncbHost = new URL(rawBase).origin; // strips any accidental /<instance> path
+  } catch (e) {
+    // Fallback to default host if URL is invalid
+    console.warn("Invalid NCB_BASE_URL provided, using default.", e);
+  }
+
+  const headersOut = {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
   };
 
-  const json = (obj, status = 200, extraHeaders = {}) =>
-    new Response(JSON.stringify(obj), {
-      status,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-        ...corsHeaders,
-        ...extraHeaders,
-      },
-    });
-
-  // 1) CORS Preflight
   if (request.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: headersOut });
   }
 
-  try {
-    // 2) Required config
-    const instance = (
-      env.VITE_NCB_INSTANCE ||
-      env.VITE_NCB_INSTANCE_ID ||
-      env.NCB_INSTANCE ||
-      ""
-    ).trim();
+  if (!apiKey || !instance) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: "Missing NCB configuration (need NCB_API_KEY and NCB_INSTANCE or VITE_NCB_INSTANCE).",
+        proxyVersion: PROXY_VERSION,
+        hasKey: !!apiKey,
+        hasInstance: !!instance,
+      }),
+      { status: 500, headers: headersOut }
+    );
+  }
 
-    const apiKey = (env.NCB_API_KEY || env.VITE_NCB_API_KEY || "").trim();
+  // Normalize and sanitize path segments
+  let segs = normalizeSegments(params?.path);
 
-    const rawBase = (env.NCB_URL || "https://api.nocodebackend.com").trim();
+  // Strip leading "api" if present
+  if (segs[0] === "api") segs = segs.slice(1);
 
-    let ncbHost;
+  // IMPORTANT HARDENING:
+  // If path looks like /api/ncb/<something>/<op>/<table> then strip the first segment
+  if (segs.length >= 2 && KNOWN_OPS.has(segs[1]) && !KNOWN_OPS.has(segs[0])) {
+    segs = segs.slice(1);
+  }
+
+  // Strip env instance if present (best-case)
+  if (segs[0] === instance) segs = segs.slice(1);
+
+  const seg0 = segs[0];
+  const seg1 = segs[1];
+  const seg2 = segs[2];
+
+  const operation = KNOWN_OPS.has(seg0) ? seg0 : "read";
+  const table = KNOWN_OPS.has(seg0) ? seg1 : seg0;
+  const id = KNOWN_OPS.has(seg0) ? seg2 : seg1;
+
+  if (!table) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: "Missing table name. Expected /api/ncb/<op>/<table> (e.g. /api/ncb/read/posts).",
+        proxyVersion: PROXY_VERSION,
+        requestInfo: { segs, operation, table, id },
+      }),
+      { status: 200, headers: headersOut }
+    );
+  }
+
+  // Build upstream candidates
+  const candidates = [];
+  const add = (p) => candidates.push(p);
+
+  if (operation === "read" || operation === "readAll") {
+    if (id) {
+      add(`read/${table}/${id}`);
+      add(`api/read/${table}/${id}`);
+    } else {
+      add(`read/${table}`);
+      add(`readAll/${table}`);
+      add(`api/readAll/${table}`);
+      add(`api/read/${table}`);
+    }
+  } else if (operation === "create" || operation === "insert") {
+    add(`create/${table}`);
+    add(`insert/${table}`);
+    add(`api/create/${table}`);
+    add(`api/insert/${table}`);
+  } else if (operation === "update" || operation === "upsert") {
+    if (id) {
+      add(`update/${table}/${id}`);
+      add(`api/update/${table}/${id}`);
+    }
+    add(`update/${table}`);
+    add(`api/update/${table}`);
+  } else if (operation === "delete") {
+    if (id) {
+      add(`delete/${table}/${id}`);
+      add(`api/delete/${table}/${id}`);
+    }
+    add(`delete/${table}`);
+    add(`api/delete/${table}`);
+  }
+
+  // Forward body for non-GET requests
+  const method = request.method.toUpperCase();
+  const body =
+    method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
+
+  // Copy query params (except cache busters), enforce Instance
+  const qp = new URLSearchParams(reqUrl.searchParams);
+  qp.delete("_t");
+  qp.delete("Instance");
+  qp.set("Instance", instance);
+
+  // Build headers for upstream
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set("Authorization", `Bearer ${apiKey}`);
+  upstreamHeaders.set("Accept", "application/json");
+
+  const incomingCT = request.headers.get("content-type");
+  if (incomingCT && method !== "GET" && method !== "HEAD") {
+    upstreamHeaders.set("content-type", incomingCT);
+  }
+
+  const triedUrls = [];
+  let lastStatus = 0;
+  let lastPreview = "";
+  let lastUpstreamUrl = "";
+
+  for (const path of candidates) {
+    const upstreamUrl = new URL(`${ncbHost.replace(/\/$/, "")}/${path}`);
+    upstreamUrl.search = qp.toString();
+    const upstreamUrlStr = upstreamUrl.toString();
+
+    triedUrls.push(upstreamUrlStr);
+    lastUpstreamUrl = upstreamUrlStr;
+
+    let res;
     try {
-      // Use origin only so any accidental path in NCB_URL won't break routing
-      ncbHost = new URL(rawBase).origin;
-    } catch {
-      ncbHost = "https://api.nocodebackend.com";
+      res = await fetch(upstreamUrlStr, {
+        method,
+        headers: upstreamHeaders,
+        body,
+        redirect: "follow",
+      });
+    } catch (e) {
+      lastPreview = preview(e?.message || String(e));
+      continue;
     }
 
-    if (!instance || !apiKey) {
-      return json(
-        {
-          ok: false,
-          error: "Missing NCB configuration",
-          hasInstance: !!instance,
-          hasApiKey: !!apiKey,
-        },
-        500
-      );
-    }
+    lastStatus = res.status;
+    const text = await res.text();
+    const ct = res.headers.get("content-type") || "";
 
-    // 3) Normalize wildcard param into path segments (string vs array safety)
-    const rawPath = params?.path;
-    let pathSegments = Array.isArray(rawPath)
-      ? rawPath
-      : String(rawPath || "")
-          .split("/")
-          .filter(Boolean);
-
-    // Common accidental prefix
-    if (pathSegments[0] === "api") pathSegments = pathSegments.slice(1);
-
-    // If someone accidentally included the instance in the URL path, strip it
-    if (pathSegments[0] === instance) pathSegments = pathSegments.slice(1);
-
-    // Extra safety: if first segment LOOKS like an instance and next is an operation, strip it
-    const allowedOps = new Set(["read", "readAll", "create", "update", "delete"]);
-    if (
-      pathSegments.length >= 2 &&
-      /^\d+_/.test(pathSegments[0]) &&
-      allowedOps.has(pathSegments[1])
-    ) {
-      pathSegments = pathSegments.slice(1);
-    }
-
-    const [operationRaw, table, id] = pathSegments;
-
-    if (!operationRaw || !table) {
-      return json(
-        {
-          ok: false,
-          error: "Invalid proxy path. Expected /<op>/<table>[/<id>]",
-          pathSegments,
-        },
-        400
-      );
-    }
-
-    // 4) Forward query params (but avoid cache-buster and duplicate Instance)
-    const reqUrl = new URL(request.url);
-    const forwardParams = new URLSearchParams();
-    reqUrl.searchParams.forEach((val, key) => {
-      if (key === "_t") return; // prevents NCB where-clause issues
-      if (key.toLowerCase() === "instance") return; // we inject our own
-      forwardParams.set(key, val);
-    });
-
-    // 5) Buffer body for non-GET/HEAD
-    let rawBody = null;
-    if (request.method !== "GET" && request.method !== "HEAD") {
+    // Try JSON parse if likely JSON
+    const looksJson = ct.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("[");
+    if (looksJson) {
       try {
-        rawBody = await request.text();
-      } catch {
-        rawBody = null;
-      }
-    }
+        const jsonBody = JSON.parse(text);
 
-    // 6) Prepare headers (Authorization injected)
-    const headers = new Headers(request.headers);
-    headers.set("Authorization", `Bearer ${apiKey}`);
-    headers.delete("Host");
+        // Treat NCB "status":"success" as success
+        const isSuccess =
+          res.ok &&
+          (jsonBody?.ok === true ||
+            jsonBody?.status === "success" ||
+            Array.isArray(jsonBody?.data) ||
+            typeof jsonBody?.data !== "undefined");
 
-    const operation = String(operationRaw);
+        if (isSuccess) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: jsonBody,
+              upstreamStatus: res.status,
+              upstreamUrlUsed: upstreamUrlStr,
+              proxyVersion: PROXY_VERSION,
+              triedUrls,
+              requestInfo: { segs, operation, table, id },
+            }),
+            { status: 200, headers: headersOut }
+          );
+        }
 
-    // 7) Build candidate upstream URLs
-    const makeBasePath = (op) =>
-      `${op}/${table}${id ? `/${id}` : ""}`;
+        const jprev = preview(JSON.stringify(jsonBody));
+        if (looksLikeRouteMissing(res.status, jprev)) {
+          lastPreview = jprev;
+          continue;
+        }
 
-    const candidates = [];
-    const triedUrls = [];
-
-    // Try the requested operation first, then fall back read <-> readAll
-    const opVariants = [operation];
-    if (operation === "read") opVariants.push("readAll");
-    if (operation === "readAll") opVariants.push("read");
-
-    for (const op of opVariants) {
-      const basePath = makeBasePath(op);
-
-      // Style A: Instance as query parameter (most common)
-      candidates.push({ url: `${ncbHost}/${basePath}`, includeInstanceQuery: true });
-      candidates.push({ url: `${ncbHost}/api/${basePath}`, includeInstanceQuery: true });
-
-      // Style B: Instance in path (some NCB setups / older patterns)
-      candidates.push({ url: `${ncbHost}/${instance}/${basePath}`, includeInstanceQuery: false });
-      candidates.push({ url: `${ncbHost}/${instance}/api/${basePath}`, includeInstanceQuery: false });
-      candidates.push({ url: `${ncbHost}/api/${instance}/${basePath}`, includeInstanceQuery: false });
-    }
-
-    // 8) Try candidates until one works
-    let last = null;
-
-    for (const c of candidates) {
-      const u = new URL(c.url);
-
-      // Always forward other query params
-      forwardParams.forEach((v, k) => u.searchParams.set(k, v));
-
-      // Inject Instance when using query style
-      if (c.includeInstanceQuery) {
-        u.searchParams.set("Instance", instance);
-      }
-
-      triedUrls.push(u.toString());
-
-      let res;
-      try {
-        res = await fetch(
-          new Request(u.toString(), {
-            method: request.method,
-            headers,
-            body: rawBody,
-            redirect: "follow",
-          })
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: jsonBody?.error || jsonBody?.message || "Upstream error",
+            upstreamStatus: res.status,
+            upstreamUrlUsed: upstreamUrlStr,
+            upstreamPreview: jprev,
+            proxyVersion: PROXY_VERSION,
+            triedUrls,
+            requestInfo: { segs, operation, table, id },
+          }),
+          { status: 200, headers: headersOut }
         );
       } catch (e) {
-        last = { upstreamStatus: 0, upstreamStatusText: "FETCH_FAILED", upstreamPreview: String(e) };
-        continue;
+        lastPreview = preview(text);
+        if (looksLikeRouteMissing(res.status, lastPreview)) continue;
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "Upstream returned invalid JSON",
+            upstreamStatus: res.status,
+            upstreamUrlUsed: upstreamUrlStr,
+            upstreamPreview: lastPreview,
+            proxyVersion: PROXY_VERSION,
+            triedUrls,
+            requestInfo: { segs, operation, table, id },
+          }),
+          { status: 200, headers: headersOut }
+        );
       }
-
-      // Handle no-body statuses safely
-      if ([101, 204, 205, 304].includes(res.status)) {
-        return json({
-          ok: true,
-          data: null,
-          upstreamStatus: res.status,
-          upstreamUrlUsed: u.toString(),
-          triedUrls,
-        });
-      }
-
-      const contentType = res.headers.get("content-type") || "";
-      const text = await res.text().catch(() => "");
-
-      // Try parse JSON even if content-type is wrong
-      let parsed = null;
-      if (contentType.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("[")) {
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          parsed = null;
-        }
-      }
-
-      if (res.ok) {
-        return json({
-          ok: true,
-          data: parsed ?? text,
-          upstreamStatus: res.status,
-          upstreamUrlUsed: u.toString(),
-          triedUrls,
-        });
-      }
-
-      // Save last failure and decide whether to continue
-      last = {
-        upstreamStatus: res.status,
-        upstreamStatusText: res.statusText,
-        upstreamUrlUsed: u.toString(),
-        upstreamPreview: (text || "").slice(0, 500),
-        upstreamJson: parsed,
-      };
-
-      // Auth failures won't be fixed by trying other URL shapes
-      if (res.status === 401 || res.status === 403) break;
     }
 
-    return json(
-      {
+    const prev = preview(text);
+    lastPreview = prev;
+    if (looksLikeRouteMissing(res.status, prev)) {
+      continue;
+    }
+
+    return new Response(
+      JSON.stringify({
         ok: false,
-        error: "Upstream NCB request failed",
-        ...last,
+        error: "Upstream returned non-JSON response",
+        upstreamStatus: res.status,
+        upstreamUrlUsed: upstreamUrlStr,
+        upstreamPreview: prev,
+        proxyVersion: PROXY_VERSION,
         triedUrls,
-      },
-      (last && last.upstreamStatus) || 502
-    );
-  } catch (err) {
-    return json(
-      {
-        ok: false,
-        error: "Proxy Internal Error",
-        message: err?.message || String(err),
-      },
-      500
+        requestInfo: { segs, operation, table, id },
+      }),
+      { status: 200, headers: headersOut }
     );
   }
+
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      error: "All upstream route candidates failed (likely route mismatch or wrong instance).",
+      upstreamStatus: lastStatus || 0,
+      upstreamUrlUsed: lastUpstreamUrl || null,
+      upstreamPreview: lastPreview || null,
+      proxyVersion: PROXY_VERSION,
+      triedUrls,
+      requestInfo: { segs, operation, table, id },
+    }),
+    { status: 200, headers: headersOut }
+  );
 }

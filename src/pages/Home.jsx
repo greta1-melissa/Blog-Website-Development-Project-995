@@ -13,7 +13,6 @@ import { stripHtml } from '../utils/textUtils';
 const { FiArrowRight, FiHeart, FiCoffee, FiBookOpen, FiMoon, FiUsers, FiStar, FiChevronRight, FiMusic, FiTv, FiSmile } = FiIcons;
 
 const Home = () => {
-  // Fix: Destructure refreshData instead of fetchData to match BlogContext export
   const { publishedPosts, products, isLoading, refreshData } = useBlog();
   const { isAuthenticated } = useAuth();
 
@@ -22,7 +21,7 @@ const Home = () => {
   }, [refreshData]);
 
   const latestStories = useMemo(() => publishedPosts.slice(0, 8), [publishedPosts]);
-  const productPicks = useMemo(() => products.slice(0, 12), [products]);
+  const productPicks = useMemo(() => products.slice(0, 4), [products]);
 
   const meTimeRituals = [
     {
@@ -185,11 +184,9 @@ const Home = () => {
             </Link>
           </div>
 
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {productPicks.map((product, i) => (
-              <div key={product.id || i} className="break-inside-avoid">
-                <ProductCard product={product} index={i} />
-              </div>
+              <ProductCard key={product.id || i} product={product} index={i} />
             ))}
           </div>
         </div>
